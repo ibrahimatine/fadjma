@@ -1,15 +1,6 @@
-// backend/scripts/seed.js
 require('dotenv').config();
-const { sequelize } = require('../src/config/database');
-const User = require('../src/models/User');
-const MedicalRecord = require('../src/models/MedicalRecord');
+const { sequelize, User, MedicalRecord } = require('../src/models'); // Utiliser le nouveau fichier index.js
 const bcrypt = require('bcryptjs');
-
-// Définir les associations
-User.hasMany(MedicalRecord, { as: 'patientRecords', foreignKey: 'patientId' });
-User.hasMany(MedicalRecord, { as: 'doctorRecords', foreignKey: 'doctorId' });
-MedicalRecord.belongsTo(User, { as: 'patient', foreignKey: 'patientId' });
-MedicalRecord.belongsTo(User, { as: 'doctor', foreignKey: 'doctorId' });
 
 async function seedDatabase() {
   try {
@@ -108,44 +99,6 @@ async function seedDatabase() {
           batchNumber: 'FE4721',
           nextDose: '2025-06-15'
         }
-      },
-      {
-        patientId: patientJean.id,
-        doctorId: drDiop.id,
-        type: 'consultation',
-        title: 'Consultation générale - Bilan de santé',
-        description: 'Bilan de santé annuel complet avec analyses sanguines.',
-        diagnosis: 'Patient en bonne santé générale. Légère hypertension à surveiller.',
-        prescription: {
-          medications: [],
-          recommendations: [
-            'Réduire consommation de sel',
-            'Exercice physique 30min/jour',
-            'Contrôle tension dans 3 mois'
-          ]
-        },
-        metadata: {
-          bloodPressure: '140/90',
-          weight: '78kg',
-          height: '175cm',
-          bmi: 25.5
-        }
-      },
-      {
-        patientId: patientJean.id,
-        doctorId: drMartin.id,
-        type: 'test_result',
-        title: 'Analyses sanguines complètes',
-        description: 'Résultats du bilan sanguin annuel',
-        diagnosis: 'Tous les marqueurs dans les normes. Cholestérol légèrement élevé.',
-        prescription: null,
-        metadata: {
-          cholesterolTotal: '220 mg/dL',
-          ldl: '140 mg/dL',
-          hdl: '55 mg/dL',
-          glycemie: '95 mg/dL',
-          hemoglobine: '15.2 g/dL'
-        }
       }
     ]);
     
@@ -169,41 +122,6 @@ async function seedDatabase() {
         metadata: {
           bloodPressureAvg: '150/95',
           startDate: '2024-11-15'
-        }
-      },
-      {
-        patientId: patientFatou.id,
-        doctorId: drMartin.id,
-        type: 'allergy',
-        title: 'Allergie au lactose',
-        description: 'Intolérance au lactose confirmée par test respiratoire.',
-        diagnosis: 'Intolérance au lactose sévère. Éviter tous produits laitiers.',
-        prescription: {
-          medications: [
-            { name: 'Lactase', dosage: '3000 FCC', frequency: 'Avant repas avec lactose' }
-          ],
-          recommendations: [
-            'Privilégier laits végétaux',
-            'Supplémentation calcium 1000mg/jour'
-          ]
-        },
-        metadata: {
-          testDate: '2024-10-20',
-          hydrogenLevel: '45 ppm'
-        }
-      },
-      {
-        patientId: patientFatou.id,
-        doctorId: drDiop.id,
-        type: 'vaccination',
-        title: 'Vaccin Grippe Saisonnière 2024',
-        description: 'Vaccination annuelle contre la grippe',
-        diagnosis: 'Vaccination effectuée sans complication',
-        prescription: null,
-        metadata: {
-          vaccine: 'Vaxigrip Tetra',
-          batchNumber: 'U5521',
-          expiryDate: '2025-03-31'
         }
       }
     ]);
@@ -244,10 +162,6 @@ async function seedDatabase() {
     console.log('  Email: fatou.sall@demo.com  | Password: Demo2024!');
     console.log('\nADMIN:');
     console.log('  Email: admin@fadjma.com     | Password: Admin2024!');
-    console.log('\n📁 Dossiers médicaux:');
-    console.log('---------------------');
-    console.log(`  Total: ${recordsJean.length + recordsFatou.length} dossiers`);
-    console.log(`  Ancrés sur Hedera: 3 dossiers (simulation)`);
     console.log('\n✅ Base de données prête pour les tests!');
     console.log('='.repeat(50));
     
@@ -268,7 +182,3 @@ if (process.argv[2] === '--reset') {
 } else {
   seedDatabase();
 }
-
-// Usage:
-// npm run seed          → Créer les données de test
-// npm run seed -- --reset → Réinitialiser la DB

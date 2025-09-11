@@ -1,6 +1,6 @@
 require('dotenv').config();
 const app = require('./src/app');
-const { sequelize } = require('./src/config/database');
+const { sequelize } = require('./src/models'); // Utiliser le nouveau fichier index.js
 
 const PORT = process.env.PORT || 5000;
 
