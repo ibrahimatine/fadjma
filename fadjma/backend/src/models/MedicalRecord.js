@@ -24,8 +24,11 @@ const MedicalRecord = sequelize.define('MedicalRecord', {
     }
   },
   type: {
-    type: DataTypes.ENUM('consultation', 'prescription', 'test_result', 'vaccination', 'allergy'),
-    allowNull: false
+    type: DataTypes.STRING,  // PAS D'ENUM !
+    allowNull: false,
+    validate: {
+      isIn: [['consultation', 'prescription', 'test_result', 'vaccination', 'allergy']]
+    }
   },
   title: {
     type: DataTypes.STRING,
@@ -40,15 +43,15 @@ const MedicalRecord = sequelize.define('MedicalRecord', {
     allowNull: true
   },
   prescription: {
-    type: DataTypes.JSONB,
+    type: DataTypes.JSON,  // JSON au lieu de JSONB pour compatibilité
     allowNull: true
   },
   attachments: {
-    type: DataTypes.JSONB,
+    type: DataTypes.JSON,
     defaultValue: []
   },
   metadata: {
-    type: DataTypes.JSONB,
+    type: DataTypes.JSON,
     defaultValue: {}
   },
   hash: {
