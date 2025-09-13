@@ -1,6 +1,6 @@
 require('dotenv').config();
 const app = require('./src/app');
-const { sequelize } = require('./src/models'); // Utiliser le nouveau fichier index.js
+const { sequelize } = require('./src/models');
 
 const PORT = process.env.PORT || 5000;
 
@@ -10,8 +10,8 @@ async function startServer() {
     await sequelize.authenticate();
     console.log('✅ Database connected successfully');
     
-    // Sync database models
-    await sequelize.sync({ alter: true });
+    // Sync database models - SANS alter pour éviter les conflits
+    await sequelize.sync({ force: false }); // ⚠️ IMPORTANT: force: false
     console.log('✅ Database synchronized');
     
     // Start server
