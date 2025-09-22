@@ -24,8 +24,8 @@ exports.getAll = async (req, res) => {
     const records = await MedicalRecord.findAndCountAll({
       where,
       include: [
-        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
-        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] }
+        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] },
+        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] }
       ],
       order: [['createdAt', 'DESC']],
       limit: parseInt(limit),
@@ -48,8 +48,8 @@ exports.getById = async (req, res) => {
   try {
     const record = await MedicalRecord.findByPk(req.params.id, {
       include: [
-        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
-        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] }
+        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] },
+        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] }
       ]
     });
     
@@ -128,8 +128,8 @@ exports.create = async (req, res) => {
     // Reload with associations
     const fullRecord = await MedicalRecord.findByPk(record.id, {
       include: [
-        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
-        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] }
+        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] },
+        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] }
       ]
     });
     
@@ -180,8 +180,8 @@ exports.update = async (req, res) => {
     // Reload with associations
     const fullRecord = await MedicalRecord.findByPk(record.id, {
       include: [
-        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
-        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] }
+        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] },
+        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] }
       ]
     });
     

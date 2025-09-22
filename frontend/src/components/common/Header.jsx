@@ -6,6 +6,7 @@ import { Home, FileText, LogOut, User, Shield } from 'lucide-react';
 const Header = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const _isDoctor = user?.role === 'doctor';
 
   const handleLogout = () => {
     logout();
@@ -21,7 +22,7 @@ const Header = () => {
               <Shield className="h-8 w-8 text-primary-600" />
               <span className="text-xl font-bold text-gray-900">FadjMa</span>
             </Link>
-            
+
             <nav className="ml-10 flex space-x-4">
               <Link
                 to="/dashboard"
@@ -30,13 +31,16 @@ const Header = () => {
                 <Home className="h-4 w-4 mr-1" />
                 Dashboard
               </Link>
-              <Link
-                to="/records"
-                className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
-              >
-                <FileText className="h-4 w-4 mr-1" />
-                Dossiers
-              </Link>
+
+              {_isDoctor &&
+                <Link
+                  to="/records"
+                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
+                >
+                  <FileText className="h-4 w-4 mr-1" />
+                  Dossiers
+                </Link>
+              }
             </nav>
           </div>
 
@@ -50,7 +54,7 @@ const Header = () => {
                 {user?.role}
               </span>
             </div>
-            
+
             <button
               onClick={handleLogout}
               className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-red-600 transition-colors"

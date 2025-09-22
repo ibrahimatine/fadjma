@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { User } = require('../models'); // Utiliser le nouveau fichier index.js
+const { User } = require('../models');
 
 module.exports = async (req, res, next) => {
   try {

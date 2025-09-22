@@ -42,6 +42,34 @@ const User = sequelize.define('User', {
   isActive: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  dateOfBirth: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+  gender: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  address: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  phoneNumber: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  emergencyContactName: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  emergencyContactPhone: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  socialSecurityNumber: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 }, {
   timestamps: true,

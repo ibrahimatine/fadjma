@@ -18,7 +18,7 @@ exports.register = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password, firstName, lastName, role = 'patient', licenseNumber } = req.body;
+    const { email, password, firstName, lastName, role = 'patient', licenseNumber, dateOfBirth, gender, address, phoneNumber, emergencyContactName, emergencyContactPhone, socialSecurityNumber } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ where: { email } });
@@ -33,7 +33,14 @@ exports.register = async (req, res) => {
       firstName,
       lastName,
       role,
-      licenseNumber: role === 'doctor' ? licenseNumber : null
+      licenseNumber: role === 'doctor' ? licenseNumber : null,
+      dateOfBirth,
+      gender,
+      address,
+      phoneNumber,
+      emergencyContactName,
+      emergencyContactPhone,
+      socialSecurityNumber
     });
 
     // Generate token
@@ -94,7 +101,7 @@ exports.getCurrentUser = async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findByPk(decoded.id);
-    
+
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }

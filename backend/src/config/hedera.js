@@ -19,15 +19,12 @@ class HederaClient {
 
       // Initialiser le client pour testnet
       this.client = Client.forTestnet();
-      
+
       // Configurer l'opérateur
-      const operatorKey = PrivateKey.fromString(privateKey);
-      this.client.setOperator(accountId, operatorKey);
-      
-      // Limiter les frais max pour éviter les surprises
-      this.client.setDefaultMaxTransactionFee("1");
-      this.client.setDefaultMaxQueryPayment("1");
-      
+      this.client.setOperator(accountId, privateKey);
+
+
+
       console.log("✅ Hedera client initialized pour Testnet");
       console.log("   Account ID:", accountId);
       console.log("   Topic ID:", this.topicId || "À créer");
@@ -50,7 +47,7 @@ class HederaClient {
 
       const receipt = await transaction.getReceipt(this.client);
       const topicId = receipt.topicId;
-      
+
       console.log(`✅ Topic créé avec ID: ${topicId}`);
       return topicId.toString();
     } catch (error) {
@@ -70,17 +67,27 @@ class HederaClient {
         timestamp: new Date().toISOString()
       };
     }
-
+    const privateKeyStr = PrivateKey.fromStringECDSA(process.env.HEDERA_PRIVATE_KEY);
     try {
-      const transaction = await new TopicMessageSubmitTransaction()
+      // 1️⃣ Créer la transaction
+      let tx = new TopicMessageSubmitTransaction()
         .setTopicId(this.topicId)
-        .setMessage(message)
-        .execute(this.client);
+        .setMessage(message);
+
+      // 2️⃣ Geler (préparer la transaction pour signature)
+      tx = await tx.freezeWith(this.client);
+
+      // 3️⃣ Signer avec la privateKey
+      tx = await tx.sign(privateKeyStr);
+
+      // 4️⃣ Exécuter sur le réseau
+      const transaction = await tx.execute(this.client);
+
 
       const receipt = await transaction.getReceipt(this.client);
-      
+
       console.log("✅ Message envoyé sur Hedera");
-      
+
       return {
         status: receipt.status.toString(),
         topicId: this.topicId,
@@ -89,7 +96,7 @@ class HederaClient {
       };
     } catch (error) {
       console.error("❌ Erreur Hedera submission:", error);
-      
+
       // Retourner une réponse simulée en cas d'erreur
       return {
         status: "ERROR",
