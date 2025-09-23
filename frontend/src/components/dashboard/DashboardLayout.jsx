@@ -1,14 +1,33 @@
+// src/components/dashboard/DashboardLayout.jsx
+import React from "react";
 import { useAuth } from "../../hooks/useAuth";
 import LoadingSpinner from "../common/LoadingSpinner";
 import RecordForm from "../records/RecordForm";
-import { FileText, CheckCircle, AlertCircle, Plus } from "lucide-react";
-import HealthTokenWidget from "../tokens/HealthTokenWidget";
+import { FileText, CheckCircle, AlertCircle, Plus, RefreshCw } from "lucide-react";
 import MedicalReminders from "../reminders/MedicalReminders";
+import HealthTokenWidget from "../tokens/HealthTokenWidget";
 
-const DashboardLayout = ({ children, loading, stats, showForm, setShowForm, fetchRecords }) => {
+/**
+ * Props:
+ * - children: React nodes (page content)
+ * - loading: boolean
+ * - stats: { total, verified, pending }
+ * - showForm: boolean
+ * - setShowForm: function(boolean)
+ * - fetchRecords: function() => void (refresh list)
+ */
+const DashboardLayout = ({
+    children,
+    loading = false,
+    stats = { total: 0, verified: 0, pending: 0 },
+    showForm = false,
+    setShowForm = () => { },
+    fetchRecords = () => { }
+}) => {
     const { user } = useAuth();
     const _isDoctor = user?.role === "doctor";
     const _isPharmacy = user?.role === "pharmacy";
+
     if (loading) {
         return <LoadingSpinner text="Chargement du dashboard..." />;
     }
@@ -16,90 +35,87 @@ const DashboardLayout = ({ children, loading, stats, showForm, setShowForm, fetc
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Welcome Section */}
-                <div className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-900">
-                        Bienvenue, {user?.firstName} {user?.lastName}
-                    </h1>
-                    <p className="text-gray-600 mt-2">
-                        {user?.role === "patient"
-                            ? "Gérez vos dossiers médicaux sécurisés"
-                            : user?.role === "doctor"
+                {/* Header */}
+                <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">
+                            Bienvenue, {user?.firstName} {user?.lastName}
+                        </h1>
+                        <p className="text-gray-600 mt-1">
+                            {_isDoctor
                                 ? "Consultez et créez des dossiers patients"
-                                : "Gérez les livraisons de médicaments"}
-                    </p>
+                                : user?.role === "patient"
+                                    ? "Gérez vos dossiers médicaux sécurisés"
+                                    : _isPharmacy
+                                        ? "Gérez les ordonnances et vérifications"
+                                        : "Bienvenue"}
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => fetchRecords()}
+                            className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-md shadow-sm text-sm hover:bg-gray-50"
+                            title="Rafraîchir"
+                            aria-label="Rafraîchir"
+                        >
+                            <RefreshCw className="h-4 w-4 text-gray-600" />
+                            Rafraîchir
+                        </button>
+
+                        <button
+                            onClick={() => setShowForm(true)}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 text-sm"
+                            title="Créer dossier"
+                            aria-label="Créer un dossier médical"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Nouveau dossier
+                        </button>
+                    </div>
                 </div>
 
-                {/* Stats Cards */}
+                {/* Doctor stats */}
                 {_isDoctor && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                        <div className="card">
+                        <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-100">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm font-medium text-gray-600">
-                                        Total Dossiers
-                                    </p>
-                                    <p className="text-2xl font-bold text-gray-900">
-                                        {stats.total}
-                                    </p>
+                                    <p className="text-sm font-medium text-gray-600">Total dossiers</p>
+                                    <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
                                 </div>
                                 <FileText className="h-8 w-8 text-primary-500" />
                             </div>
                         </div>
 
-                        <div className="card">
+                        <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-100">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm font-medium text-gray-600">
-                                        Vérifiés sur Hedera
-                                    </p>
-                                    <p className="text-2xl font-bold text-green-600">
-                                        {stats.verified}
-                                    </p>
+                                    <p className="text-sm font-medium text-gray-600">Vérifiés sur Hedera</p>
+                                    <p className="text-2xl font-bold text-green-600">{stats.verified}</p>
                                 </div>
                                 <CheckCircle className="h-8 w-8 text-green-500" />
                             </div>
                         </div>
 
-                        <div className="card">
+                        <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-100">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-sm font-medium text-gray-600">En attente</p>
-                                    <p className="text-2xl font-bold text-yellow-600">
-                                        {stats.pending}
-                                    </p>
+                                    <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
                                 </div>
                                 <AlertCircle className="h-8 w-8 text-yellow-500" />
                             </div>
                         </div>
                     </div>
                 )}
-                {/* Recent Records Section */}
 
-                {_isDoctor && (
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-xl font-semibold text-gray-900">
-                            Dossiers récents
-                        </h2>
-                        <button
-                            onClick={() => setShowForm(true)}
-                            className="btn-primary flex items-center"
-                        >
-                            <Plus className="h-5 w-5 mr-2" />
-                            Nouveau dossier
-                        </button>
-                    </div>
-                )}
+                {/* Main content */}
+                <div className="mb-8">
+                    {children}
+                </div>
 
-                {_isPharmacy ? (
-                    // Render PharmacyDashboard content directly if it's a pharmacy
-                    children
-                ) : (
-                    // Existing children rendering for patient/doctor
-                    children
-                )}
-
-                {/* Bottom Widgets */}
+                {/* Bottom widgets */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                     <div className="lg:col-span-2">
                         <MedicalReminders />
@@ -116,6 +132,7 @@ const DashboardLayout = ({ children, loading, stats, showForm, setShowForm, fetc
                         onClose={() => setShowForm(false)}
                         onSuccess={() => {
                             setShowForm(false);
+                            // refresh the list
                             fetchRecords();
                         }}
                     />
