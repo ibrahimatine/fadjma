@@ -5,9 +5,9 @@ const ProtectedRoute = ({ allowedRoles }) => {
   const { isAuthenticated, user } = useAuth();
   const location = useLocation(); // 👈 récupère la route actuelle
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-
-  if (user.role == "patient" && location.pathname !== "/dashboard") {
-    return <Navigate to="/unauthorized" replace />; // page 403 ou redirection par défaut
+  // Specific redirection for patient and pharmacy roles if they try to access other dashboards
+  if ((user.role === "patient" || user.role === "pharmacy") && location.pathname !== "/dashboard") {
+    return <Navigate to="/dashboard" replace />; // Redirect to their respective dashboards
   }
 
   return <Outlet />;

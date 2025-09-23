@@ -29,10 +29,10 @@ const User = sequelize.define('User', {
     allowNull: false
   },
   role: {
-    type: DataTypes.STRING,  // PAS D'ENUM !
+    type: DataTypes.STRING, // Pas d'ENUM pour garder la flexibilité
     defaultValue: 'patient',
     validate: {
-      isIn: [['patient', 'doctor', 'admin']]
+      isIn: [['patient', 'doctor', 'admin', 'pharmacy']]
     }
   },
   licenseNumber: {
@@ -43,13 +43,18 @@ const User = sequelize.define('User', {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   },
+
+  // 🔽 NOUVELLES INFORMATIONS COMPLÉMENTAIRES
   dateOfBirth: {
     type: DataTypes.DATEONLY,
     allowNull: true
   },
   gender: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    validate: {
+      isIn: [['male', 'female', 'other']] // Pour éviter des valeurs incohérentes
+    }
   },
   address: {
     type: DataTypes.STRING,
@@ -57,7 +62,10 @@ const User = sequelize.define('User', {
   },
   phoneNumber: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    validate: {
+      is: /^[+]?[0-9\s\-]{6,20}$/i // Vérifie un format de numéro basique
+    }
   },
   emergencyContactName: {
     type: DataTypes.STRING,
@@ -65,7 +73,10 @@ const User = sequelize.define('User', {
   },
   emergencyContactPhone: {
     type: DataTypes.STRING,
-    allowNull: true
+    allowNull: true,
+    validate: {
+      is: /^[+]?[0-9\s\-]{6,20}$/i
+    }
   },
   socialSecurityNumber: {
     type: DataTypes.STRING,
@@ -85,10 +96,12 @@ const User = sequelize.define('User', {
   }
 });
 
+// Vérification du mot de passe
 User.prototype.validatePassword = async function(password) {
   return bcrypt.compare(password, this.password);
 };
 
+// Supprimer le mot de passe de la réponse JSON
 User.prototype.toJSON = function() {
   const values = Object.assign({}, this.get());
   delete values.password;

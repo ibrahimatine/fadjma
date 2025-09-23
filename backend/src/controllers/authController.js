@@ -52,8 +52,11 @@ exports.register = async (req, res) => {
       user: user.toJSON()
     });
   } catch (error) {
-    console.error('Register error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+     console.error('Register error:', error);
+    res.status(500).json({
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

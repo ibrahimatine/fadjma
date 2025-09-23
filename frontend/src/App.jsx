@@ -17,7 +17,7 @@ function App() {
       {user && <Header />}
       <Routes>
         <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
-        <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
+        <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Login />} />
         <Route element={<ProtectedRoute allowedRoles={["patient"]} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/records" element={<Records />} />

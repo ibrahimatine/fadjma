@@ -1,0 +1,86 @@
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/database');
+const User = require('./User');
+const MedicalRecord = require('./MedicalRecord');
+
+const Prescription = sequelize.define('Prescription', {
+  id: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true,
+  },
+  patientId: {
+    type: DataTypes.UUID,
+    allowNull: false,
+    references: {
+      model: User,
+      key: 'id',
+    },
+  },
+  doctorId: {
+    type: DataTypes.UUID,
+    allowNull: false,
+    references: {
+      model: User,
+      key: 'id',
+    },
+  },
+  medicalRecordId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: MedicalRecord,
+      key: 'id',
+    },
+  },
+  medication: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  dosage: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
+  instructions: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  quantity: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
+  issueDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  deliveryStatus: {
+    type: DataTypes.STRING,
+    allowNull: false,
+    defaultValue: 'pending',
+    validate: {
+      isIn: [['pending', 'delivered', 'cancelled']],
+    },
+  },
+  deliveryConfirmationHash: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  pharmacyId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: User,
+      key: 'id',
+    },
+  },
+}, {
+  timestamps: true,
+});
+
+Prescription.belongsTo(User, { as: 'patient', foreignKey: 'patientId' });
+Prescription.belongsTo(User, { as: 'doctor', foreignKey: 'doctorId' });
+Prescription.belongsTo(User, { as: 'pharmacy', foreignKey: 'pharmacyId' });
+Prescription.belongsTo(MedicalRecord, { foreignKey: 'medicalRecordId' });
+
+module.exports = Prescription;

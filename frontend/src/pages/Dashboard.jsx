@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { recordService } from "../services/recordService";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DoctorDashboard from "../components/dashboard/DoctorDashboard";
 import PatientDashboard from "../components/dashboard/PatientDashboard";
 import LoadingSpinner from "../components/common/LoadingSpinner";
+import { patientService } from "../services/patienService";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -23,16 +23,17 @@ const Dashboard = () => {
 
   const fetchRecords = async () => {
     try {
-      const response = await recordService.getAll();
-      setRecords(response.records || []);
+      const response = await patientService.getAll();
+      console.log("Fetched patients:", response);
+      setRecords(response.patients || []);
 
       // Calculate stats
       const verified =
-        response.records?.filter((r) => r.isVerified).length || 0;
+        response.patients?.filter((p) => p.role === "patient").length || 0;
       setStats({
-        total: response.records?.length || 0,
+        total: response.patients?.length || 0,
         verified: verified,
-        pending: (response.records?.length || 0) - verified,
+        pending: (response.patients?.length || 0) - verified,
       });
     } catch (error) {
       console.error("Error fetching records:", error);
@@ -44,7 +45,6 @@ const Dashboard = () => {
   if (loading) {
     return <LoadingSpinner text="Chargement du dashboard..." />;
   }
-  console.log(user);
   return (
     <DashboardLayout
       loading={loading}
