@@ -7,7 +7,9 @@ import Dashboard from './pages/Dashboard';
 import Records from './pages/Records';
 import RecordDetails from './pages/RecordDetails';
 import CreateMedicalRecord from './pages/CreateMedicalRecord';
+import PatientMedicalRecordsView from './components/patient/PatientMedicalRecordsView';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import PatientRecordGuard from './components/auth/PatientRecordGuard';
 import Header from './components/common/Header';
 
 function App() {
@@ -22,7 +24,16 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={["patient"]} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/records" element={<Records />} />
-          <Route path="/records/:id" element={<RecordDetails />} />
+          <Route path="/records/:id" element={
+            user?.role === 'patient' ? (
+              <PatientRecordGuard>
+                <RecordDetails />
+              </PatientRecordGuard>
+            ) : (
+              <RecordDetails />
+            )
+          } />
+          <Route path="/patient/medical-records" element={<PatientMedicalRecordsView />} />
         </Route>
         <Route element={<ProtectedRoute allowedRoles={["doctor"]} />}>
           <Route path="/dashboard" element={<Dashboard />} />

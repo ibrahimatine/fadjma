@@ -95,6 +95,119 @@ exports.getAll = async (req, res) => {
   }
 };
 
+// New endpoint: Get records grouped by patient for doctors
+exports.getGroupedByPatient = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
+
+    if (req.user.role !== 'doctor') {
+      return res.status(403).json({ message: 'Access denied - doctors only' });
+    }
+
+    // Get all patients the doctor has access to
+    const accessiblePatients = await MedicalRecordAccessRequest.findAll({
+      where: {
+        requesterId: req.user.id,
+        status: 'approved',
+        [Op.or]: [
+          { expiresAt: null },
+          { expiresAt: { [Op.gt]: new Date() } }
+        ]
+      },
+      attributes: ['patientId']
+    });
+
+    const patientIds = accessiblePatients.map(access => access.patientId);
+
+    if (patientIds.length === 0) {
+      return res.json({
+        patients: [],
+        total: 0,
+        page: parseInt(page),
+        totalPages: 0
+      });
+    }
+
+    // Get all records for these patients
+    const records = await MedicalRecord.findAll({
+      where: {
+        patientId: { [Op.in]: patientIds }
+      },
+      include: [
+        {
+          model: User,
+          as: 'patient',
+          attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber']
+        },
+        {
+          model: User,
+          as: 'doctor',
+          attributes: ['id', 'firstName', 'lastName']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Group records by patient
+    const groupedData = {};
+
+    records.forEach(record => {
+      const patientId = record.patientId;
+
+      if (!groupedData[patientId]) {
+        groupedData[patientId] = {
+          patient: record.patient,
+          records: [],
+          totalRecords: 0,
+          lastRecordDate: null,
+          recordTypes: new Set()
+        };
+      }
+
+      groupedData[patientId].records.push(record);
+      groupedData[patientId].totalRecords++;
+      groupedData[patientId].recordTypes.add(record.type);
+
+      // Update last record date
+      const recordDate = new Date(record.createdAt);
+      if (!groupedData[patientId].lastRecordDate || recordDate > groupedData[patientId].lastRecordDate) {
+        groupedData[patientId].lastRecordDate = recordDate;
+      }
+    });
+
+    // Convert to array and add summary data
+    const patientsWithRecords = Object.values(groupedData).map(patientData => ({
+      patient: patientData.patient,
+      records: patientData.records,
+      summary: {
+        totalRecords: patientData.totalRecords,
+        lastRecordDate: patientData.lastRecordDate,
+        recordTypes: Array.from(patientData.recordTypes),
+        recentRecords: patientData.records.slice(0, 3) // Last 3 records for preview
+      }
+    }));
+
+    // Sort by last record date (most recent first)
+    patientsWithRecords.sort((a, b) => new Date(b.summary.lastRecordDate) - new Date(a.summary.lastRecordDate));
+
+    // Apply pagination
+    const totalPatients = patientsWithRecords.length;
+    const paginatedPatients = patientsWithRecords.slice(offset, offset + parseInt(limit));
+
+    res.json({
+      patients: paginatedPatients,
+      total: totalPatients,
+      page: parseInt(page),
+      totalPages: Math.ceil(totalPatients / limit)
+    });
+
+  } catch (error) {
+    console.error('Get grouped records error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 exports.getById = async (req, res) => {
   try {
     const record = await MedicalRecord.findByPk(req.params.id, {

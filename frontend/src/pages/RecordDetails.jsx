@@ -17,6 +17,7 @@ const RecordDetails = () => {
 
   const fetchRecord = async () => {
     try {
+      console.log('Fetched record:');
       const data = await recordService.getById(id);
       setRecord(data);
     } catch (error) {

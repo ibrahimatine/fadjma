@@ -7,7 +7,7 @@ class MedicalRecordService {
   async getPatientRecords(patientId) {
     try {
       const response = await api.get(`/records?patientId=${patientId}`);
-      return response.data;
+      return response;
     } catch (error) {
       throw this.handleError(error);
     }
@@ -17,7 +17,7 @@ class MedicalRecordService {
   async getRecordById(recordId) {
     try {
       const response = await api.get(`/records/${recordId}`);
-      return response.data;
+      return response;
     } catch (error) {
       throw this.handleError(error);
     }
@@ -85,7 +85,17 @@ class MedicalRecordService {
   async getPatientStats(patientId) {
     try {
       const response = await api.get(`/patients/${patientId}/stats`);
-      return response.data;
+      return response;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  // Get records grouped by patient (for doctors)
+  async getGroupedByPatient(page = 1, limit = 10) {
+    try {
+      const response = await api.get(`/records/grouped-by-patient?page=${page}&limit=${limit}`);
+      return response;
     } catch (error) {
       throw this.handleError(error);
     }

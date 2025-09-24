@@ -1,5 +1,6 @@
 // src/components/patient/MedicalRecordCard.jsx
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Clock,
@@ -14,9 +15,13 @@ import {
   Edit,
   Download
 } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 import IntegrityButton from '../verification/IntegrityButton';
+import toast from 'react-hot-toast';
 
-const MedicalRecordCard = ({ record, onView, onEdit, canEdit = false, showActions = true }) => {
+const MedicalRecordCard = ({ record, onView, onEdit, onDownload, canEdit = false, showActions = true }) => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const typeConfig = {
     allergy: {
       icon: AlertTriangle,
@@ -86,19 +91,76 @@ const MedicalRecordCard = ({ record, onView, onEdit, canEdit = false, showAction
     });
   };
 
+  // Fonction de téléchargement par défaut si pas fournie
+  const handleDownload = (record) => {
+    if (onDownload) {
+      onDownload(record);
+      return;
+    }
+
+    // Fonction par défaut
+    const content = `═══════════════════════════════════════════════════════════════
+                    DOSSIER MÉDICAL INDIVIDUEL
+═══════════════════════════════════════════════════════════════
+
+INFORMATIONS PATIENT
+━━━━━━━━━━━━━━━━━━━━
+
+Nom complet : ${user?.firstName || 'N/A'} ${user?.lastName || 'N/A'}
+Identifiant : ${user?.id || 'N/A'}
+
+═══════════════════════════════════════════════════════════════
+
+DÉTAILS DU DOSSIER
+━━━━━━━━━━━━━━━━━━
+
+Titre       : ${record.title}
+Type        : ${config.label}
+Date        : ${formatDate(record.createdAt)}
+Heure       : ${formatTime(record.createdAt)}
+${record.doctorName ? `Médecin     : Dr. ${record.doctorName}` : ''}
+
+DESCRIPTION
+───────────
+${record.description || 'Aucune description disponible'}
+
+INFORMATIONS TECHNIQUES
+───────────────────────
+ID du dossier        : ${record.id}
+${record.hash ? `Hash blockchain     : ${record.hash}` : ''}
+${record.hederaTransactionId ? `ID Transaction Hedera: ${record.hederaTransactionId}` : ''}
+Statut vérification  : ${record.isVerified ? 'Vérifié ✓' : 'Non vérifié'}
+
+═══════════════════════════════════════════════════════════════
+Document généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}
+© ${new Date().getFullYear()} Fadjma Health - Tous droits réservés
+═══════════════════════════════════════════════════════════════`;
+
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dossier-${record.type}-${new Date(record.createdAt).toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast.success('Dossier médical téléchargé');
+  };
+
   return (
     <div className={`${config.bg} ${config.border} border-l-4 rounded-xl p-6 hover:shadow-lg transition-all duration-200`}>
-      <div className="flex items-start justify-between mb-4">
+      <div className="flex items-start justify-between mb-4"  onClick={() => navigate(`/records/${record.id}`)}>
         <div className="flex items-start gap-4 flex-1">
           <div className="p-3 bg-white rounded-lg shadow-sm">
-            <TypeIcon className={`h-6 w-6 ${
-              config.color === 'red' ? 'text-red-600' :
+            <TypeIcon className={`h-6 w-6 ${config.color === 'red' ? 'text-red-600' :
               config.color === 'blue' ? 'text-blue-600' :
-              config.color === 'green' ? 'text-green-600' :
-              config.color === 'purple' ? 'text-purple-600' :
-              config.color === 'orange' ? 'text-orange-600' :
-              'text-gray-600'
-            }`} />
+                config.color === 'green' ? 'text-green-600' :
+                  config.color === 'purple' ? 'text-purple-600' :
+                    config.color === 'orange' ? 'text-orange-600' :
+                      'text-gray-600'
+              }`} />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -189,7 +251,18 @@ const MedicalRecordCard = ({ record, onView, onEdit, canEdit = false, showAction
         {showActions && (
           <div className="flex items-center gap-2 ml-4">
             <button
-              onClick={() => onView?.(record)}
+              onClick={() => {
+                if (onView) {
+                  onView(record);
+                } else {
+                  try {
+                    navigate(`/records/${record.id}`);
+                  } catch (error) {
+                    console.error('Navigation error:', error);
+                    toast.error('Impossible d\'accéder aux détails du dossier');
+                  }
+                }
+              }}
               className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
               title="Voir les détails"
             >
@@ -207,8 +280,9 @@ const MedicalRecordCard = ({ record, onView, onEdit, canEdit = false, showAction
             )}
 
             <button
+              onClick={() => handleDownload(record)}
               className="p-2 text-gray-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-              title="Télécharger"
+              title="Télécharger ce dossier"
             >
               <Download className="h-5 w-5" />
             </button>

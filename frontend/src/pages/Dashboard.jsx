@@ -7,14 +7,12 @@ import DoctorDashboard from "../components/dashboard/DoctorDashboard";
 import PatientDashboard from "../components/dashboard/PatientDashboard";
 import PharmacistDashboard from "../components/dashboard/PharmacistDashboard";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-import { patientService } from "../services/patienService"; // garde ton import existant
-import { accessService } from "../services/accessService";
+import { medicalRecordService } from "../services/medicalRecordService";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [patients, setPatients] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
-  const [accessStatus, setAccessStatus] = useState({});
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
@@ -29,7 +27,8 @@ const Dashboard = () => {
     pending: 0,
   });
 
-  // fetch page (page param optional) - ONLY for doctors
+
+  // fetch accessible patients only - ONLY for doctors
   const fetchRecords = useCallback(async (p = 1, append = false) => {
     // Ne charger les patients que pour les médecins
     if (user?.role !== "doctor") {
@@ -40,70 +39,54 @@ const Dashboard = () => {
     try {
       if (!append) setLoading(true);
 
-      // ATTENTION : adapte si patientService.getAll attend d'autres params
-      // j'appelle patientService.getAll({ page, limit }) : modifie si besoin
-      let response;
-      try {
-        response = await patientService.getAll({ page: p, limit: PAGE_SIZE });
-      } catch (err) {
-        // fallback si getAll n'accepte pas d'arguments
-        response = await patientService.getAll();
-      }
+      // Récupérer les patients avec accès via l'endpoint des dossiers groupés
+      const response = await medicalRecordService.getGroupedByPatient(p, PAGE_SIZE);
 
-      // Supposons que response.patients est le tableau
-      const fetched = response?.patients || response || [];
+      if (response.status === 200) {
+        const patientsData = response.data.patients || [];
+        // Extraire juste les patients depuis les données groupées
+        const fetched = patientsData.map(pd => pd.patient);
 
-      if (append) {
-        setPatients((prev) => {
-          // éviter les doublons si le backend renvoie des éléments déjà présents
-          const ids = new Set(prev.map((r) => r.id));
-          const merged = [...prev, ...fetched.filter((f) => !ids.has(f.id))];
-          return merged;
+        if (append) {
+          setPatients((prev) => {
+            // éviter les doublons si le backend renvoie des éléments déjà présents
+            const ids = new Set(prev.map((r) => r.id));
+            const merged = [...prev, ...fetched.filter((f) => !ids.has(f.id))];
+            return merged;
+          });
+        } else {
+          setPatients(fetched);
+        }
+
+        // pagination: détecter s'il y a encore des pages
+        if (Array.isArray(fetched) && fetched.length < PAGE_SIZE) {
+          setHasMore(false);
+        } else {
+          setHasMore(true);
+        }
+
+        // Stats : calculer verified (heuristique)
+        const total = fetched.length;
+        const verified = fetched.filter((p) => p.isVerified || p.verified || p.hederaTimestamp).length;
+        setStats({
+          total,
+          verified,
+          pending: Math.max(0, total - verified),
         });
       } else {
-        setPatients(fetched);
-        // Fetch access status when we have patients
-        fetchAccessStatus(fetched);
+        setPatients([]);
+        setStats({ total: 0, verified: 0, pending: 0 });
       }
-
-      // pagination: détecter s'il y a encore des pages
-      if (Array.isArray(fetched) && fetched.length < PAGE_SIZE) {
-        setHasMore(false);
-      } else {
-        setHasMore(true);
-      }
-
-      // Stats : calculer verified (heuristique)
-      const total = fetched.length;
-      const verified = fetched.filter((p) => p.isVerified || p.verified || p.hederaTimestamp).length;
-      setStats({
-        total,
-        verified,
-        pending: Math.max(0, total - verified),
-      });
     } catch (error) {
-      console.error("Error fetching records:", error);
-      toast.error("Impossible de récupérer les patients.");
+      console.error("Error fetching accessible patients:", error);
+      toast.error("Impossible de récupérer les patients accessibles.");
+      setPatients([]);
+      setStats({ total: 0, verified: 0, pending: 0 });
     } finally {
       setLoading(false);
     }
   }, [user?.role]);
 
-  // Fetch access status for all patients
-  const fetchAccessStatus = useCallback(async (patientList) => {
-    if (user?.role !== "doctor" || !user?.id || !patientList?.length) return;
-
-    try {
-      const patientIds = patientList.map(p => p.id);
-      const response = await accessService.getAccessStatusForPatients(patientIds, user.id);
-
-      if (response.success) {
-        setAccessStatus(response.data);
-      }
-    } catch (error) {
-      console.error('Error fetching access status:', error);
-    }
-  }, [user?.role, user?.id]);
 
   useEffect(() => {
     // initial load - seulement pour les médecins
@@ -123,40 +106,6 @@ const Dashboard = () => {
     await fetchRecords(next, true);
   };
 
-  // Handler pour demander l'accès - ONLY for doctors
-  const handleRequestAccess = async (patientId, reason = null) => {
-    if (user?.role !== "doctor") {
-      toast.error("Accès non autorisé");
-      return;
-    }
-
-    try {
-      // Demander une raison si pas fournie
-      const accessReason = reason || prompt(
-        "Veuillez indiquer la raison de votre demande d'accès :",
-        "Consultation médicale"
-      );
-
-      if (!accessReason || accessReason.trim() === "") {
-        toast.error("Une raison est requise pour la demande d'accès");
-        return;
-      }
-
-      // Utiliser le nouveau service
-      const response = await accessService.requestReadAccess(patientId, accessReason);
-
-      if (response.success) {
-        toast.success("Demande d'accès envoyée avec succès");
-        // Refresh access status to update UI
-        fetchAccessStatus(patients);
-      } else {
-        throw new Error(response.message || "Erreur lors de l'envoi de la demande");
-      }
-    } catch (error) {
-      console.error("Request access error:", error);
-      toast.error(error.message || "Impossible d'envoyer la demande d'accès");
-    }
-  };
 
   // Handlers pour pharmacien
   const handleValidatePrescription = async (prescriptionId) => {
@@ -177,7 +126,7 @@ const Dashboard = () => {
       setPrescriptions(prev => prev.map(p => {
         if (p.id === prescriptionId) {
           const newStatus = p.status === 'validated' ? 'preparing' :
-                           p.status === 'preparing' ? 'ready' : p.status;
+            p.status === 'preparing' ? 'ready' : p.status;
           return { ...p, status: newStatus };
         }
         return p;
@@ -223,10 +172,10 @@ const Dashboard = () => {
       stats={user?.role === "doctor" ? stats : { total: 0, verified: 0, pending: 0 }}
       showForm={showForm}
       setShowForm={setShowForm}
-      fetchRecords={user?.role === "doctor" ? () => fetchRecords(1, false) : () => {}}
+      fetchRecords={user?.role === "doctor" ? () => fetchRecords(1, false) : () => { }}
     >
       {user?.role === "patient" ? (
-        <PatientDashboard records={patients} setShowForm={setShowForm} />
+        <PatientDashboard />
       ) : user?.role === "pharmacy" ? (
         <PharmacistDashboard
           prescriptions={prescriptions.length > 0 ? prescriptions : mockPrescriptions}
@@ -239,10 +188,8 @@ const Dashboard = () => {
           patients={patients}
           loading={loading}
           setShowForm={setShowForm}
-          onRequestAccess={handleRequestAccess}
           onLoadMore={fetchNextPage}
           doctorId={user?.id}
-          accessStatus={accessStatus}
         />
       )}
     </DashboardLayout>

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
-import { Home, FileText, LogOut, User, Shield } from 'lucide-react';
+import { Home, FileText, LogOut, User, Shield, Users } from 'lucide-react';
 import NotificationBadge from './NotificationBadge';
 import NotificationCenter from '../notifications/NotificationCenter';
 
@@ -40,15 +40,17 @@ const Header = () => {
                 Dashboard
               </Link>
 
-              {_isDoctor &&
-                <Link
-                  to="/records"
-                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
-                >
-                  <FileText className="h-4 w-4 mr-1" />
-                  Dossiers
-                </Link>
-              }
+              {_isDoctor && (
+                <>
+                  <Link
+                    to="/records"
+                    className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
+                  >
+                    <Users className="h-4 w-4 mr-1" />
+                    Patients
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
 

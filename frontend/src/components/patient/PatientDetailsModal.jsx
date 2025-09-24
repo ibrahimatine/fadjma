@@ -38,6 +38,7 @@ const PatientDetailsModal = ({
 
   // Fetch patient medical records
   const fetchRecords = async () => {
+    console.log('Fetching records for patient:', patient);
     if (!patient?.id) return;
 
     // Check if doctor has read access before fetching
@@ -51,9 +52,8 @@ const PatientDetailsModal = ({
     setLoading(true);
     try {
       const response = await medicalRecordService.getPatientRecords(patient.id);
-
-      if (response.success) {
-        setRecords(response.data || []);
+      if (response.statusText === 'OK' || response.status === 200) {
+        setRecords(response.data.records || []);
       } else {
         // Check if error is due to access permissions
         if (response.status === 403 || response.message?.includes('access')) {
@@ -93,7 +93,7 @@ const PatientDetailsModal = ({
     try {
       const response = await medicalRecordService.getPatientStats(patient.id);
 
-      if (response.success) {
+      if (response.statusText === 'OK' || response.status === 200) {
         setPatientStats(response.data);
       } else {
         // Handle access errors for stats
@@ -115,16 +115,17 @@ const PatientDetailsModal = ({
   };
 
   // Filter records based on search and type
-  const filteredRecords = records.filter(record => {
-    const matchesSearch = !searchQuery ||
-      record.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.doctorName?.toLowerCase().includes(searchQuery.toLowerCase());
+    const filteredRecords = records.filter(record => {
+      const matchesSearch = !searchQuery ||
+        record.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        record.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        record.doctorName?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesType = typeFilter === 'all' || record.type === typeFilter;
+      const matchesType = typeFilter === 'all' || record.type === typeFilter;
 
-    return matchesSearch && matchesType;
-  });
+      return matchesSearch && matchesType;
+    });
+
 
   // Handle create medical record
   const handleCreateRecord = () => {
@@ -226,11 +227,10 @@ const PatientDetailsModal = ({
 
           <div className="flex items-center gap-3">
             {accessLevel && (
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
-                hasWriteAccess
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${hasWriteAccess
                   ? 'bg-green-500 bg-opacity-20'
                   : 'bg-yellow-500 bg-opacity-20'
-              }`}>
+                }`}>
                 <Shield className="h-4 w-4" />
                 <span className="text-sm font-medium">
                   {hasWriteAccess ? 'Accès complet' : 'Lecture seule'}
@@ -256,11 +256,10 @@ const PatientDetailsModal = ({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${
-                    activeTab === tab.id
+                  className={`flex items-center gap-2 px-6 py-4 font-medium text-sm border-b-2 transition-colors ${activeTab === tab.id
                       ? 'border-blue-600 text-blue-600 bg-blue-50'
                       : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   <TabIcon className="h-4 w-4" />
                   {tab.label}
@@ -430,9 +429,9 @@ const OverviewTab = ({ patient, records, stats, loading, hasReadAccess, hasWrite
           <h3 className="text-lg font-semibold text-gray-900">
             Dossiers récents
           </h3>
-          <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+          {/* <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
             Voir tout
-          </button>
+          </button> */}
         </div>
 
         {loading ? (
@@ -567,6 +566,76 @@ const RecordsTab = ({
               canEdit={canEdit}
               onView={(record) => console.log('View record:', record)}
               onEdit={(record) => console.log('Edit record:', record)}
+              onDownloadComplete={() => {
+                // Fonction pour télécharger tous les dossiers du patient
+                if (records.length === 0) {
+                  toast.error('Aucun dossier à télécharger');
+                  return;
+                }
+
+                const sortedRecords = [...records].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+                let content = `═══════════════════════════════════════════════════════════════
+                    DOSSIER MÉDICAL COMPLET
+═══════════════════════════════════════════════════════════════
+
+INFORMATIONS PATIENT
+━━━━━━━━━━━━━━━━━━━━
+
+Nom complet : ${patient?.firstName || 'N/A'} ${patient?.lastName || 'N/A'}
+Identifiant : ${patient?.id || 'N/A'}
+Email       : ${patient?.email || 'N/A'}
+
+Date de génération: ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}
+Nombre de dossiers: ${records.length}
+
+═══════════════════════════════════════════════════════════════
+
+HISTORIQUE MÉDICAL CHRONOLOGIQUE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
+
+                sortedRecords.forEach((rec, index) => {
+                  const recordNumber = (index + 1).toString().padStart(3, '0');
+                  const date = new Date(rec.createdAt);
+
+                  content += `[${'═'.repeat(65)}]
+[${recordNumber}] ${rec.title}
+[${'═'.repeat(65)}]
+
+Type        : ${rec.type}
+Date        : ${date.toLocaleDateString('fr-FR')} à ${date.toLocaleTimeString('fr-FR')}
+${rec.doctorName ? `Médecin     : Dr. ${rec.doctorName}` : ''}
+
+DESCRIPTION:
+${rec.description}
+
+ID: ${rec.id}
+
+`;
+                });
+
+                content += `
+═══════════════════════════════════════════════════════════════
+                    FIN DU DOSSIER MÉDICAL
+═══════════════════════════════════════════════════════════════
+
+© ${new Date().getFullYear()} Fadjma Health - Tous droits réservés
+`;
+
+                const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `dossier-medical-complet-${patient?.lastName || 'patient'}-${new Date().toISOString().split('T')[0]}.txt`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                toast.success(`Dossier complet téléchargé (${records.length} dossier${records.length > 1 ? 's' : ''})`);
+              }}
             />
           ))}
         </div>
@@ -637,7 +706,7 @@ const TimelineTab = ({ records, loading, hasReadAccess, hasWriteAccess }) => {
           <div className="relative">
             <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-gray-200"></div>
             <div className="space-y-6">
-              {sortedRecords.map((record, index) => (
+              {sortedRecords.map((record) => (
                 <div key={record.id} className="relative flex gap-4">
                   <div className="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow flex-shrink-0 mt-1"></div>
                   <div className="flex-1 min-w-0">

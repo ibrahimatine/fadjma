@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useEffect, useState } from "react";
 import {
     AlertTriangle,
     Heart,
@@ -12,31 +12,41 @@ import {
     Filter,
     FileText,
     Bell,
-    BellIcon
+    BellIcon,
+    Eye,
+    ArrowRight
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import IntegrityButton from "../verification/IntegrityButton";
 import NotificationCenter from "../notifications/NotificationCenter";
 import { useNotifications } from "../../hooks/useNotifications";
 import { useAuth } from "../../hooks/useAuth";
+import medicalRecordService from "../../services/medicalRecordService";
+import toast from "react-hot-toast";
 
-const PatientDashboard = ({ records, setShowForm }) => {
+const PatientDashboard = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [activeFilter, setActiveFilter] = useState('all');
     const [showNotifications, setShowNotifications] = useState(false);
+    const [patientRecord, setPatientRecord] = useState([]);
+
 
     // Use notifications hook
     const {
-        notifications,
-        loading: notificationsLoading,
-        unreadCount,
-        approveRequest,
-        rejectRequest
+        unreadCount
     } = useNotifications(user?.id, user?.role === 'patient');
+
+
+    const fetchPatientRecord = async () => {
+        const response = await medicalRecordService.getPatientRecords(user?.id);
+        setPatientRecord(response.data.records || []);
+    };
 
     // Filtrage des enregistrements
     const filteredRecords = activeFilter === 'all'
-        ? records
-        : records.filter(record => record.type === activeFilter);
+        ? patientRecord
+        : patientRecord.filter(record => record.type === activeFilter);
 
     // Configuration des types avec icônes et couleurs
     const typeConfig = {
@@ -78,6 +88,64 @@ const PatientDashboard = ({ records, setShowForm }) => {
         { key: 'consultation', label: 'Consultations' }
     ];
 
+    useEffect(() => {
+        fetchPatientRecord();
+    }, [user?.id]);
+
+    // Fonction de téléchargement d'un dossier
+    const handleDownload = (record) => {
+        const content = `═══════════════════════════════════════════════════════════════
+                    DOSSIER MÉDICAL INDIVIDUEL
+═══════════════════════════════════════════════════════════════
+
+INFORMATIONS PATIENT
+━━━━━━━━━━━━━━━━━━━━
+
+Nom complet : ${user?.firstName || 'N/A'} ${user?.lastName || 'N/A'}
+Identifiant : ${user?.id || 'N/A'}
+Email       : ${user?.email || 'N/A'}
+Téléphone   : ${user?.phoneNumber || 'N/A'}
+
+═══════════════════════════════════════════════════════════════
+
+DÉTAILS DU DOSSIER
+━━━━━━━━━━━━━━━━━━
+
+Titre       : ${record.title}
+Type        : ${record.type}
+Date        : ${new Date(record.createdAt).toLocaleDateString('fr-FR')}
+Heure       : ${new Date(record.createdAt).toLocaleTimeString('fr-FR')}
+${record.doctorName ? `Médecin     : Dr. ${record.doctorName}` : ''}
+
+DESCRIPTION
+───────────
+${record.description}
+
+INFORMATIONS TECHNIQUES
+───────────────────────
+ID du dossier        : ${record.id}
+${record.hash ? `Hash blockchain     : ${record.hash}` : ''}
+${record.hederaTransactionId ? `ID Transaction Hedera: ${record.hederaTransactionId}` : ''}
+Statut vérification  : ${record.isVerified ? 'Vérifié ✓' : 'Non vérifié'}
+
+═══════════════════════════════════════════════════════════════
+Document généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}
+© ${new Date().getFullYear()} Fadjma Health - Tous droits réservés
+═══════════════════════════════════════════════════════════════`;
+
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `dossier-${record.type}-${new Date(record.createdAt).toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast.success('Dossier médical téléchargé avec succès');
+    };
+
     return (
         <div className="space-y-6">
             {/* En-tête avec notifications */}
@@ -90,19 +158,34 @@ const PatientDashboard = ({ records, setShowForm }) => {
                         </p>
                     </div>
 
-                    {/* Notification bell */}
-                    <button
-                        onClick={() => setShowNotifications(true)}
-                        className="relative p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors"
-                        title="Notifications"
-                    >
-                        <Bell className="h-6 w-6 text-white" />
-                        {unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
-                                {unreadCount > 9 ? '9+' : unreadCount}
-                            </span>
-                        )}
-                    </button>
+                    <div className="flex items-center gap-3">
+
+                        {/* Bouton pour voir tous les dossiers */}
+                        <button
+                            onClick={() => navigate('/patient/medical-records')}
+                            className="flex items-center gap-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-colors"
+                            title="Voir tous mes dossiers"
+                        >
+                            <Eye className="h-5 w-5 text-white" />
+                            <span className="text-sm font-medium text-white">Voir tout</span>
+                            <ArrowRight className="h-4 w-4 text-white" />
+                        </button>
+
+                        {/* Notification bell */}
+                        <button
+                            onClick={() => setShowNotifications(true)}
+                            className="relative p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors"
+                            title="Notifications"
+                        >
+                            <Bell className="h-6 w-6 text-white" />
+                            {unreadCount > 0 && (
+                                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                                    {unreadCount > 9 ? '9+' : unreadCount}
+                                </span>
+                            )}
+                        </button>
+
+                    </div>
                 </div>
 
                 {/* Notification alert */}
@@ -172,6 +255,7 @@ const PatientDashboard = ({ records, setShowForm }) => {
                                 <div
                                     key={record.id}
                                     className={`${config.bg} ${config.border} border-l-4 rounded-xl p-6 hover:shadow-lg transition-all duration-200 cursor-pointer`}
+                                    onClick={() => navigate(`/records/${record.id}`)}
                                 >
                                     <div className="flex items-start justify-between">
                                         <div className="flex items-start space-x-4 flex-1">
@@ -217,10 +301,21 @@ const PatientDashboard = ({ records, setShowForm }) => {
 
                                         {/* Actions */}
                                         <div className="flex items-center gap-2 ml-4">
-                                            <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-white rounded-lg transition-colors" title="Partager">
+                                            <button
+                                                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-white rounded-lg transition-colors"
+                                                title="Partager"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
                                                 <Share2 className="h-4 w-4" />
                                             </button>
-                                            <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-white rounded-lg transition-colors" title="Télécharger">
+                                            <button
+                                                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-white rounded-lg transition-colors"
+                                                title="Télécharger"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDownload(record);
+                                                }}
+                                            >
                                                 <Download className="h-4 w-4" />
                                             </button>
                                         </div>
@@ -228,7 +323,9 @@ const PatientDashboard = ({ records, setShowForm }) => {
 
                                     {/* Bouton de vérification d'intégrité */}
                                     <div className="mt-4 pt-4 border-t border-white border-opacity-60">
-                                        <IntegrityButton recordId={record.id} />
+                                        <div onClick={(e) => e.stopPropagation()}>
+                                            <IntegrityButton recordId={record.id} />
+                                        </div>
                                     </div>
                                 </div>
                             );
