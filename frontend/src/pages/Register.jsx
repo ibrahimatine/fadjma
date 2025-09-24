@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Shield, Mail, Lock, User, UserPlus } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -111,13 +112,14 @@ const Register = () => {
               >
                 <option value="patient">Patient</option>
                 <option value="doctor">Médecin</option>
+                <option value="pharmacy">Pharmacien</option>
               </select>
             </div>
 
-            {formData.role === 'doctor' && (
+            {(formData.role === 'doctor' || formData.role === 'pharmacy') && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Numéro de licence
+                  {formData.role === 'doctor' ? 'Numéro de licence médicale' : 'Numéro de licence pharmaceutique'}
                 </label>
                 <input
                   type="text"
@@ -125,8 +127,8 @@ const Register = () => {
                   value={formData.licenseNumber}
                   onChange={handleChange}
                   className="input-field"
-                  placeholder="MED-12345"
-                  required={formData.role === 'doctor'}
+                  placeholder={formData.role === 'doctor' ? "MED-12345" : "PHARM-12345"}
+                  required={formData.role === 'doctor' || formData.role === 'pharmacy'}
                 />
               </div>
             )}

@@ -53,25 +53,29 @@ const DashboardLayout = ({
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => fetchRecords()}
-                            className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-md shadow-sm text-sm hover:bg-gray-50"
-                            title="Rafraîchir"
-                            aria-label="Rafraîchir"
-                        >
-                            <RefreshCw className="h-4 w-4 text-gray-600" />
-                            Rafraîchir
-                        </button>
+                        {(_isDoctor || user?.role === "patient") && (
+                            <button
+                                onClick={() => fetchRecords()}
+                                className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-md shadow-sm text-sm hover:bg-gray-50"
+                                title="Rafraîchir"
+                                aria-label="Rafraîchir"
+                            >
+                                <RefreshCw className="h-4 w-4 text-gray-600" />
+                                Rafraîchir
+                            </button>
+                        )}
 
-                        <button
-                            onClick={() => setShowForm(true)}
-                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 text-sm"
-                            title="Créer dossier"
-                            aria-label="Créer un dossier médical"
-                        >
-                            <Plus className="h-4 w-4" />
-                            Nouveau dossier
-                        </button>
+                        {(_isDoctor || user?.role === "patient") && (
+                            <button
+                                onClick={() => setShowForm(true)}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700 text-sm"
+                                title="Créer dossier"
+                                aria-label="Créer un dossier médical"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Nouveau dossier
+                            </button>
+                        )}
                     </div>
                 </div>
 

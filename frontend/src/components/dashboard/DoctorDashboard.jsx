@@ -7,8 +7,14 @@ import {
   Search,
   Filter,
   ChevronDown,
-  X
+  X,
+  Clock,
+  CheckCircle,
+  Plus
 } from "lucide-react";
+import AccessRequestModal from "../access/AccessRequestModal";
+import DoctorRequestsModal from "../access/DoctorRequestsModal";
+import PatientDetailsModal from "../patient/PatientDetailsModal";
 
 /**
  * Props:
@@ -17,17 +23,26 @@ import {
  * - setShowForm: function(boolean)
  * - onRequestAccess: function(patientId) => Promise
  * - onLoadMore: function() => Promise (optional)
+ * - doctorId: string (current doctor's ID)
+ * - accessStatus: Object (access status for each patient ID)
  */
 const DoctorDashboard = ({
   patients = [],
   loading = false,
   setShowForm = () => {},
   onRequestAccess,
-  onLoadMore
+  onLoadMore,
+  doctorId,
+  accessStatus = {}
 }) => {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("lastName");
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [showAccessModal, setShowAccessModal] = useState(false);
+  const [showRequestsModal, setShowRequestsModal] = useState(false);
+  const [showPatientDetails, setShowPatientDetails] = useState(false);
+  const [selectedPatientForDetails, setSelectedPatientForDetails] = useState(null);
 
   const containerRef = useRef(null);
   const loadingMoreRef = useRef(false);
@@ -94,21 +109,91 @@ const DoctorDashboard = ({
     </div>
   );
 
-  // default handler when onRequestAccess not provided
-  const handleRequestAccess = async (patientId) => {
+  // Handle access request - open modal
+  const handleRequestAccess = async (patient) => {
+    setSelectedPatient(patient);
+    setShowAccessModal(true);
+  };
+
+  // Submit access request via modal
+  const handleSubmitAccessRequest = async (requestData) => {
     if (typeof onRequestAccess === "function") {
       try {
-        await onRequestAccess(patientId);
+        await onRequestAccess(requestData.patientId, requestData.reason);
+        setShowAccessModal(false);
+        setSelectedPatient(null);
       } catch (err) {
         console.error("Request access failed:", err);
+        throw err; // Re-throw pour que le modal puisse gérer l'erreur
       }
-      return;
+    } else {
+      // fallback
+      console.log("Demande d'accès:", requestData);
+      setShowAccessModal(false);
+      setSelectedPatient(null);
     }
-    // fallback: simple confirm (you can replace by modal)
-    // eslint-disable-next-line no-alert
-    if (window.confirm("Envoyer une demande d'accès à ce dossier ?")) {
-      console.log("Demande d'accès envoyée pour patient:", patientId);
+  };
+
+  // Handle view patient details
+  const handleViewPatient = (patient) => {
+    setSelectedPatientForDetails(patient);
+    setShowPatientDetails(true);
+  };
+
+
+  // Get the appropriate button/status for each patient
+  const getAccessButton = (patientId) => {
+    const status = accessStatus[patientId];
+    const patient = patients.find(p => p.id === patientId);
+
+    if (!status || status.status === 'none') {
+      // No access request - show request button
+      return (
+        <button
+          onClick={() => handleRequestAccess(patient)}
+          className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50"
+        >
+          <KeyRound className="h-4 w-4" />
+          Demander accès
+        </button>
+      );
     }
+
+    if (status.status === 'pending') {
+      // Pending request - show pending status
+      return (
+        <div className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
+          <Clock className="h-4 w-4 text-yellow-600" />
+          <span className="text-yellow-700 font-medium">En attente</span>
+        </div>
+      );
+    }
+
+    if (status.status === 'approved') {
+      // Active access - show view button
+      const request = status.request;
+      const accessLevel = request?.accessLevel || 'read';
+      return (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleViewPatient(patient)}
+            className="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+          >
+            <User className="h-4 w-4" />
+            Voir dossier
+          </button>
+          <div className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 border border-green-200 rounded text-xs">
+            <CheckCircle className="h-3 w-3 text-green-600" />
+            <span className="text-green-700 font-medium">
+              {accessLevel === 'read' ? 'Lecture' : 'Lecture/Écriture'}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    // Default fallback
+    return null;
   };
 
   return (
@@ -146,6 +231,14 @@ const DoctorDashboard = ({
             Filtres
             <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${showFilters ? "rotate-180" : ""}`} />
           </button>
+
+          <button
+            onClick={() => setShowRequestsModal(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm hover:bg-gray-50"
+          >
+            <FileText className="h-4 w-4 text-gray-600" />
+            Mes demandes
+          </button>
         </div>
 
         <div className="flex items-center gap-3">
@@ -158,7 +251,6 @@ const DoctorDashboard = ({
             <option value="lastName">Trier par nom</option>
             <option value="firstName">Trier par prénom</option>
           </select>
-
         </div>
       </div>
 
@@ -218,13 +310,7 @@ const DoctorDashboard = ({
             </div>
 
             <div className="flex-shrink-0">
-              <button
-                onClick={() => handleRequestAccess(patient.id)}
-                className="inline-flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50"
-              >
-                <KeyRound className="h-4 w-4" />
-                Demander accès
-              </button>
+              {getAccessButton(patient.id)}
             </div>
           </div>
         ))}
@@ -234,6 +320,37 @@ const DoctorDashboard = ({
           {/* place spinner or "charger plus" */}
         </div>
       </div>
+
+      {/* Access Request Modal */}
+      <AccessRequestModal
+        isOpen={showAccessModal}
+        onClose={() => {
+          setShowAccessModal(false);
+          setSelectedPatient(null);
+        }}
+        patient={selectedPatient}
+        onSubmit={handleSubmitAccessRequest}
+      />
+
+      {/* Doctor Requests Management Modal */}
+      <DoctorRequestsModal
+        isOpen={showRequestsModal}
+        onClose={() => setShowRequestsModal(false)}
+        doctorId={doctorId}
+      />
+
+      {/* Patient Details Modal */}
+      <PatientDetailsModal
+        isOpen={showPatientDetails}
+        onClose={() => {
+          setShowPatientDetails(false);
+          setSelectedPatientForDetails(null);
+        }}
+        patient={selectedPatientForDetails}
+        accessLevel={accessStatus[selectedPatientForDetails?.id]?.request?.accessLevel || 'read'}
+        canEdit={accessStatus[selectedPatientForDetails?.id]?.request?.accessLevel === 'write'}
+      />
+
     </div>
   );
 };

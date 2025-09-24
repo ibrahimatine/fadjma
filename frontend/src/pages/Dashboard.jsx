@@ -5,12 +5,16 @@ import { useAuth } from "../hooks/useAuth";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
 import DoctorDashboard from "../components/dashboard/DoctorDashboard";
 import PatientDashboard from "../components/dashboard/PatientDashboard";
+import PharmacistDashboard from "../components/dashboard/PharmacistDashboard";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import { patientService } from "../services/patienService"; // garde ton import existant
+import { accessService } from "../services/accessService";
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [patients, setPatients] = useState([]);
+  const [prescriptions, setPrescriptions] = useState([]);
+  const [accessStatus, setAccessStatus] = useState({});
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
 
@@ -25,8 +29,14 @@ const Dashboard = () => {
     pending: 0,
   });
 
-  // fetch page (page param optional)
+  // fetch page (page param optional) - ONLY for doctors
   const fetchRecords = useCallback(async (p = 1, append = false) => {
+    // Ne charger les patients que pour les médecins
+    if (user?.role !== "doctor") {
+      setLoading(false);
+      return;
+    }
+
     try {
       if (!append) setLoading(true);
 
@@ -52,6 +62,8 @@ const Dashboard = () => {
         });
       } else {
         setPatients(fetched);
+        // Fetch access status when we have patients
+        fetchAccessStatus(fetched);
       }
 
       // pagination: détecter s'il y a encore des pages
@@ -75,60 +87,131 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.role]);
+
+  // Fetch access status for all patients
+  const fetchAccessStatus = useCallback(async (patientList) => {
+    if (user?.role !== "doctor" || !user?.id || !patientList?.length) return;
+
+    try {
+      const patientIds = patientList.map(p => p.id);
+      const response = await accessService.getAccessStatusForPatients(patientIds, user.id);
+
+      if (response.success) {
+        setAccessStatus(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching access status:', error);
+    }
+  }, [user?.role, user?.id]);
 
   useEffect(() => {
-    // initial load
-    setPage(1);
-    fetchRecords(1, false);
-  }, [fetchRecords]);
+    // initial load - seulement pour les médecins
+    if (user?.role === "doctor") {
+      setPage(1);
+      fetchRecords(1, false);
+    } else {
+      setLoading(false);
+    }
+  }, [fetchRecords, user?.role]);
 
-  // fetchNextPage pour infinite scroll
+  // fetchNextPage pour infinite scroll - ONLY for doctors
   const fetchNextPage = async () => {
-    if (!hasMore || loading) return;
+    if (user?.role !== "doctor" || !hasMore || loading) return;
     const next = page + 1;
     setPage(next);
     await fetchRecords(next, true);
   };
 
-  // Handler pour demander l'accès (POST /access-requests)
-  const handleRequestAccess = async (patientId) => {
+  // Handler pour demander l'accès - ONLY for doctors
+  const handleRequestAccess = async (patientId, reason = null) => {
+    if (user?.role !== "doctor") {
+      toast.error("Accès non autorisé");
+      return;
+    }
+
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("Vous devez être connecté pour demander l'accès.");
+      // Demander une raison si pas fournie
+      const accessReason = reason || prompt(
+        "Veuillez indiquer la raison de votre demande d'accès :",
+        "Consultation médicale"
+      );
+
+      if (!accessReason || accessReason.trim() === "") {
+        toast.error("Une raison est requise pour la demande d'accès");
         return;
       }
 
-      // ouvrir modal / demander raison ici si tu veux ; pour l'instant envoie simple
-      const body = {
-        patientId,
-        reason: "Demande d'accès depuis l'application", // tu peux remplacer par modal input
-        accessLevel: "read",
-        // expiresAt: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString() // ex: 7 jours
-      };
+      // Utiliser le nouveau service
+      const response = await accessService.requestReadAccess(patientId, accessReason);
 
-      const res = await fetch("/access-requests", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(body),
-      });
-
-      if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.message || `Erreur ${res.status}`);
+      if (response.success) {
+        toast.success("Demande d'accès envoyée avec succès");
+        // Refresh access status to update UI
+        fetchAccessStatus(patients);
+      } else {
+        throw new Error(response.message || "Erreur lors de l'envoi de la demande");
       }
-
-      toast.success("Demande d'accès envoyée.");
-      // Optionnel : refresh des stats ou des demandes
-    } catch (err) {
-      console.error("Request access error:", err);
-      toast.error(err.message || "Impossible d'envoyer la demande.");
+    } catch (error) {
+      console.error("Request access error:", error);
+      toast.error(error.message || "Impossible d'envoyer la demande d'accès");
     }
   };
+
+  // Handlers pour pharmacien
+  const handleValidatePrescription = async (prescriptionId) => {
+    try {
+      // Simuler la validation (à remplacer par API call)
+      setPrescriptions(prev => prev.map(p =>
+        p.id === prescriptionId ? { ...p, status: 'validated' } : p
+      ));
+      toast.success('Prescription validée');
+    } catch (error) {
+      toast.error('Erreur lors de la validation');
+    }
+  };
+
+  const handlePrepareMedication = async (prescriptionId) => {
+    try {
+      // Simuler la préparation (à remplacer par API call)
+      setPrescriptions(prev => prev.map(p => {
+        if (p.id === prescriptionId) {
+          const newStatus = p.status === 'validated' ? 'preparing' :
+                           p.status === 'preparing' ? 'ready' : p.status;
+          return { ...p, status: newStatus };
+        }
+        return p;
+      }));
+      toast.success('Statut mis à jour');
+    } catch (error) {
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
+  // Données de test pour pharmacien
+  const mockPrescriptions = [
+    {
+      id: 'RX001',
+      patientName: 'Jean Dupont',
+      doctorName: 'Dr. Martin',
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+      medications: [
+        { name: 'Paracétamol', dosage: '500mg', quantity: '30 comprimés' },
+        { name: 'Ibuprofène', dosage: '200mg', quantity: '20 comprimés' }
+      ]
+    },
+    {
+      id: 'RX002',
+      patientName: 'Marie Durand',
+      doctorName: 'Dr. Leroy',
+      status: 'validated',
+      createdAt: new Date(Date.now() - 3600000).toISOString(),
+      medications: [
+        { name: 'Amoxicilline', dosage: '1g', quantity: '14 comprimés' }
+      ]
+    }
+  ];
 
   if (loading && page === 1) {
     return <LoadingSpinner text="Chargement du dashboard..." />;
@@ -137,13 +220,20 @@ const Dashboard = () => {
   return (
     <DashboardLayout
       loading={loading}
-      stats={stats}
+      stats={user?.role === "doctor" ? stats : { total: 0, verified: 0, pending: 0 }}
       showForm={showForm}
       setShowForm={setShowForm}
-      fetchRecords={() => fetchRecords(1, false)}
+      fetchRecords={user?.role === "doctor" ? () => fetchRecords(1, false) : () => {}}
     >
       {user?.role === "patient" ? (
         <PatientDashboard records={patients} setShowForm={setShowForm} />
+      ) : user?.role === "pharmacy" ? (
+        <PharmacistDashboard
+          prescriptions={prescriptions.length > 0 ? prescriptions : mockPrescriptions}
+          loading={loading}
+          onValidatePrescription={handleValidatePrescription}
+          onPrepareMedication={handlePrepareMedication}
+        />
       ) : (
         <DoctorDashboard
           patients={patients}
@@ -151,6 +241,8 @@ const Dashboard = () => {
           setShowForm={setShowForm}
           onRequestAccess={handleRequestAccess}
           onLoadMore={fetchNextPage}
+          doctorId={user?.id}
+          accessStatus={accessStatus}
         />
       )}
     </DashboardLayout>

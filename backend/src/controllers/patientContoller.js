@@ -1,82 +1,220 @@
-const { User } = require('../models');
-const { Op } = require('sequelize');
+const {
+  User,
+  MedicalRecord,
+  MedicalRecordAccessRequest,
+} = require("../models");
+const { Op } = require("sequelize");
 
 // 📌 Liste tous les patients (pagination + recherche optionnelle)
 exports.getAllPatients = async (req, res) => {
   try {
-    if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
+    if (req.user.role !== "doctor" && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
     }
 
     const { page = 1, limit = 10, search } = req.query;
     const offset = (page - 1) * limit;
 
-    const where = { role: 'patient' };
+    const where = { role: "patient" };
 
     if (search) {
       where[Op.or] = [
         { firstName: { [Op.iLike]: `%${search}%` } },
         { lastName: { [Op.iLike]: `%${search}%` } },
         { email: { [Op.iLike]: `%${search}%` } },
-        { phoneNumber: { [Op.iLike]: `%${search}%` } }
+        { phoneNumber: { [Op.iLike]: `%${search}%` } },
       ];
     }
 
     const patients = await User.findAndCountAll({
       where,
-      attributes: [
-        'id',
-        'firstName',
-        'lastName',
-      ],
+      attributes: ["id", "firstName", "lastName"],
       limit: parseInt(limit),
       offset: parseInt(offset),
-      order: [['lastName', 'ASC']]
+      order: [["lastName", "ASC"]],
     });
 
     res.json({
       patients: patients.rows,
       total: patients.count,
       page: parseInt(page),
-      totalPages: Math.ceil(patients.count / limit)
+      totalPages: Math.ceil(patients.count / limit),
     });
   } catch (error) {
-    console.error('Get patients error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Get patients error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 // 📌 Récupère un patient par son ID
 exports.getPatientById = async (req, res) => {
   try {
-    if (req.user.role !== 'doctor' && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
+    if (req.user.role !== "doctor" && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const patientId = req.params.id;
+
+    // Check if doctor has access to this patient (only for doctors, not admin)
+    if (req.user.role === "doctor") {
+      const hasAccess = await MedicalRecordAccessRequest.findOne({
+        where: {
+          patientId,
+          requesterId: req.user.id,
+          status: "approved",
+          [Op.or]: [
+            { expiresAt: null },
+            { expiresAt: { [Op.gt]: new Date() } },
+          ],
+        },
+      });
+
+      if (!hasAccess) {
+        return res
+          .status(403)
+          .json({
+            message: "Access denied - no permission to view this patient",
+          });
+      }
     }
 
     const patient = await User.findOne({
-      where: { id: req.params.id, role: 'patient' },
+      where: { id: patientId, role: "patient" },
       attributes: [
-        'id',
-        'firstName',
-        'lastName',
-        'email',
-        'dateOfBirth',
-        'gender',
-        'address',
-        'phoneNumber',
-        'emergencyContactName',
-        'emergencyContactPhone',
-        'socialSecurityNumber'
-      ]
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "dateOfBirth",
+        "gender",
+        "address",
+        "phoneNumber",
+        "emergencyContactName",
+        "emergencyContactPhone",
+        "socialSecurityNumber",
+      ],
     });
 
     if (!patient) {
-      return res.status(404).json({ message: 'Patient not found' });
+      return res.status(404).json({ message: "Patient not found" });
     }
 
     res.json(patient);
   } catch (error) {
-    console.error('Get patient by ID error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error("Get patient by ID error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// 📌 Récupère les statistiques d'un patient
+exports.getPatientStats = async (req, res) => {
+  try {
+    if (req.user.role !== "doctor" && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    const patientId = req.params.id;
+
+    // Check if doctor has access to this patient (only for doctors, not admin)
+    if (req.user.role === "doctor") {
+      const hasAccess = await MedicalRecordAccessRequest.findOne({
+        where: {
+          patientId,
+          requesterId: req.user.id,
+          status: "approved",
+          [Op.or]: [
+            { expiresAt: null },
+            { expiresAt: { [Op.gt]: new Date() } },
+          ],
+        },
+      });
+
+      if (!hasAccess) {
+        return res
+          .status(403)
+          .json({
+            message:
+              "Access denied - no permission to view this patient's statistics",
+          });
+      }
+    }
+
+    // Vérifier que le patient existe
+    const patient = await User.findOne({
+      where: { id: patientId, role: "patient" },
+    });
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+    console.log("le patient existe");
+
+    // Calculer les statistiques
+    const totalRecords = await MedicalRecord.count({
+      where: { patientId },
+    });
+    console.log("total records:", totalRecords);
+
+    const recordsByType = await MedicalRecord.findAll({
+      where: { patientId },
+      attributes: [
+        "type",
+        [
+          MedicalRecord.sequelize.fn(
+            "COUNT",
+            MedicalRecord.sequelize.col("type")
+          ),
+          "count",
+        ],
+      ],
+      group: ["type"],
+    });
+    console.log("records by type:", recordsByType);
+
+    const recentRecords = await MedicalRecord.findAll({
+      where: {
+        patientId,
+        createdAt: {
+          [Op.gte]: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Derniers 30 jours
+        },
+      },
+    });
+    console.log("recent records count:", recentRecords.length);
+
+    // Récupérer la date du dernier dossier séparément
+    let lastRecordDate = null;
+    if (totalRecords > 0) {
+      const lastRecord = await MedicalRecord.findOne({
+        where: { patientId },
+        order: [["createdAt", "DESC"]],
+        attributes: ["createdAt"],
+      });
+      lastRecordDate = lastRecord ? lastRecord.createdAt : null;
+    }
+
+    // Construire l'objet recordsByType de façon sécurisée
+    const recordsByTypeObj = {};
+    recordsByType.forEach(item => {
+      try {
+        // Essayer différentes façons d'accéder au count
+        const count = item.dataValues?.count || item.get('count') || 0;
+        const type = item.dataValues?.type || item.get('type') || item.type;
+        recordsByTypeObj[type] = parseInt(count) || 0;
+      } catch (err) {
+        console.error('Error processing recordsByType item:', err);
+      }
+    });
+
+    const stats = {
+      totalRecords: totalRecords || 0,
+      recentRecordsCount: recentRecords.length || 0,
+      recordsByType: recordsByTypeObj,
+      lastRecordDate: lastRecordDate
+    };
+
+    console.log("Sending stats:", JSON.stringify(stats, null, 2));
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error("Get patient stats error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };

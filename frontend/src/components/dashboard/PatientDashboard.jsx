@@ -10,12 +10,28 @@ import {
     Clock,
     User,
     Filter,
-    FileText
+    FileText,
+    Bell,
+    BellIcon
 } from "lucide-react";
 import IntegrityButton from "../verification/IntegrityButton";
+import NotificationCenter from "../notifications/NotificationCenter";
+import { useNotifications } from "../../hooks/useNotifications";
+import { useAuth } from "../../hooks/useAuth";
 
 const PatientDashboard = ({ records, setShowForm }) => {
+    const { user } = useAuth();
     const [activeFilter, setActiveFilter] = useState('all');
+    const [showNotifications, setShowNotifications] = useState(false);
+
+    // Use notifications hook
+    const {
+        notifications,
+        loading: notificationsLoading,
+        unreadCount,
+        approveRequest,
+        rejectRequest
+    } = useNotifications(user?.id, user?.role === 'patient');
 
     // Filtrage des enregistrements
     const filteredRecords = activeFilter === 'all'
@@ -64,12 +80,48 @@ const PatientDashboard = ({ records, setShowForm }) => {
 
     return (
         <div className="space-y-6">
-            {/* En-tête simple */}
+            {/* En-tête avec notifications */}
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 text-white">
-                <h1 className="text-2xl font-bold mb-2">Mon Dossier Médical</h1>
-                <p className="text-blue-100">
-                    Consultez et naviguez dans vos informations médicales
-                </p>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold mb-2">Mon Dossier Médical</h1>
+                        <p className="text-blue-100">
+                            Consultez et naviguez dans vos informations médicales
+                        </p>
+                    </div>
+
+                    {/* Notification bell */}
+                    <button
+                        onClick={() => setShowNotifications(true)}
+                        className="relative p-3 bg-white bg-opacity-20 rounded-full hover:bg-opacity-30 transition-colors"
+                        title="Notifications"
+                    >
+                        <Bell className="h-6 w-6 text-white" />
+                        {unreadCount > 0 && (
+                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-medium">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                        )}
+                    </button>
+                </div>
+
+                {/* Notification alert */}
+                {unreadCount > 0 && (
+                    <div className="mt-4 p-3 bg-white bg-opacity-20 rounded-lg">
+                        <div className="flex items-center gap-2">
+                            <BellIcon className="h-5 w-5 text-yellow-300" />
+                            <p className="text-sm text-white">
+                                Vous avez {unreadCount} demande(s) d'accès en attente
+                            </p>
+                            <button
+                                onClick={() => setShowNotifications(true)}
+                                className="text-yellow-300 hover:text-yellow-200 text-sm font-medium underline"
+                            >
+                                Voir
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Filtres de navigation */}
@@ -183,6 +235,13 @@ const PatientDashboard = ({ records, setShowForm }) => {
                         })}
                 </div>
             )}
+
+            {/* Notification Center Modal */}
+            <NotificationCenter
+                isOpen={showNotifications}
+                onClose={() => setShowNotifications(false)}
+                userId={user?.id}
+            />
         </div>
     );
 };

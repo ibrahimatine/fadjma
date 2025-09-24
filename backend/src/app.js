@@ -6,6 +6,7 @@ const authRoutes = require('./routes/authRoutes');
 const recordRoutes = require('./routes/recordRoutes');
 const verificationRoutes = require('./routes/verificationRoutes');
 const patientRoutes = require('./routes/patientRoutes');
+const accessRoutes = require('./routes/accessRoutes');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -36,6 +37,7 @@ app.use('/api/verify', verificationRoutes);
 app.use('/api/nft', require('./routes/nftRoutes'));
 app.use('/api/pharmacy', require('./routes/pharmacyRoutes'));
 app.use('/api/patients', patientRoutes);
+app.use('/api/access-requests', accessRoutes);
 // Error handling
 app.use(errorHandler);
 

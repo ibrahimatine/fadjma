@@ -6,6 +6,7 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Records from './pages/Records';
 import RecordDetails from './pages/RecordDetails';
+import CreateMedicalRecord from './pages/CreateMedicalRecord';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Header from './components/common/Header';
 
@@ -22,6 +23,13 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/records" element={<Records />} />
           <Route path="/records/:id" element={<RecordDetails />} />
+        </Route>
+        <Route element={<ProtectedRoute allowedRoles={["doctor"]} />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/create-medical-record" element={<CreateMedicalRecord />} />
+        </Route>
+        <Route element={<ProtectedRoute allowedRoles={["pharmacy"]} />}>
+          <Route path="/dashboard" element={<Dashboard />} />
         </Route>
         <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
       </Routes>

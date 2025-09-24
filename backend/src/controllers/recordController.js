@@ -1,6 +1,7 @@
-const { MedicalRecord, User } = require('../models');
+const { MedicalRecord, User, MedicalRecordAccessRequest } = require('../models');
 const hederaService = require('../services/hederaService');
 const { validationResult } = require('express-validator');
+const { Op } = require('sequelize');
 
 exports.getAll = async (req, res) => {
   try {
@@ -13,13 +14,63 @@ exports.getAll = async (req, res) => {
     if (req.user.role === 'patient') {
       where.patientId = req.user.id;
     } else if (req.user.role === 'doctor') {
-      // Doctors can see records they created or are assigned to
-      where.doctorId = req.user.id;
+      if (patientId) {
+        // Check if doctor has access to this specific patient
+        const hasAccess = await MedicalRecordAccessRequest.findOne({
+          where: {
+            patientId,
+            requesterId: req.user.id,
+            status: 'approved',
+            [Op.or]: [
+              { expiresAt: null },
+              { expiresAt: { [Op.gt]: new Date() } }
+            ]
+          }
+        });
+
+        if (hasAccess) {
+          where.patientId = patientId;
+        } else {
+          // No access to this patient, return empty results
+          return res.json({
+            records: [],
+            total: 0,
+            page: parseInt(page),
+            totalPages: 0
+          });
+        }
+      } else {
+        // Get all patients the doctor has access to
+        const accessiblePatients = await MedicalRecordAccessRequest.findAll({
+          where: {
+            requesterId: req.user.id,
+            status: 'approved',
+            [Op.or]: [
+              { expiresAt: null },
+              { expiresAt: { [Op.gt]: new Date() } }
+            ]
+          },
+          attributes: ['patientId']
+        });
+
+        const patientIds = accessiblePatients.map(access => access.patientId);
+
+        if (patientIds.length > 0) {
+          where.patientId = { [Op.in]: patientIds };
+        } else {
+          // No access to any patients, return empty results
+          return res.json({
+            records: [],
+            total: 0,
+            page: parseInt(page),
+            totalPages: 0
+          });
+        }
+      }
     }
-    
+
     // Additional filters
     if (type) where.type = type;
-    if (patientId && req.user.role === 'doctor') where.patientId = patientId;
     
     const records = await MedicalRecord.findAndCountAll({
       where,
@@ -60,6 +111,25 @@ exports.getById = async (req, res) => {
     // Check access rights
     if (req.user.role === 'patient' && record.patientId !== req.user.id) {
       return res.status(403).json({ message: 'Access denied' });
+    }
+
+    if (req.user.role === 'doctor' && record.patientId !== req.user.id) {
+      // Check if doctor has access to this patient's records
+      const hasAccess = await MedicalRecordAccessRequest.findOne({
+        where: {
+          patientId: record.patientId,
+          requesterId: req.user.id,
+          status: 'approved',
+          [Op.or]: [
+            { expiresAt: null },
+            { expiresAt: { [Op.gt]: new Date() } }
+          ]
+        }
+      });
+
+      if (!hasAccess) {
+        return res.status(403).json({ message: 'Access denied - no permission to view this patient\'s records' });
+      }
     }
     
     res.json(record);

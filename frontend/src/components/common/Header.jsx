@@ -1,12 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotifications } from '../../hooks/useNotifications';
 import { Home, FileText, LogOut, User, Shield } from 'lucide-react';
+import NotificationBadge from './NotificationBadge';
+import NotificationCenter from '../notifications/NotificationCenter';
 
 const Header = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const _isDoctor = user?.role === 'doctor';
+  const _isPatient = user?.role === 'patient';
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  // Only fetch notifications for patients
+  const { unreadCount } = useNotifications(user?.id, _isPatient);
 
   const handleLogout = () => {
     logout();
@@ -45,6 +53,15 @@ const Header = () => {
           </div>
 
           <div className="flex items-center space-x-4">
+            {/* Notifications for patients */}
+            {_isPatient && (
+              <NotificationBadge
+                count={unreadCount}
+                onClick={() => setShowNotifications(true)}
+                size="medium"
+              />
+            )}
+
             <div className="flex items-center space-x-2">
               <User className="h-5 w-5 text-gray-500" />
               <span className="text-sm text-gray-700">
@@ -65,6 +82,15 @@ const Header = () => {
           </div>
         </div>
       </div>
+
+      {/* Notification Center Modal */}
+      {_isPatient && (
+        <NotificationCenter
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+          userId={user?.id}
+        />
+      )}
     </header>
   );
 };

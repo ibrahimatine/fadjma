@@ -2,7 +2,7 @@ const { sequelize } = require('../config/database');
 const User = require('./User');
 const MedicalRecord = require('./MedicalRecord');
 const Prescription = require('./Prescription');
-const MedicalRecordAccess = require('./MedicalRecordAccess');
+const MedicalRecordAccessRequest = require('./MedicalRecordAccess');
 
 // Définir les associations
 User.hasMany(MedicalRecord, {
@@ -25,18 +25,18 @@ MedicalRecord.belongsTo(User, {
   foreignKey: 'doctorId'
 });
 
-User.hasMany(MedicalRecordAccess, {
-  as: 'patient',
+User.hasMany(MedicalRecordAccessRequest, {
+  as: 'patientAccessRequests',
   foreignKey: 'patientId'
 });
 
-User.hasMany(MedicalRecordAccess, {
-  as: 'requester',
+User.hasMany(MedicalRecordAccessRequest, {
+  as: 'requesterAccessRequests',
   foreignKey: 'requesterId'
 });
 
-MedicalRecordAccess.belongsTo(User, { as: 'patient', foreignKey: 'patientId' });
-MedicalRecordAccess.belongsTo(User, { as: 'requester', foreignKey: 'requesterId' });
+MedicalRecordAccessRequest.belongsTo(User, { as: 'patient', foreignKey: 'patientId' });
+MedicalRecordAccessRequest.belongsTo(User, { as: 'requester', foreignKey: 'requesterId' });
 
 
 module.exports = {
@@ -44,5 +44,5 @@ module.exports = {
   User,
   MedicalRecord,
   Prescription,
-  MedicalRecordAccess
+  MedicalRecordAccessRequest
 };

@@ -11,6 +11,7 @@ router.use(auth);
 // Routes
 router.get('/', patienController.getAllPatients);
 router.get('/:id', patienController.getPatientById);
+router.get('/:id/stats', patienController.getPatientStats);
 // router.post('/', patienController.createPatient);
 // router.put('/:id', patienController.updatePatient);
 // router.delete('/:id', patienController.deletePatient);

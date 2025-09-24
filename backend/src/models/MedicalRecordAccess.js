@@ -24,7 +24,7 @@ const MedicalRecordAccessRequest = sequelize.define('MedicalRecordAccessRequest'
     allowNull: true
   },
   accessLevel: {
-    type: DataTypes.ENUM('read', 'write', 'full'),
+    type: DataTypes.ENUM('read', 'write'),
     allowNull: false,
     defaultValue: 'read' // Lecture seule par défaut
   },
@@ -59,5 +59,26 @@ const MedicalRecordAccessRequest = sequelize.define('MedicalRecordAccessRequest'
     }
   }
 });
+
+// Define associations
+MedicalRecordAccessRequest.associate = function(models) {
+  // Request belongs to a patient (User)
+  MedicalRecordAccessRequest.belongsTo(models.User, {
+    foreignKey: 'patientId',
+    as: 'patient'
+  });
+
+  // Request belongs to a requester (User)
+  MedicalRecordAccessRequest.belongsTo(models.User, {
+    foreignKey: 'requesterId',
+    as: 'requester'
+  });
+
+  // Request may be reviewed by a user (User)
+  MedicalRecordAccessRequest.belongsTo(models.User, {
+    foreignKey: 'reviewedBy',
+    as: 'reviewer'
+  });
+};
 
 module.exports = MedicalRecordAccessRequest;
