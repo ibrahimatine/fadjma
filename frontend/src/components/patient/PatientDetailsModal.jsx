@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { medicalRecordService } from '../../services/medicalRecordService';
+import { accessService } from '../../services/accessService';
 import MedicalRecordCard from './MedicalRecordCard';
 import toast from 'react-hot-toast';
 
@@ -34,6 +35,8 @@ const PatientDetailsModal = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [patientStats, setPatientStats] = useState(null);
+  const [hasActiveAccess, setHasActiveAccess] = useState(false);
+  const [fetchedAccessLevel, setFetchedAccessLevel] = useState(null);
   const navigate = useNavigate();
 
   // Fetch patient medical records
@@ -42,9 +45,8 @@ const PatientDetailsModal = ({
     if (!patient?.id) return;
 
     // Check if doctor has read access before fetching
-    const currentHasReadAccess = accessLevel === 'read' || accessLevel === 'write';
-    if (!currentHasReadAccess) {
-      console.log('No read access - skipping medical records fetch');
+    if (!hasActiveAccess) {
+      console.log('No active access - skipping medical records fetch');
       setRecords([]);
       return;
     }
@@ -83,9 +85,8 @@ const PatientDetailsModal = ({
     if (!patient?.id) return;
 
     // Check if doctor has read access before fetching stats
-    const currentHasReadAccess = accessLevel === 'read' || accessLevel === 'write';
-    if (!currentHasReadAccess) {
-      console.log('No read access - skipping stats fetch');
+    if (!hasActiveAccess) {
+      console.log('No active access - skipping stats fetch');
       setPatientStats(null);
       return;
     }
@@ -114,6 +115,27 @@ const PatientDetailsModal = ({
     }
   };
 
+  // Check if the current user has active access to the patient's records
+  const checkAccess = async () => {
+    if (!patient?.id) return;
+
+    try {
+      const response = await accessService.checkMedicalRecordAccess(patient.id);
+      console.log('Access check response:', response);
+      if (response.status === 200) {
+        setHasActiveAccess(true);
+        setFetchedAccessLevel(response.data.data.accessLevel);
+      } else {
+        setHasActiveAccess(false);
+        setFetchedAccessLevel(null);
+      }
+    } catch (error) {
+      console.error('Error checking access:', error);
+      setHasActiveAccess(false);
+      setFetchedAccessLevel(null);
+    }
+  };
+
   // Filter records based on search and type
     const filteredRecords = records.filter(record => {
       const matchesSearch = !searchQuery ||
@@ -136,30 +158,30 @@ const PatientDetailsModal = ({
   // Load data when modal opens
   useEffect(() => {
     if (isOpen && patient?.id) {
-      // Only fetch data if we have some level of access
-      const currentHasReadAccess = accessLevel === 'read' || accessLevel === 'write';
+      checkAccess(); // Always check access when modal opens or patient changes
 
-      if (currentHasReadAccess) {
+      // Only fetch data if we have active access
+      if (hasActiveAccess) {
         fetchRecords();
         fetchPatientStats();
       } else {
-        // Clear any existing data for security
+        // Clear any existing data if no active access
         setRecords([]);
         setPatientStats(null);
-        console.log('No access level provided - clearing data');
+        console.log('No active access - clearing data');
       }
 
       setSearchQuery('');
       setTypeFilter('all');
       setActiveTab('overview');
     }
-  }, [isOpen, patient?.id, accessLevel]);
+  }, [isOpen, patient?.id, hasActiveAccess]); // Depend on hasActiveAccess
 
   if (!isOpen) return null;
 
   // Check if doctor has access to view patient data
-  const hasReadAccess = accessLevel === 'read' || accessLevel === 'write';
-  const hasWriteAccess = accessLevel === 'write' || canEdit;
+  const hasReadAccess = hasActiveAccess && (fetchedAccessLevel === 'read' || fetchedAccessLevel === 'write');
+  const hasWriteAccess = hasActiveAccess && (fetchedAccessLevel === 'write' || canEdit);
 
   // If no access, show access denied screen
   if (!hasReadAccess) {

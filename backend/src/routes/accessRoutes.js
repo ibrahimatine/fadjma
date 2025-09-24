@@ -72,4 +72,10 @@ router.get('/requester/:requesterId',
   accessController.getRequestsByRequester
 );
 
+// GET /api/access-requests/check/:patientId - Check if requester has access to patient's records
+router.get('/check/:patientId',
+  param('patientId').isUUID().withMessage('Patient ID must be a valid UUID'),
+  accessController.checkMedicalRecordAccess
+);
+
 module.exports = router;

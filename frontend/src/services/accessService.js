@@ -98,6 +98,16 @@ class AccessService {
     }
   }
 
+  // Check if a requester has active access to a patient's records
+  async checkMedicalRecordAccess(patientId) {
+    try {
+      const response = await api.get(`/access-requests/check/${patientId}`);
+      return response;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   // Approve access request
   async approveRequest(id, reviewNotes = '') {
     return this.updateAccessRequest(id, {
@@ -308,4 +318,3 @@ class AccessService {
 }
 
 export const accessService = new AccessService();
-export default accessService;

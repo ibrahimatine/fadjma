@@ -524,6 +524,60 @@ class AccessController {
       });
     }
   }
+
+  // Check if a requester has active access to a patient's records
+  async checkMedicalRecordAccess(req, res) {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation errors',
+          errors: errors.array()
+        });
+      }
+
+      const { patientId } = req.params;
+      const requesterId = req.user.id;
+
+      // Find an active, approved access request
+      const activeAccess = await MedicalRecordAccessRequest.findOne({
+        where: {
+          patientId,
+          requesterId,
+          status: 'approved',
+          [Op.or]: [
+            { expiresAt: { [Op.gte]: new Date() } }, // Not expired
+            { expiresAt: null } // No expiration
+          ]
+        }
+      });
+
+      if (!activeAccess) {
+        return res.status(404).json({
+          success: false,
+          message: 'No active access found for this patient'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Active access found',
+        data: {
+          accessLevel: activeAccess.accessLevel,
+          expiresAt: activeAccess.expiresAt
+        }
+      });
+
+    } catch (error) {
+      console.error('Check medical record access error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
 }
 
 module.exports = new AccessController();
