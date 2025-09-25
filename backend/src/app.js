@@ -8,6 +8,7 @@ const verificationRoutes = require('./routes/verificationRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 const accessRoutes = require('./routes/accessRoutes');
 const errorHandler = require('./middleware/errorHandler');
+const pharmacyRoutes = require('./routes/pharmacyRoutes');
 const websocketMiddleware = require('./middleware/websocket');
 
 const app = express();
@@ -39,9 +40,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/records', recordRoutes);
 app.use('/api/verify', verificationRoutes);
 app.use('/api/nft', require('./routes/nftRoutes'));
-app.use('/api/pharmacy', require('./routes/pharmacyRoutes'));
+app.use('/api/pharmacy', pharmacyRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/access-requests', accessRoutes);
+app.use('/api/admin', require('./routes/adminRoutes'));
 // Error handling
 app.use(errorHandler);
 

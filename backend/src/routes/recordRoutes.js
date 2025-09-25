@@ -17,6 +17,7 @@ router.use(auth);
 
 // Routes
 router.get('/grouped-by-patient', recordController.getGroupedByPatient);
+router.get('/:id/prescriptions', recordController.getPrescriptionsByRecordId);
 router.get('/', recordController.getAll);
 router.get('/:id', recordController.getById);
 router.post('/', recordValidation, recordController.create);

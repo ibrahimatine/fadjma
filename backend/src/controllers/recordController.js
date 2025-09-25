@@ -1,4 +1,4 @@
-const { MedicalRecord, BaseUser, MedicalRecordAccessRequest } = require('../models');
+const { MedicalRecord, BaseUser, MedicalRecordAccessRequest, Prescription } = require('../models');
 const hederaService = require('../services/hederaService');
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
@@ -408,21 +408,88 @@ exports.update = async (req, res) => {
 exports.delete = async (req, res) => {
   try {
     const record = await MedicalRecord.findByPk(req.params.id);
-    
+
     if (!record) {
       return res.status(404).json({ message: 'Record not found' });
     }
-    
+
     // Check permissions (only admin or assigned doctor)
     if (req.user.role !== 'admin' && req.user.role === 'doctor' && record.doctorId !== req.user.id) {
       return res.status(403).json({ message: 'Access denied' });
     }
-    
+
     await record.destroy();
-    
+
     res.json({ message: 'Record deleted successfully' });
   } catch (error) {
     console.error('Delete record error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+exports.getPrescriptionsByRecordId = async (req, res) => {
+  try {
+    const { id: recordId } = req.params;
+
+    // Vérifier que le dossier médical existe
+    const record = await MedicalRecord.findByPk(recordId);
+    if (!record) {
+      return res.status(404).json({ message: 'Dossier médical non trouvé' });
+    }
+
+    // Vérifier les droits d'accès au dossier
+    if (req.user.role === 'patient' && record.patientId !== req.user.id) {
+      return res.status(403).json({ message: 'Accès refusé' });
+    }
+
+    if (req.user.role === 'doctor') {
+      // Vérifier que le médecin a accès à ce patient
+      const hasAccess = await MedicalRecordAccessRequest.findOne({
+        where: {
+          patientId: record.patientId,
+          requesterId: req.user.id,
+          status: 'approved',
+          [Op.or]: [
+            { expiresAt: null },
+            { expiresAt: { [Op.gt]: new Date() } }
+          ]
+        }
+      });
+
+      if (!hasAccess && record.doctorId !== req.user.id) {
+        return res.status(403).json({ message: 'Accès refusé - pas de permission pour voir ce dossier' });
+      }
+    }
+
+    // Récupérer les prescriptions liées à ce dossier médical
+    const prescriptions = await Prescription.findAll({
+      where: { medicalRecordId: recordId },
+      include: [
+        {
+          model: BaseUser,
+          as: 'patient',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        },
+        {
+          model: BaseUser,
+          as: 'doctor',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      prescriptions,
+      recordId,
+      total: prescriptions.length
+    });
+
+  } catch (error) {
+    console.error('Get prescriptions by record ID error:', error);
+    res.status(500).json({
+      message: 'Erreur serveur lors de la récupération des prescriptions',
+      error: error.message
+    });
   }
 };

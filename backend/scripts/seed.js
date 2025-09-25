@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { sequelize, BaseUser, Patient, Doctor, Pharmacy, MedicalRecord } = require('../src/models');
+const { sequelize, BaseUser, Patient, Doctor, Pharmacy, MedicalRecord, Prescription } = require('../src/models');
 
 async function seedDatabase() {
   try {
@@ -504,7 +504,149 @@ async function seedDatabase() {
     }
     
     console.log('✅ Certains dossiers ancrés sur Hedera (simulation)');
-    
+
+    // Créer des prescriptions avec matricules automatiques
+    console.log('🔄 Création des prescriptions avec matricules...');
+
+    const prescriptions = await Prescription.bulkCreate([
+      // Prescriptions du Dr Martin
+      {
+        patientId: patientJean.id,
+        doctorId: drMartin.id,
+        medicalRecordId: recordsJean[2].id, // Lié au bilan de santé
+        medication: 'Cholécalciférol (Vitamine D3)',
+        dosage: '1000 UI',
+        quantity: 90,
+        instructions: '1 comprimé par jour pendant 3 mois. À prendre au cours du repas.',
+        issueDate: new Date(),
+        deliveryStatus: 'pending'
+      },
+      {
+        patientId: patientIbrahim.id,
+        doctorId: drMartin.id,
+        medicalRecordId: recordsIbrahim[0].id, // Lié à l'entorse
+        medication: 'Ibuprofène',
+        dosage: '400mg',
+        quantity: 15,
+        instructions: '1 comprimé 3 fois par jour pendant 5 jours. À prendre pendant les repas.',
+        issueDate: new Date(Date.now() - 24 * 60 * 60 * 1000), // Hier
+        deliveryStatus: 'pending'
+      },
+      {
+        patientId: patientMamadou.id,
+        doctorId: drMartin.id,
+        medicalRecordId: recordsMamadou[1].id, // Lié au diabète
+        medication: 'Metformine',
+        dosage: '500mg',
+        quantity: 180,
+        instructions: '1 comprimé matin et soir pendant les repas. Contrôle glycémique dans 1 mois.',
+        issueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // Avant-hier
+        deliveryStatus: 'pending'
+      },
+
+      // Prescriptions du Dr Diop (Cardiologue)
+      {
+        patientId: patientFatou.id,
+        doctorId: drDiop.id,
+        medicalRecordId: recordsFatou[0].id, // Lié à l'hypertension
+        medication: 'Amlodipine',
+        dosage: '5mg',
+        quantity: 90,
+        instructions: '1 comprimé le matin au réveil. Contrôle tension dans 15 jours.',
+        issueDate: new Date(),
+        deliveryStatus: 'pending'
+      },
+      {
+        patientId: patientFatou.id,
+        doctorId: drDiop.id,
+        medicalRecordId: recordsFatou[0].id, // Lié à l'hypertension
+        medication: 'Ramipril',
+        dosage: '2.5mg',
+        quantity: 90,
+        instructions: '1 comprimé le soir avant le coucher. À associer à l\'Amlodipine.',
+        issueDate: new Date(),
+        deliveryStatus: 'pending'
+      },
+
+      // Prescriptions du Dr Kane (Gynécologue)
+      {
+        patientId: patientAwa.id,
+        doctorId: drKane.id,
+        medicalRecordId: recordsAwa[0].id, // Lié à la contraception
+        medication: 'Pilule contraceptive (Lévonorgestrel/Éthinylestradiol)',
+        dosage: '0.15mg/0.03mg',
+        quantity: 84,
+        instructions: '1 comprimé par jour à heure fixe. Pause de 7 jours toutes les 3 plaquettes.',
+        issueDate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // Il y a 3 jours
+        deliveryStatus: 'pending'
+      },
+
+      // Prescriptions d'urgence (pour test livraison)
+      {
+        patientId: patientJean.id,
+        doctorId: drMartin.id,
+        medication: 'EpiPen (Épinéphrine)',
+        dosage: '0.3mg',
+        quantity: 2,
+        instructions: 'URGENCE - Injection intramusculaire en cas de réaction allergique sévère. Toujours avoir sur soi.',
+        issueDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Il y a 1 semaine
+        deliveryStatus: 'pending'
+      },
+
+      // Prescriptions déjà délivrées (pour tests)
+      {
+        patientId: patientIbrahim.id,
+        doctorId: drMartin.id,
+        medication: 'Paracétamol',
+        dosage: '1000mg',
+        quantity: 20,
+        instructions: '1 comprimé en cas de douleur. Maximum 4 comprimés par jour.',
+        issueDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // Il y a 5 jours
+        deliveryStatus: 'delivered',
+        pharmacyId: baseUsers[9].id, // Pharmacie Centrale
+        deliveryConfirmationHash: `0.0.${Math.floor(Math.random() * 1000000)}@${Date.now()}`
+      },
+
+      // Prescription annulée (pour tests)
+      {
+        patientId: patientMamadou.id,
+        doctorId: drMartin.id,
+        medication: 'Gliclazide',
+        dosage: '30mg',
+        quantity: 90,
+        instructions: 'ANNULÉE - Remplacée par un autre traitement',
+        issueDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000), // Il y a 10 jours
+        deliveryStatus: 'cancelled'
+      }
+    ], { individualHooks: true }); // Permet d'exécuter les hooks pour générer les matricules
+
+    console.log('✅ Prescriptions créées avec matricules:');
+    prescriptions.forEach((p, index) => {
+      const patient = [patientJean, patientFatou, patientMamadou, patientAwa, patientIbrahim]
+        .find(patient => patient.id === p.patientId);
+      const doctor = [drMartin, drDiop, drFall, drKane]
+        .find(doctor => doctor.id === p.doctorId);
+
+      console.log(`   📋 ${p.matricule || 'MATRICULE_PENDING'} - ${p.medication} (${patient?.firstName} ${patient?.lastName}) - Dr. ${doctor?.firstName} ${doctor?.lastName} - ${p.deliveryStatus}`);
+    });
+
+    console.log(`\n💊 Statistiques prescriptions:`);
+    console.log(`   📊 Total: ${prescriptions.length}`);
+    console.log(`   ⏳ En attente: ${prescriptions.filter(p => p.deliveryStatus === 'pending').length}`);
+    console.log(`   ✅ Délivrées: ${prescriptions.filter(p => p.deliveryStatus === 'delivered').length}`);
+    console.log(`   ❌ Annulées: ${prescriptions.filter(p => p.deliveryStatus === 'cancelled').length}`);
+
+    // Afficher quelques matricules pour les tests
+    const pendingPrescriptions = prescriptions.filter(p => p.deliveryStatus === 'pending' && p.matricule);
+    if (pendingPrescriptions.length > 0) {
+      console.log(`\n🧪 Matricules de test (pour pharmaciens):`);
+      pendingPrescriptions.slice(0, 3).forEach(p => {
+        const patient = [patientJean, patientFatou, patientMamadou, patientAwa, patientIbrahim]
+          .find(patient => patient.id === p.patientId);
+        console.log(`   🔍 ${p.matricule} → ${p.medication} (${patient?.firstName} ${patient?.lastName})`);
+      });
+    }
+
     // Résumé
     console.log('\n' + '='.repeat(70));
     console.log('📊 RÉSUMÉ DES DONNÉES DE TEST ENRICHIES');
@@ -537,9 +679,11 @@ async function seedDatabase() {
     console.log('----------------------------------------');
     console.log(`  👥 Total utilisateurs: ${baseUsers.length}`);
     console.log(`  📋 Total dossiers médicaux: ${recordsJean.length + recordsFatou.length + recordsMamadou.length + recordsAwa.length + recordsIbrahim.length}`);
+    console.log(`  💊 Total prescriptions: ${prescriptions.length}`);
     console.log(`  🔐 Dossiers ancrés Hedera: ${recordsToAnchor.length}`);
     console.log(`  🏥 Spécialités médicales: 4`);
     console.log(`  💊 Pharmacies partenaires: 2`);
+    console.log(`  🎯 Prescriptions avec matricules: ${prescriptions.filter(p => p.matricule).length}`);
 
     console.log('\n✅ Base de données enrichie prête pour les tests!');
     console.log('='.repeat(70));

@@ -17,6 +17,10 @@ import {
   Truck
 } from "lucide-react";
 import IntegrityButton from "../verification/IntegrityButton";
+import MatriculeSearch from "../pharmacy/MatriculeSearch";
+import DispensationWorkflow from "../pharmacy/DispensationWorkflow";
+import BatchDispensationWorkflow from "../pharmacy/BatchDispensationWorkflow";
+import PharmacyCart from "../pharmacy/PharmacyCart";
 
 /**
  * Dashboard pour pharmacien - gestion des ordonnances et prescriptions
@@ -35,6 +39,11 @@ const PharmacistDashboard = ({
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
+  const [activeTab, setActiveTab] = useState("search"); // "search", "list", "workflow", "cart"
+  const [foundPrescription, setFoundPrescription] = useState(null);
+  const [dispensationMode, setDispensationMode] = useState(false);
+  const [currentPrescription, setCurrentPrescription] = useState(null);
+  const [batchDispensation, setBatchDispensation] = useState(null);
 
   // Configuration des statuts avec couleurs
   const statusConfig = {
@@ -157,11 +166,11 @@ const PharmacistDashboard = ({
       case "preparing":
         return (
           <button
-            onClick={() => handlePrepare(prescription.id)}
+            onClick={() => startDispensationWorkflow(prescription)}
             className="inline-flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors"
           >
-            <CheckCircle className="h-4 w-4" />
-            Terminer
+            <Truck className="h-4 w-4" />
+            Dispenser
           </button>
         );
       default:
@@ -174,133 +183,327 @@ const PharmacistDashboard = ({
     }
   };
 
+  // Gestion de la prescription trouvée par matricule
+  const handlePrescriptionFound = (prescription) => {
+    setFoundPrescription(prescription);
+    setActiveTab("result");
+  };
+
+  // Démarrer le workflow de dispensation
+  const startDispensationWorkflow = (prescription) => {
+    setCurrentPrescription(prescription);
+    setDispensationMode(true);
+    setActiveTab("workflow");
+  };
+
+  // Finaliser la dispensation
+  const handleDispensationComplete = (result) => {
+    console.log('Dispensation terminée:', result);
+
+    // Si c'est une dispensation en lot, vider le panier
+    if (batchDispensation) {
+      localStorage.removeItem('pharmacyCart');
+    }
+
+    setDispensationMode(false);
+    setCurrentPrescription(null);
+    setBatchDispensation(null);
+    setFoundPrescription(null);
+    setActiveTab("search");
+
+    // Rafraîchir la liste des prescriptions
+    if (onPrepareMedication) {
+      onPrepareMedication(result);
+    }
+  };
+
+  // Annuler la dispensation
+  const handleDispensationCancel = () => {
+    setDispensationMode(false);
+    setCurrentPrescription(null);
+    setBatchDispensation(null);
+    setActiveTab("cart"); // Retourner au panier
+  };
+
+  // Démarrer la dispensation en lot
+  const handleBatchDispensation = (cartItems, groupedByPatient) => {
+    setBatchDispensation({ cartItems, groupedByPatient });
+    setDispensationMode(true);
+    setActiveTab("workflow");
+  };
+
+  const clearFoundPrescription = () => {
+    setFoundPrescription(null);
+    setActiveTab("search");
+  };
+
   return (
     <div className="space-y-6">
       {/* En-tête */}
       <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-2xl p-6 text-white">
         <h1 className="text-2xl font-bold mb-2">Pharmacie - Gestion des Ordonnances</h1>
         <p className="text-green-100">
-          Validez, préparez et délivrez les prescriptions médicales
+          Recherchez par matricule ou consultez toutes vos prescriptions
         </p>
       </div>
 
-      {/* Statistiques rapides */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {Object.entries(statusConfig).map(([status, config]) => {
-          const count = prescriptions.filter(p => p.status === status).length;
-          const Icon = config.icon;
-          return (
-            <div key={status} className={`${config.bg} ${config.border} border rounded-lg p-4`}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{config.label}</p>
-                  <p className={`text-2xl font-bold ${
-                    config.color === 'yellow' ? 'text-yellow-600' :
-                    config.color === 'blue' ? 'text-blue-600' :
-                    config.color === 'purple' ? 'text-purple-600' :
-                    config.color === 'green' ? 'text-green-600' :
-                    config.color === 'gray' ? 'text-gray-600' :
-                    'text-red-600'
-                  }`}>
-                    {count}
-                  </p>
+      {/* Navigation par onglets */}
+      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+        <button
+          onClick={() => setActiveTab("search")}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all ${
+            activeTab === "search"
+              ? "bg-white text-green-700 shadow-sm"
+              : "text-gray-600 hover:text-gray-800"
+          }`}
+        >
+          <Search className="h-5 w-5" />
+          Recherche par matricule
+        </button>
+
+        <button
+          onClick={() => setActiveTab("cart")}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all ${
+            activeTab === "cart"
+              ? "bg-white text-green-700 shadow-sm"
+              : "text-gray-600 hover:text-gray-800"
+          }`}
+        >
+          <ShoppingCart className="h-5 w-5" />
+          Panier
+        </button>
+
+        <button
+          onClick={() => {
+            setActiveTab("list");
+            clearFoundPrescription();
+          }}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all ${
+            activeTab === "list"
+              ? "bg-white text-green-700 shadow-sm"
+              : "text-gray-600 hover:text-gray-800"
+          }`}
+        >
+          <Pill className="h-5 w-5" />
+          Toutes les prescriptions
+        </button>
+      </div>
+
+      {/* Statistiques rapides - seulement pour l'onglet liste */}
+      {activeTab === "list" && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Object.entries(statusConfig).map(([status, config]) => {
+            const count = prescriptions.filter(p => p.status === status).length;
+            const Icon = config.icon;
+            return (
+              <div key={status} className={`${config.bg} ${config.border} border rounded-lg p-4`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">{config.label}</p>
+                    <p className={`text-2xl font-bold ${
+                      config.color === 'yellow' ? 'text-yellow-600' :
+                      config.color === 'blue' ? 'text-blue-600' :
+                      config.color === 'purple' ? 'text-purple-600' :
+                      config.color === 'green' ? 'text-green-600' :
+                      config.color === 'gray' ? 'text-gray-600' :
+                      'text-red-600'
+                    }`}>
+                      {count}
+                    </p>
+                  </div>
+                  <Icon className={`h-8 w-8 ${
+                    config.color === 'yellow' ? 'text-yellow-500' :
+                    config.color === 'blue' ? 'text-blue-500' :
+                    config.color === 'purple' ? 'text-purple-500' :
+                    config.color === 'green' ? 'text-green-500' :
+                    config.color === 'gray' ? 'text-gray-500' :
+                    'text-red-500'
+                  }`} />
                 </div>
-                <Icon className={`h-8 w-8 ${
-                  config.color === 'yellow' ? 'text-yellow-500' :
-                  config.color === 'blue' ? 'text-blue-500' :
-                  config.color === 'purple' ? 'text-purple-500' :
-                  config.color === 'green' ? 'text-green-500' :
-                  config.color === 'gray' ? 'text-gray-500' :
-                  'text-red-500'
-                }`} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Contenu principal selon l'onglet actif */}
+      {activeTab === "search" && (
+        <MatriculeSearch
+          onPrescriptionFound={handlePrescriptionFound}
+          loading={loading}
+        />
+      )}
+
+      {activeTab === "result" && foundPrescription && (
+        <div className="space-y-4">
+          {/* Bouton retour */}
+          <button
+            onClick={clearFoundPrescription}
+            className="flex items-center gap-2 text-green-600 hover:text-green-700 font-medium"
+          >
+            <X className="h-4 w-4" />
+            Nouvelle recherche
+          </button>
+
+          {/* Affichage de la prescription trouvée */}
+          <div className="bg-green-50 border-l-4 border-green-400 rounded-xl p-6">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-white rounded-lg shadow-sm">
+                  <Pill className="h-6 w-6 text-green-600" />
+                </div>
+
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Ordonnance #{foundPrescription.id}
+                    </h3>
+                    <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                      Matricule: {foundPrescription.matricule}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      <span>Patient: {foundPrescription.patient?.firstName} {foundPrescription.patient?.lastName}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4" />
+                      <span>Médecin: Dr. {foundPrescription.doctor?.firstName} {foundPrescription.doctor?.lastName}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      <span>{new Date(foundPrescription.issueDate).toLocaleDateString('fr-FR')}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Pill className="h-4 w-4" />
+                      <span>Statut: {foundPrescription.deliveryStatus}</span>
+                    </div>
+                  </div>
+
+                  {/* Médicaments */}
+                  <div className="bg-white bg-opacity-60 rounded-lg p-3 mb-4">
+                    <h4 className="font-medium text-gray-900 mb-2">Médicament prescrit:</h4>
+                    <div className="text-sm">
+                      <div className="font-medium">{foundPrescription.medication}</div>
+                      <div className="text-gray-600">
+                        Dosage: {foundPrescription.dosage} - Quantité: {foundPrescription.quantity}
+                      </div>
+                      {foundPrescription.instructions && (
+                        <div className="text-gray-600 mt-2">
+                          Instructions: {foundPrescription.instructions}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => startDispensationWorkflow(foundPrescription)}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-lg"
+                >
+                  <Truck className="h-5 w-5" />
+                  Commencer la dispensation
+                </button>
               </div>
             </div>
-          );
-        })}
-      </div>
 
-      {/* Barre de recherche et filtres */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher patient, médecin, médicament..."
-              className="pl-10 pr-3 py-2 w-full rounded-lg border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
-            />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
-
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm hover:bg-gray-50"
-          >
-            <Filter className="h-4 w-4 text-gray-600" />
-            Filtres
-          </button>
-        </div>
-
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="py-2 px-3 rounded-lg border border-gray-200 bg-white text-sm"
-        >
-          <option value="all">Tous les statuts</option>
-          {Object.entries(statusConfig).map(([status, config]) => (
-            <option key={status} value={status}>{config.label}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Panel de filtres étendu */}
-      {showFilters && (
-        <div className="p-4 rounded-lg border border-gray-100 bg-white shadow-sm">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Période
-              </label>
-              <select className="w-full py-2 px-3 rounded-lg border border-gray-200 text-sm">
-                <option>Aujourd'hui</option>
-                <option>Cette semaine</option>
-                <option>Ce mois</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Priorité
-              </label>
-              <select className="w-full py-2 px-3 rounded-lg border border-gray-200 text-sm">
-                <option>Toutes</option>
-                <option>Urgente</option>
-                <option>Normale</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Type
-              </label>
-              <select className="w-full py-2 px-3 rounded-lg border border-gray-200 text-sm">
-                <option>Tous</option>
-                <option>Prescription</option>
-                <option>Renouvellement</option>
-              </select>
+            {/* Vérification d'intégrité */}
+            <div className="pt-4 border-t border-white border-opacity-60">
+              <IntegrityButton recordId={foundPrescription.id} />
             </div>
           </div>
         </div>
       )}
 
-      {/* Liste des prescriptions */}
-      <div className="space-y-4">
+      {activeTab === "list" && (
+        <div className="space-y-4">
+          {/* Barre de recherche et filtres */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3 flex-1">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Rechercher patient, médecin, médicament..."
+                  className="pl-10 pr-3 py-2 w-full rounded-lg border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
+                />
+                {query && (
+                  <button
+                    onClick={() => setQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm hover:bg-gray-50"
+              >
+                <Filter className="h-4 w-4 text-gray-600" />
+                Filtres
+              </button>
+            </div>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="py-2 px-3 rounded-lg border border-gray-200 bg-white text-sm"
+            >
+              <option value="all">Tous les statuts</option>
+              {Object.entries(statusConfig).map(([status, config]) => (
+                <option key={status} value={status}>{config.label}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Panel de filtres étendu */}
+          {showFilters && (
+            <div className="p-4 rounded-lg border border-gray-100 bg-white shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Période
+                  </label>
+                  <select className="w-full py-2 px-3 rounded-lg border border-gray-200 text-sm">
+                    <option>Aujourd'hui</option>
+                    <option>Cette semaine</option>
+                    <option>Ce mois</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Priorité
+                  </label>
+                  <select className="w-full py-2 px-3 rounded-lg border border-gray-200 text-sm">
+                    <option>Toutes</option>
+                    <option>Urgente</option>
+                    <option>Normale</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Type
+                  </label>
+                  <select className="w-full py-2 px-3 rounded-lg border border-gray-200 text-sm">
+                    <option>Tous</option>
+                    <option>Prescription</option>
+                    <option>Renouvellement</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Liste des prescriptions */}
+          <div className="space-y-4">
         {loading ? (
           // Skeleton loading
           Array.from({ length: 3 }).map((_, i) => (
@@ -413,7 +616,38 @@ const PharmacistDashboard = ({
             );
           })
         )}
-      </div>
+          </div>
+        </div>
+      )}
+
+      {/* Vue panier */}
+      {activeTab === "cart" && (
+        <div className="mt-6">
+          <PharmacyCart
+            onStartBatchDispensation={handleBatchDispensation}
+            onClearCart={() => {/* Optionnel: actions après vider panier */}}
+          />
+        </div>
+      )}
+
+      {/* Workflow de dispensation */}
+      {activeTab === "workflow" && dispensationMode && (
+        <div className="mt-6">
+          {batchDispensation ? (
+            <BatchDispensationWorkflow
+              batchDispensation={batchDispensation}
+              onComplete={handleDispensationComplete}
+              onCancel={handleDispensationCancel}
+            />
+          ) : currentPrescription ? (
+            <DispensationWorkflow
+              prescription={currentPrescription}
+              onComplete={handleDispensationComplete}
+              onCancel={handleDispensationCancel}
+            />
+          ) : null}
+        </div>
+      )}
     </div>
   );
 };

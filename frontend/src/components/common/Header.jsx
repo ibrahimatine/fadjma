@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { Home, LogOut, User, Shield, Users } from 'lucide-react';
+import { Home, LogOut, User, Shield, Users, Settings } from 'lucide-react';
 import RealtimeNotifications from '../notifications/RealtimeNotifications';
 import WebSocketTester from '../debug/WebSocketTester';
 
@@ -9,6 +9,7 @@ const Header = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const _isDoctor = user?.role === 'doctor';
+  const _isAdmin = user?.role === 'admin';
 
   const handleLogout = () => {
     logout();
@@ -42,6 +43,18 @@ const Header = () => {
                   >
                     <Users className="h-4 w-4 mr-1" />
                     Patients
+                  </Link>
+                </>
+              )}
+
+              {_isAdmin && (
+                <>
+                  <Link
+                    to="/admin/registry"
+                    className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
+                  >
+                    <Settings className="h-4 w-4 mr-1" />
+                    Registre Hedera
                   </Link>
                 </>
               )}

@@ -34,5 +34,10 @@ export const recordService = {
   async getVerificationHistory(id) {
     const response = await api.get(`/verify/history/${id}`);
     return response.data;
+  },
+
+  async getPrescriptionsByRecordId(recordId) {
+    const response = await api.get(`/records/${recordId}/prescriptions`);
+    return response.data;
   }
 };

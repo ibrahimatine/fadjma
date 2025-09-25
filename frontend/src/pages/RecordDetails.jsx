@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { recordService } from '../services/recordService';
-import { ArrowLeft, Edit, Trash2, Shield, Calendar, User } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Shield, Calendar, User, Pill } from 'lucide-react';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import IntegrityButton from '../components/verification/IntegrityButton';
+import MatriculeDisplay from '../components/prescription/MatriculeDisplay';
+import { useAuth } from '../hooks/useAuth';
 
 const RecordDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [record, setRecord] = useState(null);
+  const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingPrescriptions, setLoadingPrescriptions] = useState(false);
 
   useEffect(() => {
     fetchRecord();
@@ -20,11 +25,29 @@ const RecordDetails = () => {
       console.log('Fetched record:');
       const data = await recordService.getById(id);
       setRecord(data);
+
+      // Si c'est une prescription ou s'il y a des prescriptions liées, les charger
+      if (data && (data.type === 'prescription' || data.prescription)) {
+        await fetchPrescriptions();
+      }
     } catch (error) {
       console.error('Error fetching record:', error);
       navigate('/records');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPrescriptions = async () => {
+    setLoadingPrescriptions(true);
+    try {
+      const data = await recordService.getPrescriptionsByRecordId(id);
+      setPrescriptions(data.prescriptions || []);
+    } catch (error) {
+      console.error('Error fetching prescriptions:', error);
+      // Ne pas faire échouer si on ne peut pas récupérer les prescriptions
+    } finally {
+      setLoadingPrescriptions(false);
     }
   };
 
@@ -88,9 +111,74 @@ const RecordDetails = () => {
               {record.prescription && (
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Prescription</h3>
-                  <pre className="bg-gray-50 p-4 rounded-lg text-sm">
-                    {JSON.stringify(record.prescription, null, 2)}
-                  </pre>
+                  <div className="bg-gray-50 p-4 rounded-lg text-sm mb-4">
+                    {typeof record.prescription === 'object' ? (
+                      <div className="space-y-2">
+                        {record.prescription.medications?.map((med, index) => (
+                          <div key={index} className="flex justify-between items-center py-2 border-b border-gray-200 last:border-b-0">
+                            <div>
+                              <div className="font-medium text-gray-900">{med.name}</div>
+                              <div className="text-gray-600 text-xs">{med.dosage} - {med.frequency}</div>
+                            </div>
+                          </div>
+                        ))}
+                        {record.prescription.duration && (
+                          <div className="text-gray-600 text-sm mt-2">
+                            <strong>Durée:</strong> {record.prescription.duration}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <pre>{JSON.stringify(record.prescription, null, 2)}</pre>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Section des prescriptions avec matricules */}
+              {(prescriptions.length > 0 || loadingPrescriptions) && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    <Pill className="h-5 w-5 text-blue-600" />
+                    Ordonnances délivrables
+                  </h3>
+
+                  {loadingPrescriptions ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                      <span className="ml-2 text-gray-600">Chargement des ordonnances...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {prescriptions.map((prescription) => (
+                        <div key={prescription.id} className="border border-gray-200 rounded-lg p-4">
+                          {/* Informations de la prescription */}
+                          <div className="mb-4">
+                            <h4 className="font-semibold text-gray-900 mb-2">{prescription.medication}</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+                              <div><strong>Dosage:</strong> {prescription.dosage}</div>
+                              <div><strong>Quantité:</strong> {prescription.quantity}</div>
+                              {prescription.instructions && (
+                                <div className="md:col-span-2">
+                                  <strong>Instructions:</strong> {prescription.instructions}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Affichage du matricule */}
+                          <MatriculeDisplay
+                            matricule={prescription.matricule}
+                            userRole={user?.role}
+                            prescriptionStatus={prescription.deliveryStatus}
+                            size="normal"
+                            showQRCode={true}
+                            showInstructions={true}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

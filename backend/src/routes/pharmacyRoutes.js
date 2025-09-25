@@ -2,7 +2,14 @@ const express = require('express');
 const router = express.Router();
 const pharmacyController = require('../controllers/pharmacyController');
 const authMiddleware = require('../middleware/auth');
-const authorize = require('../middleware/authorize'); // Assuming an authorize middleware exists or will be created
+const authorize = require('../middleware/authorize');
+const {
+  matriculeSearchLimit,
+  validateMatriculeAccess,
+  logFailedAccess,
+  sanitizeResponse,
+  validatePrescriptionPermissions
+} = require('../middleware/prescriptionSecurity');
 
 // Get all prescriptions for the authenticated pharmacy
 router.get(
@@ -12,12 +19,35 @@ router.get(
   pharmacyController.getPharmacyPrescriptions
 );
 
+// Get prescription by matricule (secure access for pharmacies)
+router.get(
+  '/by-matricule/:matricule',
+  authMiddleware,
+  authorize(['pharmacy']),
+  matriculeSearchLimit,
+  validateMatriculeAccess,
+  logFailedAccess,
+  sanitizeResponse,
+  pharmacyController.getPrescriptionByMatricule
+);
+
 // Confirm drug delivery for a specific prescription
 router.put(
   '/:prescriptionId/confirm-delivery',
   authMiddleware,
   authorize(['pharmacy']),
+  validatePrescriptionPermissions,
+  sanitizeResponse,
   pharmacyController.confirmDrugDelivery
+);
+
+// Route pour obtenir les informations de matricule (médecins et patients)
+router.get(
+  '/prescription/:prescriptionId/matricule',
+  authMiddleware,
+  authorize(['doctor', 'patient']),
+  sanitizeResponse,
+  pharmacyController.getPrescriptionMatricule
 );
 
 module.exports = router;
