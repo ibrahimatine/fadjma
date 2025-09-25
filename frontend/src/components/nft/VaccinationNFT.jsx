@@ -24,12 +24,7 @@ const VaccinationNFT = ({ record }) => {
       const qr = await QRCode.toDataURL(qrData);
       setQrCodeUrl(qr);
       
-      toast.success(
-        <div>
-          <p>NFT Vaccination créé!</p>
-          <p className="text-xs">+{response.data.reward?.amount} HEALTH tokens</p>
-        </div>
-      );
+      toast.success('NFT Vaccination créé!');
     } catch (error) {
       toast.error('Erreur création NFT');
     } finally {

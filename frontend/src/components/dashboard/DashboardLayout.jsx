@@ -4,8 +4,6 @@ import { useAuth } from "../../hooks/useAuth";
 import LoadingSpinner from "../common/LoadingSpinner";
 import RecordForm from "../records/RecordForm";
 import { FileText, CheckCircle, AlertCircle, Plus, RefreshCw } from "lucide-react";
-import MedicalReminders from "../reminders/MedicalReminders";
-import HealthTokenWidget from "../tokens/HealthTokenWidget";
 
 /**
  * Props:
@@ -119,16 +117,6 @@ const DashboardLayout = ({
                     {children}
                 </div>
 
-                {/* Bottom widgets */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                    <div className="lg:col-span-2">
-                        <MedicalReminders />
-                    </div>
-
-                    <div>
-                        <HealthTokenWidget />
-                    </div>
-                </div>
 
                 {/* Record Form Modal */}
                 {showForm && (
