@@ -1,4 +1,6 @@
 require('dotenv').config();
+const http = require('http');
+const { Server } = require('socket.io');
 const app = require('./src/app');
 const { sequelize } = require('./src/models');
 
@@ -9,15 +11,34 @@ async function startServer() {
     // Test database connection
     await sequelize.authenticate();
     console.log('✅ Database connected successfully');
-    
+
     // Sync database models - SANS alter pour éviter les conflits
     await sequelize.sync({ force: false }); // ⚠️ IMPORTANT: force: false
     console.log('✅ Database synchronized');
-    
+
+    // Create HTTP server
+    const server = http.createServer(app);
+
+    // Setup Socket.IO
+    const io = new Server(server, {
+      cors: {
+        origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+        methods: ['GET', 'POST'],
+        credentials: true
+      }
+    });
+
+    // Make io available to the app
+    app.set('io', io);
+
+    // Setup WebSocket connection handling
+    require('./src/websocket/socketHandlers')(io);
+
     // Start server
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📍 Environment: ${process.env.NODE_ENV}`);
+      console.log(`🔌 WebSocket server ready`);
     });
   } catch (error) {
     console.error('❌ Server startup failed:', error);

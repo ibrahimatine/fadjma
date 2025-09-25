@@ -28,7 +28,9 @@ const DoctorDashboard = ({
   loading = false,
   setShowForm = () => {},
   onLoadMore,
-  doctorId
+  doctorId,
+  accessRequests = [], // Add accessRequests prop
+  onRefreshAccessRequests // Add onRefreshAccessRequests prop
 }) => {
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("lastName");
@@ -36,6 +38,7 @@ const DoctorDashboard = ({
   const [showRequestsModal, setShowRequestsModal] = useState(false);
   const [showPatientDetails, setShowPatientDetails] = useState(false);
   const [selectedPatientForDetails, setSelectedPatientForDetails] = useState(null);
+  const [showPatientDiscovery, setShowPatientDiscovery] = useState(false);
 
   const containerRef = useRef(null);
   const loadingMoreRef = useRef(false);
@@ -174,6 +177,8 @@ const DoctorDashboard = ({
             <FileText className="h-4 w-4 text-gray-600" />
             Mes demandes
           </button>
+
+          
         </div>
 
         <div className="flex items-center gap-3">

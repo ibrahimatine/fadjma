@@ -19,21 +19,6 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-// Composant InputField défini en dehors pour éviter les re-créations
-const InputField = ({ icon: Icon, error, children, ...props }) => (
-  <div className="space-y-1">
-    <div className="relative">
-      {Icon && <Icon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />}
-      {children || <input {...props} className={`input-primary ${Icon ? 'pl-10' : ''} ${error ? 'border-red-300' : ''}`} />}
-    </div>
-    {error && (
-      <div className="flex items-center gap-1 text-red-600 text-xs">
-        <AlertCircle className="h-3 w-3" />
-        <span>{error}</span>
-      </div>
-    )}
-  </div>
-);
 
 // Constantes en dehors du composant
 const ROLE_OPTIONS = [
@@ -56,7 +41,11 @@ const RegisterForm = () => {
     phoneNumber: '',
     emergencyContactName: '',
     emergencyContactPhone: '',
-    socialSecurityNumber: ''
+    socialSecurityNumber: '',
+    specialty: '',
+    hospital: '',
+    pharmacyName: '',
+    pharmacyAddress: ''
   });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -81,8 +70,15 @@ const RegisterForm = () => {
     if (!/\S+@\S+\.\S+/.test(formData.email)) newErrors.email = 'Format d\'email invalide.';
     if (!formData.password) newErrors.password = 'Le mot de passe est requis.';
     if (formData.password.length < 6) newErrors.password = 'Au moins 6 caractères.';
-    if (formData.role === 'doctor' && !formData.licenseNumber) {
-      newErrors.licenseNumber = 'Numéro de licence requis.';
+    if (formData.role === 'doctor') {
+      if (!formData.licenseNumber) newErrors.licenseNumber = 'Numéro de licence requis.';
+      if (!formData.specialty) newErrors.specialty = 'Spécialité requise.';
+      if (!formData.hospital) newErrors.hospital = 'Hôpital requis.';
+    }
+    if (formData.role === 'pharmacy') {
+      if (!formData.licenseNumber) newErrors.licenseNumber = 'Numéro de licence requis.';
+      if (!formData.pharmacyName) newErrors.pharmacyName = 'Nom de la pharmacie requis.';
+      if (!formData.pharmacyAddress) newErrors.pharmacyAddress = 'Adresse de la pharmacie requise.';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -103,16 +99,29 @@ const RegisterForm = () => {
     }
   };
 
-  const isStepValid = (step) => {
+  const isStepValid = useCallback((step) => {
     switch (step) {
       case 1:
-        return formData.firstName && formData.lastName && formData.email && formData.password && formData.role;
+        const baseValid = formData.firstName && formData.lastName && formData.email && formData.password && formData.role;
+        if (formData.role === 'doctor') {
+          return baseValid && formData.licenseNumber;
+        }
+        if (formData.role === 'pharmacy') {
+          return baseValid && formData.licenseNumber;
+        }
+        return baseValid;
       case 2:
-        return true;
+        if (formData.role === 'doctor') {
+          return formData.specialty && formData.hospital;
+        }
+        if (formData.role === 'pharmacy') {
+          return formData.pharmacyName && formData.pharmacyAddress;
+        }
+        return true; // Patient has optional fields in step 2
       default:
         return false;
     }
-  };
+  }, [formData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center px-4 py-8">
@@ -288,15 +297,15 @@ const RegisterForm = () => {
                     </div>
                   </div>
 
-                  {/* Numéro de licence pour médecin */}
-                  {formData.role === 'doctor' && (
+                  {/* Numéro de licence pour médecin et pharmacie */}
+                  {(formData.role === 'doctor' || formData.role === 'pharmacy') && (
                     <div className="space-y-1">
                       <div className="flex items-center gap-3">
                         <UserCheck className="h-5 w-5 text-gray-400 flex-shrink-0" />
                         <input
                           type="text"
                           name="licenseNumber"
-                          placeholder="Numéro de licence médicale"
+                          placeholder={formData.role === 'doctor' ? "Numéro de licence médicale" : "Numéro de licence pharmaceutique"}
                           className={`input-primary flex-1 ${errors.licenseNumber ? 'border-red-300' : ''}`}
                           value={formData.licenseNumber}
                           onChange={handleChange}
@@ -335,96 +344,203 @@ const RegisterForm = () => {
                 </div>
 
                 <div className="space-y-6">
+                  {/* Doctor specific fields */}
+                  {formData.role === 'doctor' && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <Stethoscope className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                        <input
+                          type="text"
+                          name="specialty"
+                          placeholder="Spécialité"
+                          className={`input-primary flex-1 ${errors.specialty ? 'border-red-300' : ''}`}
+                          value={formData.specialty}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      {errors.specialty && (
+                        <div className="flex items-center gap-1 text-red-600 text-xs ml-8">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>{errors.specialty}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <Building2 className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                        <input
+                          type="text"
+                          name="hospital"
+                          placeholder="Hôpital"
+                          className={`input-primary flex-1 ${errors.hospital ? 'border-red-300' : ''}`}
+                          value={formData.hospital}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      {errors.hospital && (
+                        <div className="flex items-center gap-1 text-red-600 text-xs ml-8">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>{errors.hospital}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Pharmacy specific fields */}
+                  {formData.role === 'pharmacy' && (
+                    <>
+                      <div className="flex items-center gap-3">
+                        <UserCheck className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                        <input
+                          type="text"
+                          name="licenseNumber"
+                          placeholder="Numéro de licence pharmaceutique"
+                          className={`input-primary flex-1 ${errors.licenseNumber ? 'border-red-300' : ''}`}
+                          value={formData.licenseNumber}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      {errors.licenseNumber && (
+                        <div className="flex items-center gap-1 text-red-600 text-xs ml-8">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>{errors.licenseNumber}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <Building2 className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                        <input
+                          type="text"
+                          name="pharmacyName"
+                          placeholder="Nom de la pharmacie"
+                          className={`input-primary flex-1 ${errors.pharmacyName ? 'border-red-300' : ''}`}
+                          value={formData.pharmacyName}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      {errors.pharmacyName && (
+                        <div className="flex items-center gap-1 text-red-600 text-xs ml-8">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>{errors.pharmacyName}</span>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <MapPin className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                        <input
+                          type="text"
+                          name="pharmacyAddress"
+                          placeholder="Adresse de la pharmacie"
+                          className={`input-primary flex-1 ${errors.pharmacyAddress ? 'border-red-300' : ''}`}
+                          value={formData.pharmacyAddress}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      {errors.pharmacyAddress && (
+                        <div className="flex items-center gap-1 text-red-600 text-xs ml-8">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>{errors.pharmacyAddress}</span>
+                        </div>
+                      )}
+                    </>
+                  )}
+
                   {/* Date de naissance et genre */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {formData.role === 'patient' && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                        <input
+                          type="date"
+                          name="dateOfBirth"
+                          className="input-primary flex-1"
+                          value={formData.dateOfBirth}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <User className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                        <select name="gender" className="input-primary flex-1" value={formData.gender} onChange={handleChange}>
+                          <option value="">Sélectionner le genre</option>
+                          <option value="male">Homme</option>
+                          <option value="female">Femme</option>
+                          <option value="other">Autre</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Adresse (for patient and pharmacy) */}
+                  {(formData.role === 'patient' || formData.role === 'doctor') && (
                     <div className="flex items-center gap-3">
-                      <Calendar className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                      <MapPin className="h-5 w-5 text-gray-400 flex-shrink-0" />
                       <input
-                        type="date"
-                        name="dateOfBirth"
+                        type="text"
+                        name="address"
+                        placeholder="Adresse complète"
                         className="input-primary flex-1"
-                        value={formData.dateOfBirth}
+                        value={formData.address}
                         onChange={handleChange}
                       />
                     </div>
-                    <div className="flex items-center gap-3">
-                      <User className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                      <select name="gender" className="input-primary flex-1" value={formData.gender} onChange={handleChange}>
-                        <option value="">Sélectionner le genre</option>
-                        <option value="male">Homme</option>
-                        <option value="female">Femme</option>
-                        <option value="other">Autre</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Adresse */}
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                    <input
-                      type="text"
-                      name="address"
-                      placeholder="Adresse complète"
-                      className="input-primary flex-1"
-                      value={formData.address}
-                      onChange={handleChange}
-                    />
-                  </div>
+                  )}
                   
-                  {/* Téléphone */}
-                  <div className="flex items-center gap-3">
-                    <Phone className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                    <input
-                      type="text"
-                      name="phoneNumber"
-                      placeholder="+33 1 23 45 67 89"
-                      className="input-primary flex-1"
-                      value={formData.phoneNumber}
-                      onChange={handleChange}
-                    />
-                  </div>
+                  {/* Téléphone (for patient and doctor) */}
+                
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                      <input
+                        type="text"
+                        name="phoneNumber"
+                        placeholder="+33 1 23 45 67 89"
+                        className="input-primary flex-1"
+                        value={formData.phoneNumber}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  
 
-                  {/* Contact d'urgence */}
-                  <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
-                    <h3 className="font-medium text-orange-900 mb-3">Contact d'urgence</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex items-center gap-3">
-                        <User className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                        <input
-                          type="text"
-                          name="emergencyContactName"
-                          placeholder="Nom du contact"
-                          className="input-primary flex-1"
-                          value={formData.emergencyContactName}
-                          onChange={handleChange}
-                        />
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Phone className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                        <input
-                          type="text"
-                          name="emergencyContactPhone"
-                          placeholder="Téléphone d'urgence"
-                          className="input-primary flex-1"
-                          value={formData.emergencyContactPhone}
-                          onChange={handleChange}
-                        />
+                  {/* Contact d'urgence (for patient) */}
+                  {formData.role === 'patient' && (
+                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+                      <h3 className="font-medium text-orange-900 mb-3">Contact d'urgence</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex items-center gap-3">
+                          <User className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                          <input
+                            type="text"
+                            name="emergencyContactName"
+                            placeholder="Nom du contact"
+                            className="input-primary flex-1"
+                            value={formData.emergencyContactName}
+                            onChange={handleChange}
+                          />
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Phone className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                          <input
+                            type="text"
+                            name="emergencyContactPhone"
+                            placeholder="Téléphone d'urgence"
+                            className="input-primary flex-1"
+                            value={formData.emergencyContactPhone}
+                            onChange={handleChange}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* Sécurité sociale */}
-                  <div className="flex items-center gap-3">
-                    <Shield className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                    <input
-                      type="text"
-                      name="socialSecurityNumber"
-                      placeholder="Numéro de sécurité sociale"
-                      className="input-primary flex-1"
-                      value={formData.socialSecurityNumber}
-                      onChange={handleChange}
-                    />
-                  </div>
+                  {/* Sécurité sociale (for patient) */}
+                  {formData.role === 'patient' && (
+                    <div className="flex items-center gap-3">
+                      <Shield className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                      <input
+                        type="text"
+                        name="socialSecurityNumber"
+                        placeholder="Numéro de sécurité sociale"
+                        className="input-primary flex-1"
+                        value={formData.socialSecurityNumber}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 {/* Boutons navigation */}

@@ -108,6 +108,49 @@ class AccessService {
     }
   }
 
+  // Get access status for multiple patients
+  async getAccessStatusForPatients(patientIds, requesterId = null) {
+    try {
+      // Get all requests for this requester
+      const response = await this.getAccessRequests({
+        requesterId: requesterId,
+        limit: 1000 // Get all requests
+      });
+
+      if (!response.success) {
+        return { success: false, data: {} };
+      }
+
+      const requests = response.data?.requests || [];
+      const statusMap = {};
+
+      // Initialize all patients with 'none' status
+      patientIds.forEach(patientId => {
+        statusMap[patientId] = { status: 'none', request: null };
+      });
+
+      // Update status based on existing requests
+      requests.forEach(request => {
+        const patientId = request.patientId;
+        if (patientIds.includes(patientId)) {
+          // Get the most recent request status for each patient
+          if (!statusMap[patientId].request ||
+              new Date(request.createdAt) > new Date(statusMap[patientId].request.createdAt)) {
+            statusMap[patientId] = {
+              status: request.status,
+              request: request
+            };
+          }
+        }
+      });
+
+      return { success: true, data: statusMap };
+    } catch (error) {
+      console.error('Error getting access status for patients:', error);
+      return { success: false, data: {} };
+    }
+  }
+
   // Approve access request
   async approveRequest(id, reviewNotes = '') {
     return this.updateAccessRequest(id, {

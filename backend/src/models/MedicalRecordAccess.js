@@ -39,6 +39,10 @@ const MedicalRecordAccessRequest = sequelize.define('MedicalRecordAccessRequest'
   reviewedAt: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  reviewNotes: {
+    type: DataTypes.TEXT,
+    allowNull: true
   }
 }, {
   timestamps: true,
@@ -62,20 +66,20 @@ const MedicalRecordAccessRequest = sequelize.define('MedicalRecordAccessRequest'
 
 // Define associations
 MedicalRecordAccessRequest.associate = function(models) {
-  // Request belongs to a patient (User)
-  MedicalRecordAccessRequest.belongsTo(models.User, {
+  // Request belongs to a patient (BaseUser)
+  MedicalRecordAccessRequest.belongsTo(models.BaseUser, {
     foreignKey: 'patientId',
     as: 'patient'
   });
 
-  // Request belongs to a requester (User)
-  MedicalRecordAccessRequest.belongsTo(models.User, {
+  // Request belongs to a requester (BaseUser)
+  MedicalRecordAccessRequest.belongsTo(models.BaseUser, {
     foreignKey: 'requesterId',
     as: 'requester'
   });
 
-  // Request may be reviewed by a user (User)
-  MedicalRecordAccessRequest.belongsTo(models.User, {
+  // Request may be reviewed by a user (BaseUser)
+  MedicalRecordAccessRequest.belongsTo(models.BaseUser, {
     foreignKey: 'reviewedBy',
     as: 'reviewer'
   });

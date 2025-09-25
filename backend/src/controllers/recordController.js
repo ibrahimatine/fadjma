@@ -1,4 +1,4 @@
-const { MedicalRecord, User, MedicalRecordAccessRequest } = require('../models');
+const { MedicalRecord, BaseUser, MedicalRecordAccessRequest } = require('../models');
 const hederaService = require('../services/hederaService');
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
@@ -75,8 +75,8 @@ exports.getAll = async (req, res) => {
     const records = await MedicalRecord.findAndCountAll({
       where,
       include: [
-        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] },
-        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] }
+        { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber', 'address'] },
+        { model: BaseUser, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber', 'address'] }
       ],
       order: [['createdAt', 'DESC']],
       limit: parseInt(limit),
@@ -136,12 +136,12 @@ exports.getGroupedByPatient = async (req, res) => {
       },
       include: [
         {
-          model: User,
+          model: BaseUser,
           as: 'patient',
-          attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber']
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber', 'address']
         },
         {
-          model: User,
+          model: BaseUser,
           as: 'doctor',
           attributes: ['id', 'firstName', 'lastName']
         }
@@ -212,8 +212,8 @@ exports.getById = async (req, res) => {
   try {
     const record = await MedicalRecord.findByPk(req.params.id, {
       include: [
-        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] },
-        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] }
+        { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber', 'address'] },
+        { model: BaseUser, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber', 'address'] }
       ]
     });
     
@@ -267,7 +267,7 @@ exports.create = async (req, res) => {
     if (req.user.role === 'patient') {
       patientId = req.user.id;
       // For demo, assign to first available doctor
-      const doctor = await User.findOne({ where: { role: 'doctor' } });
+      const doctor = await BaseUser.findOne({ where: { role: 'doctor' } });
       doctorId = doctor ? doctor.id : req.user.id;
     } else if (req.user.role === 'doctor') {
       doctorId = req.user.id;
@@ -311,11 +311,41 @@ exports.create = async (req, res) => {
     // Reload with associations
     const fullRecord = await MedicalRecord.findByPk(record.id, {
       include: [
-        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] },
-        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] }
+        { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber', 'address'] },
+        { model: BaseUser, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber', 'address'] }
       ]
     });
-    
+
+    // Send WebSocket notification for new medical record
+    if (req.io && fullRecord) {
+      // Notify the patient if the record was created by a doctor
+      if (req.user.role === 'doctor' && patientId !== doctorId) {
+        req.io.notifyUser(patientId, {
+          type: 'new_medical_record',
+          title: 'Nouveau dossier médical',
+          message: `Un nouveau dossier médical a été ajouté à votre dossier : ${title}`,
+          data: {
+            recordId: fullRecord.id,
+            recordTitle: title,
+            recordType: type,
+            doctorName: `${fullRecord.doctor.firstName} ${fullRecord.doctor.lastName}`
+          }
+        });
+      }
+
+      // Broadcast to all connected users (except the creator) about the new record
+      req.io.notifyNewMedicalRecord(patientId, {
+        id: fullRecord.id,
+        title: fullRecord.title,
+        type: fullRecord.type,
+        patientName: `${fullRecord.patient.firstName} ${fullRecord.patient.lastName}`,
+        doctorName: `${fullRecord.doctor.firstName} ${fullRecord.doctor.lastName}`,
+        createdAt: fullRecord.createdAt
+      }, doctorId);
+
+      console.log(`📄 WebSocket notifications sent for new medical record: ${fullRecord.id}`);
+    }
+
     res.status(201).json(fullRecord);
   } catch (error) {
     console.error('Create record error:', error);
@@ -363,8 +393,8 @@ exports.update = async (req, res) => {
     // Reload with associations
     const fullRecord = await MedicalRecord.findByPk(record.id, {
       include: [
-        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] },
-        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email', 'dateOfBirth', 'gender', 'address', 'phoneNumber', 'emergencyContactName', 'emergencyContactPhone', 'socialSecurityNumber'] }
+        { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber', 'address'] },
+        { model: BaseUser, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber', 'address'] }
       ]
     });
     

@@ -11,7 +11,7 @@ const MedicalRecord = sequelize.define('MedicalRecord', {
     type: DataTypes.UUID,
     allowNull: false,
     references: {
-      model: 'Users',
+      model: 'BaseUsers',
       key: 'id'
     }
   },
@@ -19,7 +19,7 @@ const MedicalRecord = sequelize.define('MedicalRecord', {
     type: DataTypes.UUID,
     allowNull: false,
     references: {
-      model: 'Users',
+      model: 'BaseUsers',
       key: 'id'
     }
   },

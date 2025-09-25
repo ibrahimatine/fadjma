@@ -1,5 +1,5 @@
 const {
-  User,
+  BaseUser,
   MedicalRecord,
   MedicalRecordAccessRequest,
 } = require("../models");
@@ -26,7 +26,7 @@ exports.getAllPatients = async (req, res) => {
       ];
     }
 
-    const patients = await User.findAndCountAll({
+    const patients = await BaseUser.findAndCountAll({
       where,
       attributes: ["id", "firstName", "lastName"],
       limit: parseInt(limit),
@@ -78,7 +78,7 @@ exports.getPatientById = async (req, res) => {
       }
     }
 
-    const patient = await User.findOne({
+    const patient = await BaseUser.findOne({
       where: { id: patientId, role: "patient" },
       attributes: [
         "id",
@@ -140,7 +140,7 @@ exports.getPatientStats = async (req, res) => {
     }
 
     // Vérifier que le patient existe
-    const patient = await User.findOne({
+    const patient = await BaseUser.findOne({
       where: { id: patientId, role: "patient" },
     });
     if (!patient) {

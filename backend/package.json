@@ -10,7 +10,8 @@
         "seed": "node scripts/seed.js",
         "seed:reset": "node scripts/seed.js --reset",
         "setup:db": "node scripts/test-db.js",
-        "setup:hedera": "node scripts/setup-hedera.js"
+        "setup:hedera": "node scripts/setup-hedera.js",
+        "init:sqlite": "node scripts/init-sqlite.js"
     },
     "dependencies": {
         "@hashgraph/sdk": "^2.45.0",
@@ -25,6 +26,7 @@
         "morgan": "^1.10.0",
         "pg": "^8.11.3",
         "sequelize": "^6.35.2",
+        "socket.io": "^4.8.1",
         "sqlite3": "^5.1.7"
     },
     "devDependencies": {

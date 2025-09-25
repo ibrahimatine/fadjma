@@ -64,7 +64,14 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: true,
     validate: {
-      is: /^[+]?[0-9\s\-]{6,20}$/i // Vérifie un format de numéro basique
+      is: {
+        args: /^[+]?[0-9\s\-()]{0,20}$/i,
+        msg: 'Le numéro de téléphone ne peut contenir que des chiffres, espaces, tirets et parenthèses'
+      },
+      len: {
+        args: [0, 20],
+        msg: 'Le numéro de téléphone ne peut pas dépasser 20 caractères'
+      }
     }
   },
   emergencyContactName: {
@@ -75,11 +82,38 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: true,
     validate: {
-      is: /^[+]?[0-9\s\-]{6,20}$/i
+      is: {
+        args: /^[+]?[0-9\s\-()]{0,20}$/i,
+        msg: 'Le numéro de téléphone d\'urgence ne peut contenir que des chiffres, espaces, tirets et parenthèses'
+      },
+      len: {
+        args: [0, 20],
+        msg: 'Le numéro de téléphone d\'urgence ne peut pas dépasser 20 caractères'
+      }
     }
   },
   socialSecurityNumber: {
     type: DataTypes.STRING,
+    allowNull: true
+  },
+
+  // Doctor specific fields
+  specialty: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  hospital: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+
+  // Pharmacy specific fields
+  pharmacyName: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  pharmacyAddress: {
+    type: DataTypes.TEXT,
     allowNull: true
   }
 }, {

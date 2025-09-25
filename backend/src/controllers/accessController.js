@@ -1,6 +1,6 @@
 const { validationResult } = require('express-validator');
 const MedicalRecordAccessRequest = require('../models/MedicalRecordAccess');
-const User = require('../models/User');
+const { BaseUser } = require('../models');
 const { Op } = require('sequelize');
 
 class AccessController {
@@ -30,7 +30,7 @@ class AccessController {
       }
 
       // Check if patient exists
-      const patient = await User.findByPk(patientId);
+      const patient = await BaseUser.findByPk(patientId);
       if (!patient) {
         return res.status(404).json({
           success: false,
@@ -74,17 +74,34 @@ class AccessController {
       const requestWithInfo = await MedicalRecordAccessRequest.findByPk(accessRequest.id, {
         include: [
           {
-            model: User,
+            model: BaseUser,
             as: 'requester',
-            attributes: ['id', 'firstName', 'lastName', 'role', 'licenseNumber']
+            attributes: ['id', 'firstName', 'lastName', 'role']
           },
           {
-            model: User,
+            model: BaseUser,
             as: 'patient',
             attributes: ['id', 'firstName', 'lastName']
           }
         ]
       });
+
+      // Send immediate WebSocket notification to the patient
+      if (req.io && requestWithInfo) {
+        req.io.notifyUser(patientId, {
+          type: 'access_request',
+          title: 'Nouvelle demande d\'accès',
+          message: `Dr. ${requestWithInfo.requester.firstName} ${requestWithInfo.requester.lastName} demande l'accès à vos dossiers médicaux`,
+          data: {
+            requestId: requestWithInfo.id,
+            requesterName: `${requestWithInfo.requester.firstName} ${requestWithInfo.requester.lastName}`,
+            accessLevel: requestWithInfo.accessLevel,
+            reason: requestWithInfo.reason
+          }
+        });
+
+        console.log(`🔔 WebSocket notification sent for new access request: ${requestWithInfo.id} to patient: ${patientId}`);
+      }
 
       res.status(201).json({
         success: true,
@@ -134,30 +151,46 @@ class AccessController {
 
       const offset = (parseInt(page) - 1) * parseInt(limit);
 
-      const { rows: requests, count: total } = await MedicalRecordAccessRequest.findAndCountAll({
-        where,
-        include: [
-          {
-            model: User,
-            as: 'requester',
-            attributes: ['id', 'firstName', 'lastName', 'role', 'licenseNumber']
-          },
-          {
-            model: User,
-            as: 'patient',
-            attributes: ['id', 'firstName', 'lastName']
-          },
-          {
-            model: User,
-            as: 'reviewer',
-            attributes: ['id', 'firstName', 'lastName', 'role'],
-            required: false
-          }
-        ],
-        order: [[sortBy, sortOrder.toUpperCase()]],
-        limit: parseInt(limit),
-        offset
-      });
+      console.log('getAccessRequests: where clause:', where);
+      console.log('getAccessRequests: include models:', ['requester', 'patient', 'reviewer']);
+
+      let requests, total;
+      try {
+        const result = await MedicalRecordAccessRequest.findAndCountAll({
+          where,
+          include: [
+            {
+              model: BaseUser,
+              as: 'requester',
+              attributes: ['id', 'firstName', 'lastName', 'role']
+            },
+            {
+              model: BaseUser,
+              as: 'patient',
+              attributes: ['id', 'firstName', 'lastName']
+            },
+            {
+              model: BaseUser,
+              as: 'reviewer',
+              attributes: ['id', 'firstName', 'lastName', 'role'],
+              required: false
+            }
+          ],
+          order: [[sortBy, sortOrder.toUpperCase()]],
+          limit: parseInt(limit),
+          offset
+          });
+          requests = result.rows;
+          total = result.count;
+          console.log('getAccessRequests: query successful. Total requests:', total);
+        } catch (dbError) {
+          console.error('getAccessRequests: Database query error:', dbError);
+          return res.status(500).json({
+            success: false,
+            message: 'Database query failed',
+            error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+          });
+        }
 
       res.json({
         success: true,
@@ -173,7 +206,7 @@ class AccessController {
       });
 
     } catch (error) {
-      console.error('Get access requests error:', error);
+      console.error('Get access requests error (outer catch):', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -199,17 +232,17 @@ class AccessController {
       const request = await MedicalRecordAccessRequest.findByPk(id, {
         include: [
           {
-            model: User,
+            model: BaseUser,
             as: 'requester',
-            attributes: ['id', 'firstName', 'lastName', 'role', 'licenseNumber']
+            attributes: ['id', 'firstName', 'lastName', 'role']
           },
           {
-            model: User,
+            model: BaseUser,
             as: 'patient',
             attributes: ['id', 'firstName', 'lastName']
           },
           {
-            model: User,
+            model: BaseUser,
             as: 'reviewer',
             attributes: ['id', 'firstName', 'lastName', 'role'],
             required: false
@@ -303,23 +336,47 @@ class AccessController {
       const updatedRequest = await MedicalRecordAccessRequest.findByPk(id, {
         include: [
           {
-            model: User,
+            model: BaseUser,
             as: 'requester',
-            attributes: ['id', 'firstName', 'lastName', 'role', 'licenseNumber']
+            attributes: ['id', 'firstName', 'lastName', 'role']
           },
           {
-            model: User,
+            model: BaseUser,
             as: 'patient',
             attributes: ['id', 'firstName', 'lastName']
           },
           {
-            model: User,
+            model: BaseUser,
             as: 'reviewer',
             attributes: ['id', 'firstName', 'lastName', 'role'],
             required: false
           }
         ]
       });
+
+      // Send immediate WebSocket notification to the requester
+      if (req.io && updatedRequest) {
+        const notificationType = status === 'approved' ? 'access_granted' : 'access_denied';
+        const title = status === 'approved' ? 'Accès autorisé' : 'Accès refusé';
+        const message = status === 'approved'
+          ? `Votre demande d'accès aux dossiers de ${updatedRequest.patient.firstName} ${updatedRequest.patient.lastName} a été approuvée`
+          : `Votre demande d'accès aux dossiers de ${updatedRequest.patient.firstName} ${updatedRequest.patient.lastName} a été refusée`;
+
+        req.io.notifyUser(updatedRequest.requesterId, {
+          type: notificationType,
+          title: title,
+          message: message,
+          data: {
+            requestId: updatedRequest.id,
+            patientName: `${updatedRequest.patient.firstName} ${updatedRequest.patient.lastName}`,
+            accessLevel: updatedRequest.accessLevel,
+            status: status,
+            reviewNotes: reviewNotes
+          }
+        });
+
+        console.log(`🔔 WebSocket notification sent for ${status} access request: ${updatedRequest.id} to requester: ${updatedRequest.requesterId}`);
+      }
 
       res.json({
         success: true,
@@ -422,19 +479,35 @@ class AccessController {
 
       const offset = (parseInt(page) - 1) * parseInt(limit);
 
-      const { rows: requests, count: total } = await MedicalRecordAccessRequest.findAndCountAll({
-        where,
-        include: [
-          {
-            model: User,
-            as: 'requester',
-            attributes: ['id', 'firstName', 'lastName', 'role', 'licenseNumber']
-          }
-        ],
-        order: [['createdAt', 'DESC']],
-        limit: parseInt(limit),
-        offset
-      });
+      console.log('getRequestsForPatient: where clause:', where);
+      console.log('getRequestsForPatient: include models:', ['requester']);
+
+      let requests, total;
+      try {
+        const result = await MedicalRecordAccessRequest.findAndCountAll({
+          where,
+          include: [
+            {
+              model: BaseUser,
+              as: 'requester',
+              attributes: ['id', 'firstName', 'lastName', 'role']
+            }
+          ],
+          order: [['createdAt', 'DESC']],
+          limit: parseInt(limit),
+          offset
+        });
+        requests = result.rows;
+        total = result.count;
+        console.log('getRequestsForPatient: query successful. Total requests:', total);
+      } catch (dbError) {
+        console.error('getRequestsForPatient: Database query error:', dbError);
+        return res.status(500).json({
+          success: false,
+          message: 'Database query failed',
+          error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+        });
+      }
 
       res.json({
         success: true,
@@ -450,7 +523,7 @@ class AccessController {
       });
 
     } catch (error) {
-      console.error('Get requests for patient error:', error);
+      console.error('Get requests for patient error (outer catch):', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -488,19 +561,35 @@ class AccessController {
 
       const offset = (parseInt(page) - 1) * parseInt(limit);
 
-      const { rows: requests, count: total } = await MedicalRecordAccessRequest.findAndCountAll({
-        where,
-        include: [
-          {
-            model: User,
-            as: 'patient',
-            attributes: ['id', 'firstName', 'lastName']
-          }
-        ],
-        order: [['createdAt', 'DESC']],
-        limit: parseInt(limit),
-        offset
-      });
+      console.log('getRequestsByRequester: where clause:', where);
+      console.log('getRequestsByRequester: include models:', ['patient']);
+
+      let requests, total;
+      try {
+        const result = await MedicalRecordAccessRequest.findAndCountAll({
+          where,
+          include: [
+            {
+              model: BaseUser,
+              as: 'patient',
+              attributes: ['id', 'firstName', 'lastName']
+            }
+          ],
+          order: [['createdAt', 'DESC']],
+          limit: parseInt(limit),
+          offset
+        });
+        requests = result.rows;
+        total = result.count;
+        console.log('getRequestsByRequester: query successful. Total requests:', total);
+      } catch (dbError) {
+        console.error('getRequestsByRequester: Database query error:', dbError);
+        return res.status(500).json({
+          success: false,
+          message: 'Database query failed',
+          error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+        });
+      }
 
       res.json({
         success: true,
@@ -516,7 +605,7 @@ class AccessController {
       });
 
     } catch (error) {
-      console.error('Get requests by requester error:', error);
+      console.error('Get requests by requester error (outer catch):', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error',

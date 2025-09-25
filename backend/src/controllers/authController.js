@@ -18,7 +18,14 @@ exports.register = async (req, res) => {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { email, password, firstName, lastName, role = 'patient', licenseNumber, dateOfBirth, gender, address, phoneNumber, emergencyContactName, emergencyContactPhone, socialSecurityNumber } = req.body;
+    const {
+      email, password, firstName, lastName, role = 'patient', licenseNumber,
+      dateOfBirth, gender, address, phoneNumber, emergencyContactName, emergencyContactPhone, socialSecurityNumber,
+      // Doctor specific fields
+      specialty, hospital,
+      // Pharmacy specific fields
+      pharmacyName, pharmacyAddress
+    } = req.body;
 
     // Check if user exists
     const existingUser = await User.findOne({ where: { email } });
@@ -26,14 +33,13 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Email already registered' });
     }
 
-    // Create user
-    const user = await User.create({
+    // Create user with role-specific fields
+    const userData = {
       email,
       password,
       firstName,
       lastName,
       role,
-      licenseNumber: role === 'doctor' ? licenseNumber : null,
       dateOfBirth,
       gender,
       address,
@@ -41,7 +47,20 @@ exports.register = async (req, res) => {
       emergencyContactName,
       emergencyContactPhone,
       socialSecurityNumber
-    });
+    };
+
+    // Add role-specific fields
+    if (role === 'doctor') {
+      userData.licenseNumber = licenseNumber;
+      userData.specialty = specialty;
+      userData.hospital = hospital;
+    } else if (role === 'pharmacy') {
+      userData.licenseNumber = licenseNumber;
+      userData.pharmacyName = pharmacyName;
+      userData.pharmacyAddress = pharmacyAddress;
+    }
+
+    const user = await User.create(userData);
 
     // Generate token
     const token = generateToken(user);

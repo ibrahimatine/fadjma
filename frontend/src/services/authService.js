@@ -2,11 +2,13 @@ import api from './api';
 
 export const authService = {
   async register(userData) {
+    console.log('🚀 Using new architecture for registration:', userData);
     const response = await api.post('/auth/register', userData);
     return response.data;
   },
 
   async login(email, password) {
+    console.log('🚀 Using new architecture for login');
     const response = await api.post('/auth/login', { email, password });
     return response.data;
   },

@@ -1,47 +1,56 @@
 const { sequelize } = require('../config/database');
-const User = require('./User');
+const User = require('./User'); // Ancien modèle - sera supprimé
+const BaseUser = require('./BaseUser');
+const Patient = require('./Patient');
+const Doctor = require('./Doctor');
+const Pharmacy = require('./Pharmacy');
 const MedicalRecord = require('./MedicalRecord');
 const Prescription = require('./Prescription');
 const MedicalRecordAccessRequest = require('./MedicalRecordAccess');
 
-// Définir les associations
-User.hasMany(MedicalRecord, {
+// Définir les associations avec BaseUser
+BaseUser.hasMany(MedicalRecord, {
   as: 'patientRecords',
   foreignKey: 'patientId'
 });
 
-User.hasMany(MedicalRecord, {
+BaseUser.hasMany(MedicalRecord, {
   as: 'doctorRecords',
   foreignKey: 'doctorId'
 });
 
-MedicalRecord.belongsTo(User, {
+MedicalRecord.belongsTo(BaseUser, {
   as: 'patient',
   foreignKey: 'patientId'
 });
 
-MedicalRecord.belongsTo(User, {
+MedicalRecord.belongsTo(BaseUser, {
   as: 'doctor',
   foreignKey: 'doctorId'
 });
 
-User.hasMany(MedicalRecordAccessRequest, {
+BaseUser.hasMany(MedicalRecordAccessRequest, {
   as: 'patientAccessRequests',
   foreignKey: 'patientId'
 });
 
-User.hasMany(MedicalRecordAccessRequest, {
+BaseUser.hasMany(MedicalRecordAccessRequest, {
   as: 'requesterAccessRequests',
   foreignKey: 'requesterId'
 });
 
-MedicalRecordAccessRequest.belongsTo(User, { as: 'patient', foreignKey: 'patientId' });
-MedicalRecordAccessRequest.belongsTo(User, { as: 'requester', foreignKey: 'requesterId' });
+MedicalRecordAccessRequest.belongsTo(BaseUser, { as: 'patient', foreignKey: 'patientId' });
+MedicalRecordAccessRequest.belongsTo(BaseUser, { as: 'requester', foreignKey: 'requesterId' });
+MedicalRecordAccessRequest.belongsTo(BaseUser, { as: 'reviewer', foreignKey: 'reviewedBy' });
 
 
 module.exports = {
   sequelize,
-  User,
+  User, // Ancien modèle - conservé pour compatibilité temporaire
+  BaseUser,
+  Patient,
+  Doctor,
+  Pharmacy,
   MedicalRecord,
   Prescription,
   MedicalRecordAccessRequest

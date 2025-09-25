@@ -20,6 +20,7 @@ import { useNavigate } from 'react-router-dom';
 import { medicalRecordService } from '../../services/medicalRecordService';
 import { accessService } from '../../services/accessService';
 import MedicalRecordCard from './MedicalRecordCard';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import toast from 'react-hot-toast';
 
 const PatientDetailsModal = ({
@@ -38,6 +39,36 @@ const PatientDetailsModal = ({
   const [hasActiveAccess, setHasActiveAccess] = useState(false);
   const [fetchedAccessLevel, setFetchedAccessLevel] = useState(null);
   const navigate = useNavigate();
+
+  // WebSocket handlers for real-time updates
+  const handleNewMedicalRecord = (data) => {
+    // Only refresh if this is the same patient
+    if (patient?.id === data.patientId) {
+      console.log('🔄 Real-time update: New medical record for current patient');
+      fetchRecords(); // Refresh records
+      fetchPatientStats(); // Refresh stats
+
+      toast.success(`Nouveau dossier médical ajouté: ${data.title}`, {
+        duration: 4000,
+        position: 'top-right'
+      });
+    }
+  };
+
+  const handleMedicalRecordUpdated = (data) => {
+    // Only refresh if this is the same patient
+    if (patient?.id === data.patientId) {
+      console.log('🔄 Real-time update: Medical record updated for current patient');
+      fetchRecords(); // Refresh records
+      fetchPatientStats(); // Refresh stats
+    }
+  };
+
+  // Setup WebSocket listeners
+  useWebSocket([
+    { event: 'new_medical_record', handler: handleNewMedicalRecord },
+    { event: 'medical_record_updated', handler: handleMedicalRecordUpdated }
+  ], [patient?.id, hasActiveAccess]);
 
   // Fetch patient medical records
   const fetchRecords = async () => {

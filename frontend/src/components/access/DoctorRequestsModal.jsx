@@ -14,7 +14,7 @@ import {
 import { accessService } from '../../services/accessService';
 import toast from 'react-hot-toast';
 
-const DoctorRequestsModal = ({ isOpen, onClose, doctorId }) => {
+const DoctorRequestsModal = ({ isOpen, onClose, doctorId, onRefreshAccessRequests }) => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState('all');
@@ -52,6 +52,9 @@ const DoctorRequestsModal = ({ isOpen, onClose, doctorId }) => {
       if (response.success) {
         toast.success('Demande annulée avec succès');
         setRequests(prev => prev.filter(r => r.id !== requestId));
+        if (onRefreshAccessRequests) {
+          onRefreshAccessRequests();
+        }
       } else {
         toast.error('Erreur lors de l\'annulation');
       }

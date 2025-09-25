@@ -2,12 +2,13 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
-const authRoutes = require('./routes/authRoutes');
+const authRoutes = require('./routes/newAuthRoutes'); // Utiliser directement la nouvelle architecture
 const recordRoutes = require('./routes/recordRoutes');
 const verificationRoutes = require('./routes/verificationRoutes');
 const patientRoutes = require('./routes/patientRoutes');
 const accessRoutes = require('./routes/accessRoutes');
 const errorHandler = require('./middleware/errorHandler');
+const websocketMiddleware = require('./middleware/websocket');
 
 const app = express();
 
@@ -24,6 +25,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Logging
 app.use(morgan('dev'));
+
+// WebSocket middleware
+app.use(websocketMiddleware);
 
 // Health check
 app.get('/health', (req, res) => {

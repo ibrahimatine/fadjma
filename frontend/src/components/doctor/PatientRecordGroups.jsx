@@ -24,6 +24,7 @@ import { accessService } from '../../services/accessService';
 import { useAuth } from '../../hooks/useAuth';
 import PatientDetailsModal from '../patient/PatientDetailsModal';
 import AccessRequestModal from '../access/AccessRequestModal';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import toast from 'react-hot-toast';
 
 const PatientRecordGroups = () => {
@@ -78,37 +79,88 @@ const PatientRecordGroups = () => {
 
     setLoading(true);
     try {
-      // Récupérer tous les patients
       const allPatientsResponse = await patientService.getAll();
       const patients = allPatientsResponse?.patients || allPatientsResponse || [];
       setAllPatients(patients);
 
-      // Récupérer les dossiers groupés (patients avec accès)
       const groupedResponse = await medicalRecordService.getGroupedByPatient(1, 50);
       if (groupedResponse.status === 200) {
         setPatientsData(groupedResponse.data.patients || []);
+        console.log('fetchAllData: Grouped medical records fetched:', groupedResponse.data.patients?.length);
+      } else {
+        console.error('fetchAllData: Error fetching grouped medical records:', groupedResponse);
       }
 
-      // Récupérer le statut d'accès pour tous les patients
       if (patients.length > 0) {
         const patientIds = patients.map(p => p.id);
         const accessResponse = await accessService.getAccessStatusForPatients(patientIds, user.id);
         if (accessResponse.success) {
           setAccessStatus(accessResponse.data);
+        } else {
+          console.error('fetchAllData: Error fetching access status:', accessResponse);
         }
       }
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('fetchAllData: Error fetching data:', error);
       toast.error('Impossible de charger les données des patients');
     } finally {
       setLoading(false);
+      console.log('fetchAllData: Loading finished.');
     }
   };
 
 
+
+
+
+
+
+  // WebSocket handlers for access status updates
+  const handleAccessGranted = (data) => {
+    console.log('🟢 Access granted notification:', data);
+
+    if (data.data?.patientId) {
+      setAccessStatus(prev => ({
+        ...prev,
+        [data.data.patientId]: {
+          status: 'granted',
+          request: data.data
+        }
+      }));
+    }
+
+    toast.success(`Accès accordé pour ${data.data?.patientName || 'un patient'}`);
+  };
+
+  const handleAccessDenied = (data) => {
+    console.log('🔴 Access denied notification:', data);
+
+    if (data.data?.patientId) {
+      setAccessStatus(prev => ({
+        ...prev,
+        [data.data.patientId]: {
+          status: 'rejected',
+          request: data.data
+        }
+      }));
+    }
+
+    toast.error(`Accès refusé pour ${data.data?.patientId || 'un patient'}`);
+
+
+  };
+  // Setup WebSocket listeners
+  const { isConnected } = useWebSocket([
+    { event: 'access_granted', handler: handleAccessGranted },
+    { event: 'access_denied', handler: handleAccessDenied }
+  ], [user?.id]);
+
   useEffect(() => {
     fetchAllData();
-  }, [user?.id]);
+    if (!isConnected) {
+      console.warn("🔌 WebSocket pas encore connecté, attente des notifications...");
+    }
+  }, [user?.id, isConnected]);
 
   // Create combined patient list (accessible + non-accessible)
   const getCombinedPatients = () => {
@@ -170,8 +222,22 @@ const PatientRecordGroups = () => {
         toast.success("Demande d'accès envoyée avec succès");
         setShowAccessModal(false);
         setSelectedPatientForAccess(null);
-        // Refresh data to update access status
-        fetchAllData();
+
+        // Update local access status immediately
+        setAccessStatus(prev => ({
+          ...prev,
+          [requestData.patientId]: {
+            status: 'pending',
+            request: {
+              id: response.data?.id,
+              patientId: requestData.patientId,
+              createdAt: new Date().toISOString()
+            }
+          }
+        }));
+
+        // Refresh data to get latest status from server
+        setTimeout(() => fetchAllData(), 1000);
       } else {
         throw new Error(response.message || "Erreur lors de l'envoi de la demande");
       }
@@ -188,16 +254,16 @@ const PatientRecordGroups = () => {
     const status = accessStatus[patient.id];
 
     if (!patientData.hasAccess) {
-      if (!status || status.status === 'none') {
-        // No access request - show request button
+      if (!status || status.status === 'none' || status.status === 'rejected') {
+        // No access request OR rejected request - show request button
         return (
           <button
             onClick={() => handleRequestAccess(patient)}
             className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors"
-            title="Demander l'accès aux dossiers"
+            title={status?.status === 'rejected' ? "Demande précédente rejetée - Redemander l'accès" : "Demander l'accès aux dossiers"}
           >
             <KeyRound className="h-4 w-4" />
-            Demander accès
+            {status?.status === 'rejected' ? 'Redemander accès' : 'Demander accès'}
           </button>
         );
       }
@@ -208,6 +274,16 @@ const PatientRecordGroups = () => {
           <div className="inline-flex items-center gap-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
             <Clock className="h-4 w-4 text-yellow-600" />
             <span className="text-yellow-700 font-medium">En attente</span>
+          </div>
+        );
+      }
+
+      if (status.status === 'rejected') {
+        // This case should be handled above, but adding for safety
+        return (
+          <div className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-sm">
+            <KeyRound className="h-4 w-4 text-red-600" />
+            <span className="text-red-700 font-medium">Accès refusé</span>
           </div>
         );
       }

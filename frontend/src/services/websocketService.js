@@ -1,0 +1,254 @@
+import io from 'socket.io-client';
+import toast from 'react-hot-toast';
+
+class WebSocketService {
+  constructor() {
+    this.socket = null;
+    this.listeners = new Map();
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
+  }
+
+  connect(token) {
+    if (this.socket?.connected) {
+      console.log('WebSocket already connected');
+      return;
+    }
+
+    const serverUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
+    console.log('Connecting to WebSocket server...');
+
+    this.socket = io(serverUrl, {
+      auth: {
+        token: token
+      },
+      transports: ['websocket', 'polling'],
+      timeout: 5000, // 5 second connection timeout
+      forceNew: true // Force a new connection
+    });
+
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    if (!this.socket) return;
+
+    // Connection events
+    this.socket.on('connect', () => {
+      console.log('✅ WebSocket connected');
+      this.reconnectAttempts = 0;
+
+      // Notify all listeners about connection
+      this.notifyListeners('connection_status', { connected: true });
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      console.log('❌ WebSocket disconnected:', reason);
+      this.notifyListeners('connection_status', { connected: false, reason });
+    });
+
+    this.socket.on('connect_error', (error) => {
+      console.error('🔌 WebSocket connection error:', error);
+      this.handleReconnection();
+    });
+
+    // Server confirmation
+    this.socket.on('connected', (data) => {
+      console.log('🎉 WebSocket server confirmation:', data);
+      toast('Connexion temps réel établie', {
+        duration: 2000,
+        position: 'bottom-right',
+        type: 'success'
+      });
+    });
+
+    // Notification handling
+    this.socket.on('notification', (notification) => {
+      const receivedTime = new Date();
+      console.log(`🔔 Notification received at ${receivedTime.toISOString()}:`, notification);
+
+      // Calculate delay if timestamp is available
+      if (notification.timestamp) {
+        const sentTime = new Date(notification.timestamp);
+        const delay = receivedTime - sentTime;
+        console.log(`⏱️ Notification delay: ${delay}ms`);
+      }
+
+      this.handleNotification(notification);
+    });
+
+    // Medical record events
+    this.socket.on('new_medical_record', (data) => {
+      console.log('📄 New medical record event:', data);
+
+      // Show notification to user
+      toast(`Nouveau dossier médical ajouté pour ${data.patientName}`, {
+        duration: 4000,
+        position: 'top-right',
+        type: 'success'
+      });
+
+      // Notify listeners
+      this.notifyListeners('new_medical_record', data);
+    });
+
+    this.socket.on('medical_record_updated', (data) => {
+      console.log('📝 Medical record updated:', data);
+
+      toast('Dossier médical mis à jour', {
+        duration: 3000,
+        position: 'top-right',
+        type: 'info'
+      });
+
+      this.notifyListeners('medical_record_updated', data);
+    });
+
+    this.socket.on('medical_record_activity', (data) => {
+      console.log('👁️ Medical record activity:', data);
+      this.notifyListeners('medical_record_activity', data);
+    });
+  }
+
+  handleNotification(notification) {
+    // Show toast notification based on type
+    switch (notification.type) {
+      case 'new_medical_record':
+        toast(notification.message, {
+          duration: 5000,
+          position: 'top-right',
+          icon: '📄',
+          type: 'success'
+        });
+        break;
+
+      case 'access_request':
+        toast(notification.message, {
+          duration: 6000,
+          position: 'top-right',
+          icon: '🔐',
+          type: 'info'
+        });
+        break;
+
+      case 'access_revoked':
+        toast(notification.message, {
+          duration: 4000,
+          position: 'top-right',
+          icon: '❌',
+          type: 'error'
+        });
+        break;
+
+      default:
+        toast(notification.message, {
+          duration: 3000,
+          position: 'top-right'
+        });
+    }
+
+    // Notify listeners
+    this.notifyListeners('notification', notification);
+
+    // Mark notification as read after showing
+    if (notification.id) {
+      this.markNotificationAsRead(notification.id);
+    }
+  }
+
+  handleReconnection() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
+      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+
+      console.log(`🔄 Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
+
+      setTimeout(() => {
+        if (this.socket && !this.socket.connected) {
+          this.socket.connect();
+        }
+      }, delay);
+    } else {
+      console.error('❌ Max reconnection attempts reached');
+      toast('Connexion temps réel perdue. Rechargez la page.', {
+        duration: 0, // Persistent
+        position: 'bottom-center',
+        type: 'error'
+      });
+    }
+  }
+
+  // Event listener management
+  addEventListener(event, callback) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event).add(callback);
+  }
+
+  removeEventListener(event, callback) {
+    if (this.listeners.has(event)) {
+      this.listeners.get(event).delete(callback);
+    }
+  }
+
+  notifyListeners(event, data) {
+    if (this.listeners.has(event)) {
+      this.listeners.get(event).forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error('Error in WebSocket listener:', error);
+        }
+      });
+    }
+  }
+
+  // Utility methods
+  markNotificationAsRead(notificationId) {
+    if (this.socket?.connected) {
+      this.socket.emit('notification_read', notificationId);
+    }
+  }
+
+  emitMedicalRecordViewed(recordId, patientId) {
+    if (this.socket?.connected) {
+      this.socket.emit('medical_record_viewed', {
+        recordId,
+        patientId
+      });
+    }
+  }
+
+  // Connection status
+  isConnected() {
+    return this.socket?.connected || false;
+  }
+
+  // Disconnect
+  disconnect() {
+    if (this.socket) {
+      console.log('🔌 Disconnecting WebSocket...');
+      this.socket.disconnect();
+      this.socket = null;
+      this.listeners.clear();
+      this.reconnectAttempts = 0;
+    }
+  }
+
+  // Get connection info
+  getConnectionInfo() {
+    return {
+      connected: this.isConnected(),
+      socket: this.socket,
+      listeners: Array.from(this.listeners.keys()),
+      reconnectAttempts: this.reconnectAttempts
+    };
+  }
+}
+
+// Create singleton instance
+const websocketService = new WebSocketService();
+
+export default websocketService;

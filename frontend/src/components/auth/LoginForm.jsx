@@ -80,26 +80,58 @@ const LoginForm = () => {
     {
       email: 'jean.dupont@demo.com',
       password: 'Demo2024!',
-      role: 'Patient',
+      role: 'Patient - Jean',
       icon: User,
       color: 'bg-blue-50 border-blue-200 text-blue-800',
-      description: 'Accès patient complet'
+      description: '3 dossiers médicaux, allergies'
+    },
+    {
+      email: 'fatou.sall@demo.com',
+      password: 'Demo2024!',
+      role: 'Patient - Fatou',
+      icon: User,
+      color: 'bg-cyan-50 border-cyan-200 text-cyan-800',
+      description: 'Hypertension, suivi cardiaque'
     },
     {
       email: 'dr.martin@fadjma.com',
       password: 'Demo2024!',
-      role: 'Médecin',
+      role: 'Dr. Martin',
       icon: Stethoscope,
       color: 'bg-green-50 border-green-200 text-green-800',
-      description: 'Interface médecin'
+      description: 'Médecine générale'
     },
     {
-      email: 'pharmacy@fadjma.com',
+      email: 'dr.diop@fadjma.com',
       password: 'Demo2024!',
-      role: 'Pharmacie',
+      role: 'Dr. Diop',
+      icon: Stethoscope,
+      color: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+      description: 'Cardiologie'
+    },
+    {
+      email: 'dr.fall@fadjma.com',
+      password: 'Demo2024!',
+      role: 'Dr. Fall',
+      icon: Stethoscope,
+      color: 'bg-teal-50 border-teal-200 text-teal-800',
+      description: 'Pédiatrie'
+    },
+    {
+      email: 'pharmacie.centrale@fadjma.com',
+      password: 'Demo2024!',
+      role: 'Pharmacie Centrale',
       icon: Building2,
       color: 'bg-purple-50 border-purple-200 text-purple-800',
-      description: 'Gestion pharmacie'
+      description: 'Avenue Georges Pompidou'
+    },
+    {
+      email: 'admin@fadjma.com',
+      password: 'Admin2024!',
+      role: 'Administrateur',
+      icon: Shield,
+      color: 'bg-red-50 border-red-200 text-red-800',
+      description: 'Accès administrateur complet'
     }
   ];
 
@@ -264,9 +296,10 @@ const LoginForm = () => {
                         <div className="flex items-center gap-4">
                           <div className="flex-shrink-0 w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
                             <Icon className={`h-6 w-6 ${
-                              account.role === 'Patient' ? 'text-blue-600' :
-                              account.role === 'Médecin' ? 'text-green-600' :
-                              'text-purple-600'
+                              account.role.includes('Patient') ? 'text-blue-600' :
+                              account.role.includes('Dr.') ? 'text-green-600' :
+                              account.role.includes('Pharmacie') ? 'text-purple-600' :
+                              'text-red-600'
                             }`} />
                           </div>
                           <div className="flex-grow text-left">

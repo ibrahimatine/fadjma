@@ -12,6 +12,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { accessService } from '../../services/accessService';
+import { useAccessRequestNotifications } from '../../hooks/useAccessRequestNotifications';
 import toast from 'react-hot-toast';
 
 const NotificationCenter = ({ isOpen, onClose, userId }) => {
@@ -100,6 +101,9 @@ const NotificationCenter = ({ isOpen, onClose, userId }) => {
       });
     }
   };
+
+  // Auto-refresh notifications when new access requests are received
+  useAccessRequestNotifications(fetchNotifications);
 
   // Load notifications when opened
   useEffect(() => {

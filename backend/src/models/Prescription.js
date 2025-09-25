@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
-const User = require('./User');
+const BaseUser = require('./BaseUser');
 const MedicalRecord = require('./MedicalRecord');
 
 const Prescription = sequelize.define('Prescription', {
@@ -13,7 +13,7 @@ const Prescription = sequelize.define('Prescription', {
     type: DataTypes.UUID,
     allowNull: false,
     references: {
-      model: User,
+      model: BaseUser,
       key: 'id',
     },
   },
@@ -21,7 +21,7 @@ const Prescription = sequelize.define('Prescription', {
     type: DataTypes.UUID,
     allowNull: false,
     references: {
-      model: User,
+      model: BaseUser,
       key: 'id',
     },
   },
@@ -70,7 +70,7 @@ const Prescription = sequelize.define('Prescription', {
     type: DataTypes.UUID,
     allowNull: true,
     references: {
-      model: User,
+      model: BaseUser,
       key: 'id',
     },
   },
@@ -78,9 +78,9 @@ const Prescription = sequelize.define('Prescription', {
   timestamps: true,
 });
 
-Prescription.belongsTo(User, { as: 'patient', foreignKey: 'patientId' });
-Prescription.belongsTo(User, { as: 'doctor', foreignKey: 'doctorId' });
-Prescription.belongsTo(User, { as: 'pharmacy', foreignKey: 'pharmacyId' });
+Prescription.belongsTo(BaseUser, { as: 'patient', foreignKey: 'patientId' });
+Prescription.belongsTo(BaseUser, { as: 'doctor', foreignKey: 'doctorId' });
+Prescription.belongsTo(BaseUser, { as: 'pharmacy', foreignKey: 'pharmacyId' });
 Prescription.belongsTo(MedicalRecord, { foreignKey: 'medicalRecordId' });
 
 module.exports = Prescription;

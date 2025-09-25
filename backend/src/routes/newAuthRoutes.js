@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const authController = require('../controllers/authController');
+const authController = require('../controllers/newAuthController');
 const { body } = require('express-validator');
 
 // Validation rules
@@ -9,7 +9,13 @@ const registerValidation = [
   body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
   body('firstName').notEmpty().trim(),
   body('lastName').notEmpty().trim(),
-  body('role').isIn(['patient', 'doctor', 'pharmacy', 'admin']).optional(),
+  body('role').isIn(['patient', 'doctor', 'pharmacy']),
+
+  // Phone number validation (optional)
+  body('phoneNumber')
+    .optional()
+    .matches(/^[+]?[0-9\s\-()]{0,20}$/i)
+    .withMessage('Invalid phone number format'),
 
   // Conditional validations for role-specific fields
   body('licenseNumber')
@@ -37,23 +43,23 @@ const registerValidation = [
     .notEmpty()
     .withMessage('Pharmacy address is required for pharmacists'),
 
-  body('phoneNumber')
-    .if(body('role').isIn(['doctor', 'pharmacy']))
-    .notEmpty()
-    .withMessage('Phone number is required for healthcare professionals'),
-
-  // Patient-specific validations
+  // Patient-specific validations (optional)
   body('dateOfBirth')
     .if(body('role').equals('patient'))
-    .notEmpty()
+    .optional()
     .isISO8601()
-    .withMessage('Valid date of birth is required for patients'),
+    .withMessage('Valid date of birth required'),
 
   body('gender')
     .if(body('role').equals('patient'))
-    .notEmpty()
+    .optional()
     .isIn(['male', 'female', 'other'])
-    .withMessage('Gender is required for patients')
+    .withMessage('Gender must be male, female, or other'),
+
+  body('emergencyContactPhone')
+    .optional()
+    .matches(/^[+]?[0-9\s\-()]{0,20}$/i)
+    .withMessage('Invalid emergency contact phone number format')
 ];
 
 const loginValidation = [
