@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { accessService } from '../../services/accessService';
 import { useAccessRequestNotifications } from '../../hooks/useAccessRequestNotifications';
+import websocketService from '../../services/websocketService';
 import toast from 'react-hot-toast';
 
 const NotificationCenter = ({ isOpen, onClose, userId }) => {
@@ -111,6 +112,33 @@ const NotificationCenter = ({ isOpen, onClose, userId }) => {
       fetchNotifications();
     }
   }, [isOpen, userId]);
+
+  // Listen for real-time WebSocket events
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Listen for new access requests
+    const handleNewAccessRequest = () => {
+      console.log('🔔 Received new access request via WebSocket - refreshing notifications');
+      fetchNotifications();
+    };
+
+    // Listen for refresh notifications event (triggered from WebSocket service)
+    const handleRefreshNotifications = () => {
+      console.log('🔄 Refreshing notifications via custom event');
+      fetchNotifications();
+    };
+
+    // Add event listeners
+    websocketService.addEventListener('new_access_request', handleNewAccessRequest);
+    window.addEventListener('refreshNotifications', handleRefreshNotifications);
+
+    // Cleanup
+    return () => {
+      websocketService.removeEventListener('new_access_request', handleNewAccessRequest);
+      window.removeEventListener('refreshNotifications', handleRefreshNotifications);
+    };
+  }, [isOpen, fetchNotifications]);
 
   if (!isOpen) return null;
 

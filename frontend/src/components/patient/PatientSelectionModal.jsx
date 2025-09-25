@@ -23,10 +23,16 @@ const PatientSelectionModal = ({ isOpen, onClose, onSelectPatient, doctorId }) =
   const loadAccessiblePatients = async () => {
     setLoading(true);
     try {
-      console.log('Appel API getAccessiblePatients pour docteur:', doctorId);
-      const response = await accessService.getAccessiblePatients(doctorId);
+      console.log('Appel API getAccessiblePatients (nouvelle version)');
+      const response = await accessService.getAccessiblePatients();
       console.log('Réponse API patients accessibles:', response);
-      setPatients(response.data || []);
+
+      if (response.success) {
+        setPatients(response.patients || []);
+      } else {
+        console.error('Erreur dans la réponse:', response.message);
+        setPatients([]);
+      }
     } catch (error) {
       console.error('Erreur lors du chargement des patients:', error);
       setPatients([]);

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Login from './pages/Login';
@@ -12,9 +12,38 @@ import AdminRegistry from './pages/AdminRegistry';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PatientRecordGuard from './components/auth/PatientRecordGuard';
 import Header from './components/common/Header';
+import websocketService from './services/websocketService';
 
 function App() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+
+  // Initialize WebSocket connection when user is authenticated
+  useEffect(() => {
+    if (user && token) {
+      console.log('🔌 Initializing WebSocket connection for user:', user.id, 'role:', user.role);
+
+      websocketService.connect(token)
+        .then(() => {
+          console.log('✅ WebSocket connection established successfully');
+        })
+        .catch((error) => {
+          console.error('❌ WebSocket connection failed:', error);
+        });
+    } else {
+      // Disconnect WebSocket when user logs out
+      if (websocketService.isConnected()) {
+        console.log('🔌 Disconnecting WebSocket - user logged out');
+        websocketService.disconnect();
+      }
+    }
+
+    // Cleanup on component unmount
+    return () => {
+      if (websocketService.isConnected()) {
+        websocketService.disconnect();
+      }
+    };
+  }, [user, token]);
 
   return (
     <div className="min-h-screen bg-gray-50">

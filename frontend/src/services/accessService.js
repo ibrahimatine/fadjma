@@ -238,45 +238,19 @@ class AccessService {
   }
 
   // Get patients that the doctor has access to
-  async getAccessiblePatients(doctorId) {
+  async getAccessiblePatients(search = '') {
     try {
-      console.log('AccessService: getAccessiblePatients appelé pour docteur:', doctorId);
-      const response = await this.getRequestsByRequester(doctorId, { status: 'approved' });
-      console.log('AccessService: réponse getRequestsByRequester:', response);
+      console.log('AccessService: getAccessiblePatients appelé avec recherche:', search);
 
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to fetch accessible patients');
+      const params = new URLSearchParams();
+      if (search) {
+        params.append('search', search);
       }
 
-      const requests = response.data?.requests || [];
-      console.log('AccessService: demandes approuvées trouvées:', requests.length);
+      const response = await api.get(`/patients/accessible-patients?${params.toString()}`);
+      console.log('AccessService: réponse accessible-patients:', response.data);
 
-      // Filter for active (non-expired) requests and extract unique patients
-      const activeRequests = requests.filter(request => {
-        if (!request.expiresAt) return true; // No expiration = active
-        return new Date(request.expiresAt) > new Date(); // Not expired
-      });
-      console.log('AccessService: demandes actives:', activeRequests.length);
-
-      // Extract unique patients from active requests
-      const patientsMap = new Map();
-      activeRequests.forEach(request => {
-        if (request.patient && !patientsMap.has(request.patient.id)) {
-          patientsMap.set(request.patient.id, {
-            ...request.patient,
-            accessLevel: request.accessLevel,
-            accessGrantedAt: request.reviewedAt
-          });
-        }
-      });
-
-      const patients = Array.from(patientsMap.values());
-      console.log('AccessService: patients extraits:', patients);
-
-      return {
-        success: true,
-        data: patients
-      };
+      return response.data;
     } catch (error) {
       console.error('AccessService: erreur dans getAccessiblePatients:', error);
       throw this.handleError(error);

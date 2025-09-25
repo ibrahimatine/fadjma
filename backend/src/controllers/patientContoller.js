@@ -19,10 +19,10 @@ exports.getAllPatients = async (req, res) => {
 
     if (search) {
       where[Op.or] = [
-        { firstName: { [Op.iLike]: `%${search}%` } },
-        { lastName: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } },
-        { phoneNumber: { [Op.iLike]: `%${search}%` } },
+        { firstName: { [Op.like]: `%${search}%` } },
+        { lastName: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } },
+        { phoneNumber: { [Op.like]: `%${search}%` } },
       ];
     }
 
@@ -43,6 +43,73 @@ exports.getAllPatients = async (req, res) => {
   } catch (error) {
     console.error("Get patients error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// 📌 Liste des patients auxquels le médecin a accès (pour créer des dossiers)
+exports.getAccessiblePatients = async (req, res) => {
+  try {
+    if (req.user.role !== "doctor") {
+      return res.status(403).json({
+        message: "Seuls les médecins peuvent accéder à cette fonctionnalité",
+        success: false
+      });
+    }
+
+    const { search } = req.query;
+
+    // Get all patients the doctor has approved access to
+    const accessRequests = await MedicalRecordAccessRequest.findAll({
+      where: {
+        requesterId: req.user.id,
+        status: 'approved',
+        [Op.or]: [
+          { expiresAt: null },
+          { expiresAt: { [Op.gt]: new Date() } }
+        ]
+      },
+      include: [
+        {
+          model: BaseUser,
+          as: 'patient',
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber'],
+          where: search ? {
+            [Op.or]: [
+              { firstName: { [Op.iLike]: `%${search}%` } },
+              { lastName: { [Op.iLike]: `%${search}%` } },
+              { email: { [Op.iLike]: `%${search}%` } },
+            ]
+          } : {}
+        }
+      ],
+      order: [['patient', 'lastName', 'ASC']]
+    });
+
+    const patients = accessRequests.map(request => ({
+      id: request.patient.id,
+      firstName: request.patient.firstName,
+      lastName: request.patient.lastName,
+      email: request.patient.email,
+      phoneNumber: request.patient.phoneNumber,
+      accessLevel: request.accessLevel,
+      accessGrantedAt: request.reviewedAt,
+      expiresAt: request.expiresAt
+    }));
+
+    res.json({
+      success: true,
+      patients,
+      total: patients.length,
+      message: `${patients.length} patient(s) accessible(s)`
+    });
+
+  } catch (error) {
+    console.error("Get accessible patients error:", error);
+    res.status(500).json({
+      message: "Erreur serveur lors de la récupération des patients accessibles",
+      error: error.message,
+      success: false
+    });
   }
 };
 

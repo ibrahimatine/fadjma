@@ -261,19 +261,52 @@ exports.create = async (req, res) => {
     
     const { type, title, description, diagnosis, prescription, metadata } = req.body;
     
-    // Determine patient and doctor IDs
-    let patientId, doctorId;
-    
-    if (req.user.role === 'patient') {
-      patientId = req.user.id;
-      // For demo, assign to first available doctor
-      const doctor = await BaseUser.findOne({ where: { role: 'doctor' } });
-      doctorId = doctor ? doctor.id : req.user.id;
-    } else if (req.user.role === 'doctor') {
-      doctorId = req.user.id;
-      patientId = req.body.patientId || req.user.id; // Doctor must specify patient
-    } else {
-      return res.status(403).json({ message: 'Only patients and doctors can create records' });
+    // Only doctors can create medical records
+    if (req.user.role !== 'doctor') {
+      return res.status(403).json({
+        message: 'Seuls les médecins peuvent créer des dossiers médicaux',
+        success: false
+      });
+    }
+
+    const doctorId = req.user.id;
+    const { patientId } = req.body;
+
+    // Patient ID is required
+    if (!patientId) {
+      return res.status(400).json({
+        message: 'L\'ID du patient est requis',
+        success: false
+      });
+    }
+
+    // Verify that the patient exists
+    const patient = await BaseUser.findByPk(patientId);
+    if (!patient || patient.role !== 'patient') {
+      return res.status(404).json({
+        message: 'Patient non trouvé',
+        success: false
+      });
+    }
+
+    // Check if doctor has access to this patient's records
+    const hasAccess = await MedicalRecordAccessRequest.findOne({
+      where: {
+        patientId,
+        requesterId: doctorId,
+        status: 'approved',
+        [Op.or]: [
+          { expiresAt: null },
+          { expiresAt: { [Op.gt]: new Date() } }
+        ]
+      }
+    });
+
+    if (!hasAccess) {
+      return res.status(403).json({
+        message: 'Vous n\'avez pas accès aux dossiers de ce patient. Demandez d\'abord l\'autorisation.',
+        success: false
+      });
     }
     
     // Create record

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import DoctorRequestsModal from "../access/DoctorRequestsModal";
 import PatientDetailsModal from "../patient/PatientDetailsModal";
+import websocketService from "../../services/websocketService";
 
 /**
  * Props:
@@ -88,6 +89,53 @@ const DoctorDashboard = ({
     el.addEventListener("scroll", handleScroll, { passive: true });
     return () => el.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
+
+  // WebSocket listeners for real-time updates
+  useEffect(() => {
+    // Listen for access request status changes
+    const handleAccessRequestStatusChanged = (notification) => {
+      console.log('🔐 Access request status changed in doctor dashboard:', notification);
+
+      // Refresh access requests if available
+      if (typeof onRefreshAccessRequests === 'function') {
+        onRefreshAccessRequests();
+      }
+    };
+
+    // Listen for dashboard refresh events
+    const handleRefreshDashboard = () => {
+      console.log('🔄 Dashboard refresh requested via WebSocket');
+
+      // Refresh access requests
+      if (typeof onRefreshAccessRequests === 'function') {
+        onRefreshAccessRequests();
+      }
+    };
+
+    // Listen for medical record updates
+    const handleMedicalRecordUpdated = (data) => {
+      console.log('📄 Medical record updated:', data);
+      // The dashboard could show a notification or refresh patient data
+    };
+
+    // Add WebSocket event listeners
+    websocketService.addEventListener('access_request_status_changed', handleAccessRequestStatusChanged);
+    websocketService.addEventListener('medical_record_updated', handleMedicalRecordUpdated);
+
+    // Add custom window event listeners
+    window.addEventListener('refreshDashboard', handleRefreshDashboard);
+    window.addEventListener('accessRequestStatusChanged', (event) => {
+      handleAccessRequestStatusChanged(event.detail);
+    });
+
+    // Cleanup
+    return () => {
+      websocketService.removeEventListener('access_request_status_changed', handleAccessRequestStatusChanged);
+      websocketService.removeEventListener('medical_record_updated', handleMedicalRecordUpdated);
+      window.removeEventListener('refreshDashboard', handleRefreshDashboard);
+      window.removeEventListener('accessRequestStatusChanged', handleAccessRequestStatusChanged);
+    };
+  }, [onRefreshAccessRequests]);
 
   // skeleton card
   const renderSkeleton = (i) => (

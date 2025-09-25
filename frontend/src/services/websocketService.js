@@ -78,6 +78,96 @@ class WebSocketService {
       this.handleNotification(notification);
     });
 
+    // New access request handling (for patients)
+    this.socket.on('new_access_request', (requestData) => {
+      console.log('📋 New access request received:', requestData);
+
+      toast((t) => (
+        <div className="p-2">
+          <div className="font-semibold text-gray-800 mb-2">
+            🏥 Nouvelle demande d'accès
+          </div>
+          <p className="text-sm text-gray-600 mb-3">
+            {requestData.message}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                // Trigger notification center refresh
+                window.dispatchEvent(new CustomEvent('refreshNotifications'));
+                toast.dismiss(t.id);
+              }}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm transition-colors"
+            >
+              Voir les demandes
+            </button>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              className="bg-gray-300 hover:bg-gray-400 text-gray-700 px-3 py-1 rounded text-sm transition-colors"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      ), {
+        duration: 10000,
+        style: {
+          maxWidth: '400px',
+          padding: 0
+        }
+      });
+
+      // Notify listeners
+      this.notifyListeners('new_access_request', requestData);
+    });
+
+    // Access request status changes (for doctors)
+    this.socket.on('access_request_status_changed', (notification) => {
+      console.log('🔐 Access request status changed:', notification);
+
+      const isApproved = notification.status === 'approved';
+
+      toast.success(notification.message, {
+        duration: 6000,
+        icon: isApproved ? '✅' : '❌'
+      });
+
+      // Refresh dashboards and access status
+      window.dispatchEvent(new CustomEvent('refreshDashboard'));
+      window.dispatchEvent(new CustomEvent('accessRequestStatusChanged', {
+        detail: notification
+      }));
+
+      this.notifyListeners('access_request_status_changed', notification);
+    });
+
+    // Prescription status changes (for patients and doctors)
+    this.socket.on('prescription_status_changed', (notification) => {
+      console.log('💊 Prescription status changed:', notification);
+
+      const statusIcons = {
+        'validated': '✅',
+        'in_preparation': '⚗️',
+        'ready': '🎯',
+        'delivered': '📦'
+      };
+
+      toast.success(notification.message, {
+        duration: 5000,
+        icon: statusIcons[notification.status] || '💊'
+      });
+
+      // Trigger prescription refresh
+      window.dispatchEvent(new CustomEvent('refreshPrescriptions', {
+        detail: {
+          prescriptionId: notification.prescriptionId,
+          status: notification.status
+        }
+      }));
+
+      this.notifyListeners('prescription_status_changed', notification);
+    });
+
     // Medical record events
     this.socket.on('new_medical_record', (data) => {
       console.log('📄 New medical record event:', data);
@@ -118,26 +208,58 @@ class WebSocketService {
         toast(notification.message, {
           duration: 5000,
           position: 'top-right',
-          icon: '📄',
-          type: 'success'
+          icon: '📄'
         });
         break;
 
       case 'access_request':
+      case 'new_access_request':
         toast(notification.message, {
           duration: 6000,
           position: 'top-right',
-          icon: '🔐',
-          type: 'info'
+          icon: '🔐'
+        });
+        break;
+
+      case 'access_request_approved':
+        toast.success(notification.message, {
+          duration: 5000,
+          position: 'top-right',
+          icon: '✅'
+        });
+        // Refresh dashboard to show new access
+        window.dispatchEvent(new CustomEvent('refreshDashboard'));
+        break;
+
+      case 'access_request_rejected':
+        toast.error(notification.message, {
+          duration: 5000,
+          position: 'top-right',
+          icon: '❌'
         });
         break;
 
       case 'access_revoked':
-        toast(notification.message, {
+        toast.error(notification.message, {
           duration: 4000,
           position: 'top-right',
-          icon: '❌',
-          type: 'error'
+          icon: '❌'
+        });
+        break;
+
+      case 'prescription_updated':
+        toast.info(notification.message, {
+          duration: 4000,
+          position: 'top-right',
+          icon: '💊'
+        });
+        break;
+
+      case 'medical_record_created':
+        toast.success(notification.message, {
+          duration: 4000,
+          position: 'top-right',
+          icon: '📝'
         });
         break;
 

@@ -1,5 +1,5 @@
 // src/components/dashboard/PharmacistDashboard.jsx
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Pill,
   Search,
@@ -21,6 +21,7 @@ import MatriculeSearch from "../pharmacy/MatriculeSearch";
 import DispensationWorkflow from "../pharmacy/DispensationWorkflow";
 import BatchDispensationWorkflow from "../pharmacy/BatchDispensationWorkflow";
 import PharmacyCart from "../pharmacy/PharmacyCart";
+import websocketService from "../../services/websocketService";
 
 /**
  * Dashboard pour pharmacien - gestion des ordonnances et prescriptions
@@ -34,7 +35,8 @@ const PharmacistDashboard = ({
   prescriptions = [],
   loading = false,
   onValidatePrescription,
-  onPrepareMedication
+  onPrepareMedication,
+  onRefreshPrescriptions // Add refresh callback prop
 }) => {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -140,6 +142,52 @@ const PharmacistDashboard = ({
       }
     }
   };
+
+  // WebSocket listeners for real-time prescription updates
+  useEffect(() => {
+    // Listen for prescription status changes
+    const handlePrescriptionStatusChanged = (data) => {
+      console.log('💊 Prescription status changed in pharmacist dashboard:', data);
+
+      // Refresh prescriptions if available
+      if (typeof onRefreshPrescriptions === 'function') {
+        onRefreshPrescriptions();
+      }
+    };
+
+    // Listen for new prescriptions
+    const handleNewPrescription = (data) => {
+      console.log('📋 New prescription received:', data);
+
+      // Refresh prescriptions list
+      if (typeof onRefreshPrescriptions === 'function') {
+        onRefreshPrescriptions();
+      }
+    };
+
+    // Listen for prescription refresh events
+    const handleRefreshPrescriptions = (event) => {
+      console.log('🔄 Prescription refresh requested:', event.detail);
+
+      if (typeof onRefreshPrescriptions === 'function') {
+        onRefreshPrescriptions();
+      }
+    };
+
+    // Add WebSocket event listeners
+    websocketService.addEventListener('prescription_status_changed', handlePrescriptionStatusChanged);
+    websocketService.addEventListener('new_prescription', handleNewPrescription);
+
+    // Add custom window event listeners
+    window.addEventListener('refreshPrescriptions', handleRefreshPrescriptions);
+
+    // Cleanup
+    return () => {
+      websocketService.removeEventListener('prescription_status_changed', handlePrescriptionStatusChanged);
+      websocketService.removeEventListener('new_prescription', handleNewPrescription);
+      window.removeEventListener('refreshPrescriptions', handleRefreshPrescriptions);
+    };
+  }, [onRefreshPrescriptions]);
 
   const getActionButton = (prescription) => {
     switch (prescription.status) {

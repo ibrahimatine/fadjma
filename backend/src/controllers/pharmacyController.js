@@ -139,6 +139,9 @@ exports.confirmDrugDelivery = async (req, res) => {
 
     const prescription = await Prescription.findOne({
       where: { id: prescriptionId, pharmacyId, deliveryStatus: 'pending' },
+      include: [
+        { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName'] }
+      ]
     });
 
     if (!prescription) {
@@ -152,6 +155,18 @@ exports.confirmDrugDelivery = async (req, res) => {
     prescription.deliveryStatus = 'delivered';
     prescription.deliveryConfirmationHash = hederaTransactionId;
     await prescription.save();
+
+    // Send WebSocket notification to patient about delivery
+    if (req.io && prescription.patient) {
+      req.io.notifyPrescriptionUpdate(
+        prescription.id,
+        'delivered',
+        prescription.patient.id,
+        pharmacyId
+      );
+
+      console.log(`🔔 WebSocket notification sent for delivered prescription: ${prescription.id} to patient: ${prescription.patient.id}`);
+    }
 
     res.status(200).json({ message: 'Drug delivery confirmed and recorded on Hedera', prescription });
   } catch (error) {

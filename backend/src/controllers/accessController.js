@@ -88,16 +88,14 @@ class AccessController {
 
       // Send immediate WebSocket notification to the patient
       if (req.io && requestWithInfo) {
-        req.io.notifyUser(patientId, {
-          type: 'access_request',
-          title: 'Nouvelle demande d\'accès',
-          message: `Dr. ${requestWithInfo.requester.firstName} ${requestWithInfo.requester.lastName} demande l'accès à vos dossiers médicaux`,
-          data: {
-            requestId: requestWithInfo.id,
-            requesterName: `${requestWithInfo.requester.firstName} ${requestWithInfo.requester.lastName}`,
-            accessLevel: requestWithInfo.accessLevel,
-            reason: requestWithInfo.reason
-          }
+        // Use the new specialized notification function
+        req.io.notifyNewAccessRequest({
+          id: requestWithInfo.id,
+          doctorId: requestWithInfo.requesterId,
+          doctorName: `${requestWithInfo.requester.firstName} ${requestWithInfo.requester.lastName}`,
+          patientId: requestWithInfo.patientId,
+          accessLevel: requestWithInfo.accessLevel,
+          reason: requestWithInfo.reason
         });
 
         console.log(`🔔 WebSocket notification sent for new access request: ${requestWithInfo.id} to patient: ${patientId}`);
@@ -354,26 +352,14 @@ class AccessController {
         ]
       });
 
-      // Send immediate WebSocket notification to the requester
+      // Send immediate WebSocket notification to the requester using the new specialized function
       if (req.io && updatedRequest) {
-        const notificationType = status === 'approved' ? 'access_granted' : 'access_denied';
-        const title = status === 'approved' ? 'Accès autorisé' : 'Accès refusé';
-        const message = status === 'approved'
-          ? `Votre demande d'accès aux dossiers de ${updatedRequest.patient.firstName} ${updatedRequest.patient.lastName} a été approuvée`
-          : `Votre demande d'accès aux dossiers de ${updatedRequest.patient.firstName} ${updatedRequest.patient.lastName} a été refusée`;
-
-        req.io.notifyUser(updatedRequest.requesterId, {
-          type: notificationType,
-          title: title,
-          message: message,
-          data: {
-            requestId: updatedRequest.id,
-            patientName: `${updatedRequest.patient.firstName} ${updatedRequest.patient.lastName}`,
-            accessLevel: updatedRequest.accessLevel,
-            status: status,
-            reviewNotes: reviewNotes
-          }
-        });
+        req.io.notifyAccessRequestUpdate(
+          updatedRequest.id,
+          status,
+          updatedRequest.patientId,
+          updatedRequest.requesterId
+        );
 
         console.log(`🔔 WebSocket notification sent for ${status} access request: ${updatedRequest.id} to requester: ${updatedRequest.requesterId}`);
       }

@@ -10,6 +10,7 @@ router.use(auth);
 
 // Routes
 router.get('/', patienController.getAllPatients);
+router.get('/accessible-patients', patienController.getAccessiblePatients); // Doit être avant /:id
 router.get('/:id', patienController.getPatientById);
 router.get('/:id/stats', patienController.getPatientStats);
 // router.post('/', patienController.createPatient);
