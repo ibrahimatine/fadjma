@@ -1,4 +1,4 @@
-const { User } = require('../models'); // Utiliser le nouveau fichier index.js
+const { BaseUser } = require('../models'); // Utiliser BaseUser au lieu de User
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 
@@ -28,7 +28,7 @@ exports.register = async (req, res) => {
     } = req.body;
 
     // Check if user exists
-    const existingUser = await User.findOne({ where: { email } });
+    const existingUser = await BaseUser.findOne({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: 'Email already registered' });
     }
@@ -60,7 +60,7 @@ exports.register = async (req, res) => {
       userData.pharmacyAddress = pharmacyAddress;
     }
 
-    const user = await User.create(userData);
+    const user = await BaseUser.create(userData);
 
     // Generate token
     const token = generateToken(user);
@@ -89,7 +89,7 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
 
     // Find user
-    const user = await User.findOne({ where: { email } });
+    const user = await BaseUser.findOne({ where: { email } });
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -122,7 +122,7 @@ exports.getCurrentUser = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findByPk(decoded.id);
+    const user = await BaseUser.findByPk(decoded.id);
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });

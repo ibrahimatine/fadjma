@@ -32,7 +32,7 @@ const BaseUser = sequelize.define('BaseUser', {
     type: DataTypes.STRING,
     allowNull: false,
     validate: {
-      isIn: [['patient', 'doctor', 'pharmacy']]
+      isIn: [['patient', 'doctor', 'pharmacy', 'admin']]
     }
   },
   isActive: {
