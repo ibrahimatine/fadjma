@@ -9,6 +9,7 @@ import RecordDetails from './pages/RecordDetails';
 import CreateMedicalRecord from './pages/CreateMedicalRecord';
 import PatientMedicalRecordsView from './components/patient/PatientMedicalRecordsView';
 import AdminRegistry from './pages/AdminRegistry';
+import HistoryView from './pages/HistoryView';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PatientRecordGuard from './components/auth/PatientRecordGuard';
 import Header from './components/common/Header';
@@ -75,6 +76,10 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin/registry" element={<AdminRegistry />} />
+        </Route>
+        {/* Route accessible à tous les utilisateurs connectés */}
+        <Route element={<ProtectedRoute allowedRoles={["patient", "doctor", "admin"]} />}>
+          <Route path="/history" element={<HistoryView />} />
         </Route>
         <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
       </Routes>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { Home, LogOut, User, Shield, Users, Settings } from 'lucide-react';
+import { Home, LogOut, User, Shield, Users, Settings, Clock } from 'lucide-react';
 import RealtimeNotifications from '../notifications/RealtimeNotifications';
 import WebSocketTester from '../debug/WebSocketTester';
 
@@ -57,6 +57,16 @@ const Header = () => {
                     Registre Hedera
                   </Link>
                 </>
+              )}
+
+              {_isAdmin && (
+                <Link
+                  to="/history"
+                  className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
+                >
+                  <Clock className="h-4 w-4 mr-1" />
+                  Historique
+                </Link>
               )}
             </nav>
           </div>

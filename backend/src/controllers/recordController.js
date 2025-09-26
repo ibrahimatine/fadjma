@@ -353,8 +353,9 @@ exports.create = async (req, res) => {
           // Mettre à jour avec les infos Hedera
           await prescriptionRecord.update({
             deliveryConfirmationHash: prescriptionHederaResult.hash,
-            hederaTransactionId: prescriptionHederaResult.topicId,
-            hederaSequenceNumber: prescriptionHederaResult.sequenceNumber
+            hederaTransactionId: prescriptionHederaResult.transactionId,
+            hederaSequenceNumber: prescriptionHederaResult.sequenceNumber,
+            hederaTopicId: prescriptionHederaResult.topicId
           });
 
           console.log(`✅ Prescription ${prescriptionRecord.matricule} ancrée avec succès`);

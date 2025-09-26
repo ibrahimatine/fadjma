@@ -164,6 +164,7 @@ const AdminRegistry = () => {
       ]);
 
       if (overviewResponse.success && dataResponse.success) {
+        console.log('Registry data loaded:', dataResponse.data);
         setRegistryData(dataResponse.data);
         setStats({
           total: overviewResponse.stats.total,
@@ -318,6 +319,22 @@ const AdminRegistry = () => {
     }
   };
 
+  const updateStatuses = async () => {
+    try {
+      await adminService.updateStatuses();
+      toast.success('Mise à jour des statuts lancée');
+
+      // Recharger les données après quelques secondes
+      setTimeout(() => {
+        loadRegistryData();
+      }, 3000);
+
+    } catch (error) {
+      console.error('Status update error:', error);
+      toast.error('Erreur lors de la mise à jour des statuts');
+    }
+  };
+
   const getTypeIcon = (type) => {
     switch (type) {
       case 'prescription': return <Pill className="h-4 w-4 text-blue-600" />;
@@ -366,6 +383,14 @@ const AdminRegistry = () => {
               >
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 {loading ? 'Actualisation...' : 'Actualiser'}
+              </button>
+              <button
+                onClick={updateStatuses}
+                disabled={loading}
+                className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50"
+              >
+                <CheckCircle className="h-4 w-4" />
+                Vérifier Statuts
               </button>
               <div className="relative group">
                 <button

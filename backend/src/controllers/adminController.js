@@ -199,7 +199,8 @@ exports.getRegistryData = async (req, res) => {
           id: prescription.id,
           type: isDispensed ? 'dispensation' : 'prescription',
           consensusTimestamp: isDispensed ? prescription.updatedAt : prescription.createdAt,
-          transactionId: prescription.deliveryConfirmationHash || prescription.id,
+          transactionId: prescription.hederaTransactionId || prescription.id,
+          topicId: prescription.hederaTopicId || '0.0.SIMULATED', // Use actual topic ID or simulated
           topicId: prescription.deliveryConfirmationHash ? prescription.deliveryConfirmationHash.split('@')[0] : `0.0.${Math.floor(Math.random() * 999999)}`,
           sequenceNumber: Math.floor(Math.random() * 10000),
           hash: prescription.deliveryConfirmationHash || `sha256_${Math.random().toString(36).substr(2, 32)}`,

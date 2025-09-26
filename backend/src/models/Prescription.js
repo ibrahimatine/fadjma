@@ -71,6 +71,11 @@ const Prescription = sequelize.define('Prescription', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  hederaTransactionId: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+  },
   pharmacyId: {
     type: DataTypes.UUID,
     allowNull: true,
@@ -78,6 +83,23 @@ const Prescription = sequelize.define('Prescription', {
       model: BaseUser,
       key: 'id',
     },
+  },
+  isVerified: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+  verifiedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  hederaSequenceNumber: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  hederaTopicId: {
+    type: DataTypes.STRING,
+    allowNull: true,
   },
 }, {
   timestamps: true,

@@ -113,6 +113,12 @@ export const adminService = {
     }
   },
 
+  // Forcer la mise à jour des statuts
+  async updateStatuses() {
+    const response = await api.post('/admin/status/update');
+    return response.data;
+  },
+
   // Obtenir les détails d'une transaction Hedera
   async getTransactionDetails(transactionId) {
     try {

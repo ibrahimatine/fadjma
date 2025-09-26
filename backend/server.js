@@ -34,6 +34,10 @@ async function startServer() {
     // Setup WebSocket connection handling
     require('./src/websocket/socketHandlers')(io);
 
+    // Start status update service
+    const statusUpdateService = require('./src/services/statusUpdateService');
+    statusUpdateService.startStatusChecker();
+
     // Start server
     server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);

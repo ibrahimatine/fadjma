@@ -45,6 +45,8 @@ app.use('/api/pharmacy', pharmacyRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/access-requests', accessRoutes);
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/history', require('./routes/historyRoutes'));
+app.use('/api/medication', require('./routes/medicationTraceabilityRoutes'));
 app.use('/api/monitoring', monitoringRoutes);
 // Error handling
 app.use(errorHandler);

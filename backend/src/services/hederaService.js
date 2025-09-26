@@ -55,7 +55,8 @@ class HederaService {
 
           // Générer les liens de vérification HashScan
           const verificationLinks = hashscanService.generateVerificationLink(record, {
-            hash,
+            hash: hash,
+            transactionId: result.transactionId,
             topicId: result.topicId,
             sequenceNumber: result.sequenceNumber,
             timestamp: result.timestamp
@@ -121,13 +122,13 @@ class HederaService {
     try {
       // Calculate current hash
       const currentHash = hashService.generateRecordHash(record);
-      
+
       // Compare with stored hash
       const isValid = currentHash === record.hash;
-      
+
       // In production, also verify against Hedera
       // This would require Mirror Node API integration
-      
+
       return {
         isValid,
         currentHash,

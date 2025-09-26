@@ -63,6 +63,7 @@ class HederaClient {
       return {
         status: "SIMULATED",
         topicId: this.topicId || "0.0.SIMULATED",
+        transactionId: `SIMULATED_TX_${Math.random().toString(36).substring(2, 15)}`, // Unique simulated ID
         sequenceNumber: Math.floor(Math.random() * 1000).toString(),
         timestamp: new Date().toISOString()
       };

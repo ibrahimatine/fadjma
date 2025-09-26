@@ -11,7 +11,8 @@
         "seed:reset": "node scripts/seed.js --reset",
         "setup:db": "node scripts/test-db.js",
         "setup:hedera": "node scripts/setup-hedera.js",
-        "init:sqlite": "node scripts/init-sqlite.js"
+        "init:sqlite": "node scripts/init-sqlite.js",
+        "migrate:hedera-tx-id": "node scripts/run-migration.js"
     },
     "dependencies": {
         "@hashgraph/sdk": "^2.45.0",
