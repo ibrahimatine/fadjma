@@ -2,6 +2,8 @@ const { validationResult } = require('express-validator');
 const MedicalRecordAccessRequest = require('../models/MedicalRecordAccess');
 const { BaseUser } = require('../models');
 const { Op } = require('sequelize');
+const hederaService = require('../services/hederaService');
+const monitoringService = require('../services/monitoringService');
 
 class AccessController {
 
@@ -69,6 +71,33 @@ class AccessController {
         accessLevel,
         expiresAt: expiresAt ? new Date(expiresAt) : null
       });
+
+      // Ancrer la demande d'autorisation sur Hedera pour compliance RGPD
+      try {
+        console.log(`🔗 Ancrage demande d'accès ${accessRequest.id} sur Hedera...`);
+        const hederaResult = await hederaService.anchorRecord({
+          id: accessRequest.id,
+          type: 'access_request',
+          patientId: accessRequest.patientId,
+          requesterId: accessRequest.requesterId,
+          reason: accessRequest.reason,
+          accessLevel: accessRequest.accessLevel,
+          status: 'pending',
+          createdAt: accessRequest.createdAt
+        });
+
+        // Sauvegarder les infos Hedera
+        await accessRequest.update({
+          hederaTransactionId: hederaResult.topicId,
+          hederaSequenceNumber: hederaResult.sequenceNumber,
+          hederaTimestamp: new Date()
+        });
+
+        console.log(`✅ Demande d'accès ${accessRequest.id} ancrée avec succès`);
+      } catch (hederaError) {
+        console.error(`❌ Échec ancrage demande d'accès ${accessRequest.id}:`, hederaError);
+        // Continuer sans Hedera pour ne pas bloquer l'utilisateur
+      }
 
       // Return the created request with requester info
       const requestWithInfo = await MedicalRecordAccessRequest.findByPk(accessRequest.id, {
@@ -329,6 +358,30 @@ class AccessController {
         reviewedAt: new Date(),
         reviewNotes
       });
+
+      // Ancrer la décision d'autorisation sur Hedera (compliance RGPD)
+      try {
+        console.log(`🔗 Ancrage décision d'accès ${request.id} (${status}) sur Hedera...`);
+        const hederaResult = await hederaService.anchorRecord({
+          id: `${request.id}_decision`,
+          type: 'access_decision',
+          originalRequestId: request.id,
+          patientId: request.patientId,
+          requesterId: request.requesterId,
+          reviewerId: req.user.id,
+          decision: status,
+          reviewedAt: new Date(),
+          reviewNotes: reviewNotes || null
+        });
+
+        console.log(`✅ Décision d'accès ${request.id} (${status}) ancrée avec succès`);
+
+        // Enregistrer dans le monitoring
+        monitoringService.recordSystemRequest('/api/access-requests', 'PUT', 200, Date.now() - Date.now());
+      } catch (hederaError) {
+        console.error(`❌ Échec ancrage décision d'accès ${request.id}:`, hederaError);
+        // Continuer sans Hedera pour ne pas bloquer l'utilisateur
+      }
 
       // Return updated request with includes
       const updatedRequest = await MedicalRecordAccessRequest.findByPk(id, {

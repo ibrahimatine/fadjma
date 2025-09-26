@@ -320,6 +320,49 @@ exports.create = async (req, res) => {
       prescription,
       metadata: metadata || {}
     });
+
+    // Si c'est une prescription, créer des enregistrements séparés dans la table Prescription
+    if (type === 'prescription' && prescription && Array.isArray(prescription)) {
+      for (const med of prescription) {
+        const prescriptionRecord = await Prescription.create({
+          patientId,
+          doctorId,
+          medicalRecordId: record.id,
+          medication: med.name,
+          dosage: med.dosage,
+          instructions: med.frequency || '',
+          quantity: parseInt(med.duration) || 1,
+          issueDate: new Date(),
+          deliveryStatus: 'pending'
+        });
+
+        // Ancrer chaque prescription individuellement sur Hedera
+        try {
+          console.log(`🔗 Ancrage prescription ${prescriptionRecord.matricule} sur Hedera...`);
+          const prescriptionHederaResult = await hederaService.anchorRecord({
+            id: prescriptionRecord.id,
+            patientId: prescriptionRecord.patientId,
+            doctorId: prescriptionRecord.doctorId,
+            type: 'prescription',
+            medication: prescriptionRecord.medication,
+            dosage: prescriptionRecord.dosage,
+            matricule: prescriptionRecord.matricule,
+            issueDate: prescriptionRecord.issueDate
+          });
+
+          // Mettre à jour avec les infos Hedera
+          await prescriptionRecord.update({
+            deliveryConfirmationHash: prescriptionHederaResult.hash,
+            hederaTransactionId: prescriptionHederaResult.topicId,
+            hederaSequenceNumber: prescriptionHederaResult.sequenceNumber
+          });
+
+          console.log(`✅ Prescription ${prescriptionRecord.matricule} ancrée avec succès`);
+        } catch (hederaError) {
+          console.error(`❌ Échec ancrage prescription ${prescriptionRecord.matricule}:`, hederaError);
+        }
+      }
+    }
     
     // Anchor to Hedera
     try {
@@ -329,7 +372,7 @@ exports.create = async (req, res) => {
       // Update record with Hedera info
       await record.update({
         hash: hederaResult.hash,
-        hederaTransactionId: hederaResult.topicId,
+        hederaTransactionId: hederaResult.transactionId,
         hederaSequenceNumber: hederaResult.sequenceNumber,
         hederaTimestamp: new Date(),
         isVerified: true
@@ -415,7 +458,7 @@ exports.update = async (req, res) => {
       const hederaResult = await hederaService.anchorRecord(record);
       await record.update({
         hash: hederaResult.hash,
-        hederaTransactionId: hederaResult.topicId,
+        hederaTransactionId: hederaResult.transactionId,
         hederaSequenceNumber: hederaResult.sequenceNumber,
         hederaTimestamp: new Date()
       });

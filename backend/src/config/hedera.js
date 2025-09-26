@@ -1,65 +1,65 @@
-const { Client, TopicCreateTransaction, TopicMessageSubmitTransaction, PrivateKey } = require("@hashgraph/sdk");
+const {
+  Client,
+  TopicCreateTransaction,
+  TopicMessageSubmitTransaction,
+  PrivateKey,
+  AccountBalanceQuery
+} = require("@hashgraph/sdk");
 
 class HederaClient {
   constructor() {
     this.client = null;
-    this.topicId = process.env.HEDERA_TOPIC_ID;
+    this.topicId = process.env.HEDERA_TOPIC_ID || null;
+    this.accountId = process.env.HEDERA_ACCOUNT_ID || null;
+    this.privateKey = process.env.HEDERA_PRIVATE_KEY || null;
+    this.simulation = false;
     this.init();
   }
 
   init() {
+    // Utiliser les credentials ECDSA qui correspondent au topic créé
+    const accountId = process.env.HEDERA_ECDSA_ACCOUNT_ID;
+    const privateKey = process.env.HEDERA_ECDSA_PRIVATE_KEY;
+
+    if (!accountId || !privateKey) {
+      console.warn("⚠️ Hedera ECDSA credentials missing - simulation mode enabled");
+      this.simulation = true;
+      return;
+    }
+
     try {
-      const accountId = process.env.HEDERA_ACCOUNT_ID;
-      const privateKey = process.env.HEDERA_PRIVATE_KEY;
-
-      if (!accountId || !privateKey) {
-        console.warn("⚠️ Hedera credentials manquantes - mode simulation activé");
-        return;
-      }
-
-      // Initialiser le client pour testnet
-      this.client = Client.forTestnet();
-
-      // Configurer l'opérateur
-      this.client.setOperator(accountId, privateKey);
-
-
-
-      console.log("✅ Hedera client initialized pour Testnet");
-      console.log("   Account ID:", accountId);
-      console.log("   Topic ID:", this.topicId || "À créer");
+      this.client = Client.forTestnet().setOperator(accountId, privateKey);
+      this.accountId = accountId;
+      this.privateKey = privateKey;
+      console.log("✅ Hedera client initialized for Testnet with ECDSA credentials");
+      console.log("   Account ID:", this.accountId);
+      console.log("   Topic ID:", this.topicId || "To be created");
     } catch (error) {
-      console.error("❌ Erreur Hedera:", error.message);
-      console.warn("⚠️ Mode simulation Hedera activé");
+      console.error("❌ Hedera client initialization error:", error.message);
+      this.simulation = true;
     }
   }
 
   async createTopic() {
-    if (!this.client) {
-      console.log("⚠️ Mode simulation: Topic ID simulé");
+    if (this.simulation) {
+      console.log("⚠️ Simulation mode: returning simulated topic ID");
       return "0.0.SIMULATED";
     }
-
     try {
-      const transaction = await new TopicCreateTransaction()
-        .setSubmitKey(this.client.operatorPublicKey)
-        .execute(this.client);
-
-      const receipt = await transaction.getReceipt(this.client);
-      const topicId = receipt.topicId;
-
-      console.log(`✅ Topic créé avec ID: ${topicId}`);
-      return topicId.toString();
+      const tx = await new TopicCreateTransaction().execute(this.client);
+      const receipt = await tx.getReceipt(this.client);
+      this.topicId = receipt.topicId.toString();
+      console.log(`✅ Topic created with ID: ${this.topicId}`);
+      return this.topicId;
     } catch (error) {
-      console.error("❌ Erreur création topic:", error);
+      console.error("❌ Error creating topic:", error);
       throw error;
     }
   }
 
   async submitMessage(message) {
-    // Mode simulation si pas de client
-    if (!this.client || !this.topicId) {
-      console.log("⚠️ Mode simulation Hedera - Message non envoyé");
+    if (this.simulation || !this.topicId) {
+      console.log("⚠️ Simulation mode - message not sent");
       return {
         status: "SIMULATED",
         topicId: this.topicId || "0.0.SIMULATED",
@@ -67,40 +67,28 @@ class HederaClient {
         timestamp: new Date().toISOString()
       };
     }
-    const privateKeyStr = PrivateKey.fromStringECDSA(process.env.HEDERA_PRIVATE_KEY);
     try {
-      // 1️⃣ Créer la transaction
-      let tx = new TopicMessageSubmitTransaction()
+      const tx = await new TopicMessageSubmitTransaction()
         .setTopicId(this.topicId)
-        .setMessage(message);
-
-      // 2️⃣ Geler (préparer la transaction pour signature)
-      tx = await tx.freezeWith(this.client);
-
-      // 3️⃣ Signer avec la privateKey
-      tx = await tx.sign(privateKeyStr);
-
-      // 4️⃣ Exécuter sur le réseau
-      const transaction = await tx.execute(this.client);
-
-
-      const receipt = await transaction.getReceipt(this.client);
-
-      console.log("✅ Message envoyé sur Hedera");
-
+        .setMessage(message)
+        .freezeWith(this.client)
+        .sign(PrivateKey.fromStringDer(this.privateKey));
+      const submitMsgTxSubmit = await tx.execute(this.client);
+      const receipt = await submitMsgTxSubmit.getReceipt(this.client);
+      console.log("✅ Message sent to Hedera topic");
       return {
         status: receipt.status.toString(),
         topicId: this.topicId,
+        transactionId: submitMsgTxSubmit.transactionId.toString(),
         sequenceNumber: receipt.topicSequenceNumber?.toString(),
         timestamp: new Date().toISOString()
       };
     } catch (error) {
-      console.error("❌ Erreur Hedera submission:", error);
-
-      // Retourner une réponse simulée en cas d'erreur
+      console.error("❌ Error submitting message:", error);
       return {
         status: "ERROR",
         topicId: this.topicId,
+        transactionId: null,
         error: error.message,
         timestamp: new Date().toISOString()
       };
@@ -108,16 +96,17 @@ class HederaClient {
   }
 
   async getBalance() {
-    if (!this.client) {
-      return "Mode simulation";
+    if (this.simulation) {
+      return "Simulation mode";
     }
-
     try {
-      const balance = await this.client.getAccountBalance(this.client.operatorAccountId);
+      const query = new AccountBalanceQuery().setAccountId(this.accountId);
+      const balance = await query.execute(this.client);
+      console.log("The hbar account balance for this account is " + balance.hbars);
       return balance.hbars.toString();
     } catch (error) {
-      console.error("❌ Erreur balance:", error);
-      return "Erreur";
+      console.error("❌ Error fetching balance:", error);
+      return "Error";
     }
   }
 }

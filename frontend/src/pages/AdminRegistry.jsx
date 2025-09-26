@@ -564,11 +564,11 @@ const AdminRegistry = () => {
 
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => window.open(`https://hashscan.io/mainnet/transaction/${item.transactionId}`, '_blank')}
+                        onClick={() => window.open(`https://hashscan.io/testnet/transaction/${item.transactionId}`, '_blank')}
                         className="flex items-center gap-1 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                       >
                         <ExternalLink className="h-4 w-4" />
-                        HashScan
+                        HashScan Testnet
                       </button>
 
                       <button

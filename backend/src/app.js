@@ -9,6 +9,7 @@ const patientRoutes = require('./routes/patientRoutes');
 const accessRoutes = require('./routes/accessRoutes');
 const errorHandler = require('./middleware/errorHandler');
 const pharmacyRoutes = require('./routes/pharmacyRoutes');
+const monitoringRoutes = require('./routes/monitoringRoutes');
 const websocketMiddleware = require('./middleware/websocket');
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/pharmacy', pharmacyRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/access-requests', accessRoutes);
 app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/monitoring', monitoringRoutes);
 // Error handling
 app.use(errorHandler);
 
