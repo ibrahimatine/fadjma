@@ -1,5 +1,6 @@
 const { MedicalRecord, BaseUser, MedicalRecordAccessRequest, Prescription } = require('../models');
 const hederaService = require('../services/hederaService');
+const medicalRecordService = require('../services/medicalRecordService'); // Add this line
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
 
@@ -16,7 +17,7 @@ exports.getAll = async (req, res) => {
     } else if (req.user.role === 'doctor') {
       if (patientId) {
         // Check if doctor has access to this specific patient
-        const hasAccess = await MedicalRecordAccessRequest.findOne({
+        const hasAccessViaRequest = await MedicalRecordAccessRequest.findOne({
           where: {
             patientId,
             requesterId: req.user.id,
@@ -28,7 +29,16 @@ exports.getAll = async (req, res) => {
           }
         });
 
-        if (hasAccess) {
+        // Check if doctor created this patient
+        const hasAccessViaCreation = await BaseUser.findOne({
+          where: {
+            id: patientId,
+            createdByDoctorId: req.user.id,
+            role: 'patient'
+          }
+        });
+
+        if (hasAccessViaRequest || hasAccessViaCreation) {
           where.patientId = patientId;
         } else {
           // No access to this patient, return empty results
@@ -40,7 +50,7 @@ exports.getAll = async (req, res) => {
           });
         }
       } else {
-        // Get all patients the doctor has access to
+        // Get all patients the doctor has access to via access requests
         const accessiblePatients = await MedicalRecordAccessRequest.findAll({
           where: {
             requesterId: req.user.id,
@@ -53,10 +63,24 @@ exports.getAll = async (req, res) => {
           attributes: ['patientId']
         });
 
-        const patientIds = accessiblePatients.map(access => access.patientId);
+        // Get all patients created directly by this doctor
+        const createdPatients = await BaseUser.findAll({
+          where: {
+            createdByDoctorId: req.user.id,
+            role: 'patient'
+          },
+          attributes: ['id']
+        });
 
-        if (patientIds.length > 0) {
-          where.patientId = { [Op.in]: patientIds };
+        // Combine both lists of patient IDs
+        const patientIdsFromRequests = accessiblePatients.map(access => access.patientId);
+        const patientIdsFromCreation = createdPatients.map(patient => patient.id);
+
+        // Remove duplicates by using Set
+        const allPatientIds = [...new Set([...patientIdsFromRequests, ...patientIdsFromCreation])];
+
+        if (allPatientIds.length > 0) {
+          where.patientId = { [Op.in]: allPatientIds };
         } else {
           // No access to any patients, return empty results
           return res.json({
@@ -568,5 +592,16 @@ exports.getPrescriptionsByRecordId = async (req, res) => {
       message: 'Erreur serveur lors de la récupération des prescriptions',
       error: error.message
     });
+  }
+};
+
+exports.getDoctorStats = async (req, res) => {
+  try {
+    const { id: doctorId } = req.user;
+    const stats = await medicalRecordService.getDoctorStats(doctorId);
+    res.status(200).json(stats);
+  } catch (error) {
+    console.error('Error fetching doctor stats:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

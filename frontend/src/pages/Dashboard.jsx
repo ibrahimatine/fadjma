@@ -7,7 +7,7 @@ import DoctorDashboard from "../components/dashboard/DoctorDashboard";
 import PatientDashboard from "../components/dashboard/PatientDashboard";
 import PharmacistDashboard from "../components/dashboard/PharmacistDashboard";
 import LoadingSpinner from "../components/common/LoadingSpinner";
-import { medicalRecordService } from "../services/medicalRecordService";
+import { userService } from "../services/userService";
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -15,6 +15,8 @@ const Dashboard = () => {
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [doctorStats, setDoctorStats] = useState({});
+  const [patientStats, setPatientStats] = useState({});
 
   // pagination states
   const [page, setPage] = useState(1);
@@ -26,7 +28,19 @@ const Dashboard = () => {
     verified: 0,
     pending: 0,
   });
+  const fetchUserStats = useCallback(async () => {
+    if (user?.role != "doctor") {
+      return;
+    }
+    const response = await userService.getDoctorStats();
+    console.log("Patient stats response:", response);
 
+    if (response.success) {
+      setDoctorStats(response.data || {});
+    } else {
+      toast.error("Impossible de récupérer les statistiques du médecin.");
+    }
+  }, [user?.role, user?.id]);
 
   // fetch accessible patients only - ONLY for doctors
   const fetchRecords = useCallback(async (p = 1, append = false) => {
@@ -39,14 +53,16 @@ const Dashboard = () => {
     try {
       if (!append) setLoading(true);
 
-      // Récupérer les patients avec accès via l'endpoint des dossiers groupés
-      const response = await medicalRecordService.getGroupedByPatient(p, PAGE_SIZE);
-
-      if (response.status === 200) {
-        const patientsData = response.data.patients || [];
-        // Extraire juste les patients depuis les données groupées
-        const fetched = patientsData.map(pd => pd.patient);
-
+      // Récupérer tous les patients accessibles (avec ou sans dossiers médicaux)
+      const response = await fetch('/api/patients/accessible-patients', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const fetched = data.data.patients || [];
         if (append) {
           setPatients((prev) => {
             // éviter les doublons si le backend renvoie des éléments déjà présents
@@ -58,20 +74,18 @@ const Dashboard = () => {
           setPatients(fetched);
         }
 
-        // pagination: détecter s'il y a encore des pages
-        if (Array.isArray(fetched) && fetched.length < PAGE_SIZE) {
-          setHasMore(false);
-        } else {
-          setHasMore(true);
-        }
+        // Pour la pagination, on récupère tous les patients en une fois pour simplifier
+        setHasMore(false);
 
-        // Stats : calculer verified (heuristique)
+        // Stats basées sur les patients accessibles
         const total = fetched.length;
         const verified = fetched.filter((p) => p.isVerified || p.verified || p.hederaTimestamp).length;
+        const unclaimed = doctorStats.pendingRecords || 0; // patients non réclamés
+
         setStats({
           total,
           verified,
-          pending: Math.max(0, total - verified),
+          pending: unclaimed, // Les patients non réclamés sont "en attente"
         });
       } else {
         setPatients([]);
@@ -90,6 +104,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     // initial load - seulement pour les médecins
+    fetchUserStats();
     if (user?.role === "doctor") {
       setPage(1);
       fetchRecords(1, false);
@@ -165,7 +180,7 @@ const Dashboard = () => {
   if (loading && page === 1) {
     return <LoadingSpinner text="Chargement du dashboard..." />;
   }
-
+  console.log("Dashboard render - user:", user, "patients:", patients);
   return (
     <DashboardLayout
       loading={loading}

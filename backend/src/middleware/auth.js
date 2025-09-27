@@ -39,6 +39,14 @@ module.exports = async (req, res, next) => {
       return res.status(401).json({ message: 'User not found or inactive' });
     }
 
+    // Prevent unclaimed patients from authenticating
+    if (baseUser.isUnclaimed) {
+      return res.status(401).json({
+        message: 'Account not activated. Please complete registration using your patient identifier.',
+        code: 'UNCLAIMED_PATIENT'
+      });
+    }
+
     // Get complete user data with profile
     const user = await getUserWithProfile(baseUser);
     req.user = user;

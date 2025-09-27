@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const recordController = require('../controllers/recordController');
 const auth = require('../middleware/auth');
+const authorize = require('../middleware/authorize'); // Add this line
 const { body } = require('express-validator');
 
 // Validation
@@ -14,6 +15,13 @@ const recordValidation = [
 
 // All routes require authentication
 router.use(auth);
+
+// Get doctor dashboard statistics
+router.get(
+  '/stats',
+  authorize(['doctor']), // Only doctors can access these stats
+  recordController.getDoctorStats
+);
 
 // Routes
 router.get('/grouped-by-patient', recordController.getGroupedByPatient);

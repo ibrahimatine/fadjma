@@ -10,9 +10,11 @@ import CreateMedicalRecord from './pages/CreateMedicalRecord';
 import PatientMedicalRecordsView from './components/patient/PatientMedicalRecordsView';
 import AdminRegistry from './pages/AdminRegistry';
 import HistoryView from './pages/HistoryView';
+import PatientLinkForm from './components/auth/PatientLinkForm';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import PatientRecordGuard from './components/auth/PatientRecordGuard';
 import Header from './components/common/Header';
+import Footer from './components/common/Footer';
 import websocketService from './services/websocketService';
 
 function App() {
@@ -47,11 +49,13 @@ function App() {
   }, [user, token]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {user && <Header />}
-      <Routes>
+      <main className="flex-1">
+        <Routes>
         <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
-        <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+        <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
+        <Route path="/link-patient" element={user ? <Navigate to="/dashboard" /> : <PatientLinkForm />} />
         <Route element={<ProtectedRoute allowedRoles={["patient"]} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/records" element={<Records />} />
@@ -82,7 +86,9 @@ function App() {
           <Route path="/history" element={<HistoryView />} />
         </Route>
         <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
-      </Routes>
+        </Routes>
+      </main>
+      <Footer />
     </div>
   );
 }

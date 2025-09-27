@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { 
-  Shield, 
-  Mail, 
-  Lock, 
-  LogIn, 
-  Eye, 
-  EyeOff, 
-  User, 
-  Stethoscope, 
+import {
+  Shield,
+  Mail,
+  Lock,
+  LogIn,
+  Eye,
+  EyeOff,
+  User,
+  Stethoscope,
   Building2,
   AlertCircle,
   CheckCircle,
-  ArrowRight,
-  Fingerprint
+  ArrowRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -266,13 +265,29 @@ const LoginForm = () => {
                 <div className="mt-6 text-center">
                   <p className="text-gray-600">
                     Nouveau sur MedChain ?{' '}
-                    <Link 
-                      to="/register" 
+                    <Link
+                      to="/register"
                       className="text-blue-600 hover:text-blue-700 font-medium"
                     >
                       Créer un compte
                     </Link>
                   </p>
+                </div>
+
+                {/* Lien pour identifiant patient */}
+                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="text-center">
+                    <p className="text-xs text-blue-700 mb-2">
+                      Votre médecin vous a donné un identifiant patient ?
+                    </p>
+                    <Link
+                      to="/link-patient"
+                      className="inline-flex items-center text-blue-600 hover:text-blue-700 font-medium text-sm"
+                    >
+                      <User className="h-4 w-4 mr-1" />
+                      Lier mon identifiant
+                    </Link>
+                  </div>
                 </div>
               </div>
 

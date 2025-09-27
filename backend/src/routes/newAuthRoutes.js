@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/newAuthController');
+const patientController = require('../controllers/patientContoller');
 const { body } = require('express-validator');
 
 // Validation rules
@@ -67,10 +68,26 @@ const loginValidation = [
   body('password').notEmpty()
 ];
 
+const linkPatientValidation = [
+  body('patientIdentifier')
+    .matches(/^PAT-\d{8}-[A-F0-9]{4}$/)
+    .withMessage('Invalid patient identifier format'),
+  body('email').isEmail().normalizeEmail(),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('phoneNumber')
+    .optional()
+    .matches(/^[+]?[0-9\s\-()]{0,20}$/i)
+    .withMessage('Invalid phone number format')
+];
+
 // Routes
 router.post('/register', registerValidation, authController.register);
 router.post('/login', loginValidation, authController.login);
 router.get('/me', authController.getCurrentUser);
 router.post('/logout', authController.logout);
+
+// Patient identifier routes (public)
+router.get('/verify-patient-identifier/:identifier', patientController.verifyPatientIdentifier);
+router.post('/link-patient-identifier', linkPatientValidation, patientController.linkPatientIdentifier);
 
 module.exports = router;

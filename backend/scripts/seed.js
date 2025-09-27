@@ -1,5 +1,6 @@
 require('dotenv').config();
-const { sequelize, BaseUser, Patient, Doctor, Pharmacy, MedicalRecord, Prescription } = require('../src/models');
+const { sequelize, BaseUser, Patient, Doctor, Pharmacy, MedicalRecord, Prescription, MedicalRecordAccessRequest } = require('../src/models');
+const PatientIdentifierService = require('../src/services/patientIdentifierService');
 
 async function seedDatabase() {
   try {
@@ -260,6 +261,70 @@ async function seedDatabase() {
     const patientMamadou = baseUsers[6];
     const patientAwa = baseUsers[7];
     const patientIbrahim = baseUsers[8];
+
+    // Créer des profils patients non réclamés pour démonstration
+    console.log('🔄 Création de profils patients non réclamés...');
+
+    const unclaimedPatients = [];
+
+    // Profil créé par Dr. Martin
+    const unclaimedPatient1 = await PatientIdentifierService.createUnclaimedPatient({
+      firstName: 'Sophie',
+      lastName: 'Diallo',
+      dateOfBirth: new Date('1992-08-14'),
+      gender: 'female',
+      phoneNumber: '+221 77 999 1111',
+      address: '456 Rue Victor Hugo, Dakar',
+      emergencyContactName: 'Omar Diallo',
+      emergencyContactPhone: '+221 77 999 2222',
+      socialSecurityNumber: 'SSN123456ABC'
+    }, drMartin.id);
+
+    // Profil créé par Dr. Diop
+    const unclaimedPatient2 = await PatientIdentifierService.createUnclaimedPatient({
+      firstName: 'Aliou',
+      lastName: 'Ndoye',
+      dateOfBirth: new Date('1987-03-22'),
+      gender: 'male',
+      phoneNumber: '+221 76 888 3333',
+      address: '789 Avenue Blaise Diagne, Dakar',
+      emergencyContactName: 'Mariam Ndoye',
+      emergencyContactPhone: '+221 76 888 4444'
+    }, drDiop.id);
+
+    // Profil créé par Dr. Fall (pédiatre)
+    const unclaimedPatient3 = await PatientIdentifierService.createUnclaimedPatient({
+      firstName: 'Aminata',
+      lastName: 'Sarr',
+      dateOfBirth: new Date('2018-12-05'), // Enfant
+      gender: 'female',
+      address: '321 Rue de la Médina, Dakar',
+      emergencyContactName: 'Binta Sarr (Mère)',
+      emergencyContactPhone: '+221 78 777 5555'
+    }, drFall.id);
+
+    unclaimedPatients.push(unclaimedPatient1, unclaimedPatient2, unclaimedPatient3);
+
+    // Créer automatiquement les demandes d'accès approuvées pour les médecins
+    const accessRequests = [];
+    for (const patient of unclaimedPatients) {
+      const accessRequest = await MedicalRecordAccessRequest.create({
+        patientId: patient.id,
+        requesterId: patient.createdByDoctorId,
+        reason: 'Médecin créateur du profil patient',
+        accessLevel: 'write',
+        status: 'approved',
+        reviewedBy: patient.id, // Auto-approuvé
+        reviewedAt: new Date()
+      });
+      accessRequests.push(accessRequest);
+    }
+
+    console.log('✅ Profils patients non réclamés créés:');
+    unclaimedPatients.forEach((patient, index) => {
+      const doctor = [drMartin, drDiop, drFall].find(d => d.id === patient.createdByDoctorId);
+      console.log(`   👤 ${patient.firstName} ${patient.lastName} - ${patient.patientIdentifier} (Dr. ${doctor.firstName} ${doctor.lastName})`);
+    });
     
     console.log('🔄 Création des dossiers médicaux...');
     
@@ -471,12 +536,66 @@ async function seedDatabase() {
       }
     ]);
     
+    // Créer quelques dossiers médicaux pour les patients non réclamés
+    const recordsUnclaimed = await MedicalRecord.bulkCreate([
+      {
+        patientId: unclaimedPatient1.id, // Sophie Diallo
+        doctorId: drMartin.id,
+        type: 'consultation',
+        title: 'Consultation initiale - Douleurs abdominales',
+        description: 'Patient présente des douleurs abdominales récurrentes depuis 2 semaines.',
+        diagnosis: 'Syndrome de l\'intestin irritable probable. Recommandations diététiques.',
+        prescription: {
+          medications: [
+            { name: 'Spasmocalm', dosage: '80mg', frequency: '2x/jour pendant 1 semaine' }
+          ]
+        },
+        metadata: {
+          symptoms: ['douleurs abdominales', 'ballonnements'],
+          patientIdentifier: unclaimedPatient1.patientIdentifier
+        }
+      },
+      {
+        patientId: unclaimedPatient2.id, // Aliou Ndoye
+        doctorId: drDiop.id,
+        type: 'consultation',
+        title: 'Consultation cardiologique - Hypertension nouvellement diagnostiquée',
+        description: 'Dépistage systématique révélant une hypertension artérielle.',
+        diagnosis: 'Hypertension artérielle grade 1. Mise en place du traitement.',
+        prescription: {
+          medications: [
+            { name: 'Losartan', dosage: '50mg', frequency: '1x/jour matin' }
+          ]
+        },
+        metadata: {
+          bloodPressure: '155/90',
+          patientIdentifier: unclaimedPatient2.patientIdentifier
+        }
+      },
+      {
+        patientId: unclaimedPatient3.id, // Aminata Sarr (enfant)
+        doctorId: drFall.id,
+        type: 'vaccination',
+        title: 'Vaccination de routine - ROR',
+        description: 'Vaccination ROR (Rougeole-Oreillons-Rubéole) selon calendrier vaccinal.',
+        diagnosis: 'Vaccination effectuée. Enfant en bonne santé.',
+        prescription: null,
+        metadata: {
+          vaccine: 'ROR',
+          age: '5 ans',
+          weight: '18kg',
+          patientIdentifier: unclaimedPatient3.patientIdentifier
+        }
+      }
+    ]);
+
     console.log('✅ Dossiers médicaux créés:');
     console.log(`   - ${recordsJean.length} dossiers pour Jean Dupont`);
     console.log(`   - ${recordsFatou.length} dossiers pour Fatou Sall`);
     console.log(`   - ${recordsMamadou.length} dossiers pour Mamadou Ba`);
     console.log(`   - ${recordsAwa.length} dossiers pour Awa Ndiaye`);
     console.log(`   - ${recordsIbrahim.length} dossiers pour Ibrahim Diallo`);
+    console.log(`   - ${recordsUnclaimed.length} dossiers pour patients non réclamés`);
     
     // Simuler l'ancrage Hedera pour quelques records
     console.log('🔄 Simulation ancrage Hedera...');
@@ -666,6 +785,13 @@ async function seedDatabase() {
     console.log('  📧 awa.ndiaye@demo.com      🔑 Demo2024!  (2 dossiers médicaux)');
     console.log('  📧 ibrahim.diallo@demo.com  🔑 Demo2024!  (2 dossiers médicaux)');
 
+    console.log('\n🏥 PATIENTS NON RÉCLAMÉS (3 profils - pour test identifiants):');
+    console.log('----------------------------------------');
+    unclaimedPatients.forEach(patient => {
+      const doctor = [drMartin, drDiop, drFall].find(d => d.id === patient.createdByDoctorId);
+      console.log(`  🆔 ${patient.patientIdentifier} - ${patient.firstName} ${patient.lastName} (Dr. ${doctor.firstName})`);
+    });
+
     console.log('\n🏥 PHARMACIES (2 comptes):');
     console.log('----------------------------------------');
     console.log('  📧 pharmacie.centrale@fadjma.com  🔑 Demo2024!');
@@ -677,13 +803,30 @@ async function seedDatabase() {
 
     console.log('\n📊 STATISTIQUES:');
     console.log('----------------------------------------');
-    console.log(`  👥 Total utilisateurs: ${baseUsers.length}`);
-    console.log(`  📋 Total dossiers médicaux: ${recordsJean.length + recordsFatou.length + recordsMamadou.length + recordsAwa.length + recordsIbrahim.length}`);
+    console.log(`  👥 Total utilisateurs: ${baseUsers.length + unclaimedPatients.length}`);
+    console.log(`  👤 Patients réclamés: ${baseUsers.filter(u => u.role === 'patient').length}`);
+    console.log(`  🏥 Patients non réclamés: ${unclaimedPatients.length}`);
+    console.log(`  📋 Total dossiers médicaux: ${recordsJean.length + recordsFatou.length + recordsMamadou.length + recordsAwa.length + recordsIbrahim.length + recordsUnclaimed.length}`);
     console.log(`  💊 Total prescriptions: ${prescriptions.length}`);
     console.log(`  🔐 Dossiers ancrés Hedera: ${recordsToAnchor.length}`);
     console.log(`  🏥 Spécialités médicales: 4`);
     console.log(`  💊 Pharmacies partenaires: 2`);
     console.log(`  🎯 Prescriptions avec matricules: ${prescriptions.filter(p => p.matricule).length}`);
+    console.log(`  🆔 Identifiants patients générés: ${unclaimedPatients.length}`);
+    console.log(`  🔑 Demandes d'accès auto-approuvées: ${accessRequests.length}`);
+
+    console.log('\n🧪 IDENTIFIANTS PATIENTS POUR TESTS:');
+    console.log('----------------------------------------');
+    console.log('Pour tester le système d\'identifiants patients :');
+    console.log('1. Connectez-vous en tant que médecin');
+    console.log('2. Cliquez sur "Nouveau dossier" → "Créer un profil patient"');
+    console.log('3. Utilisez un identifiant généré pour lier un compte patient :');
+    unclaimedPatients.forEach(patient => {
+      console.log(`   🔗 ${patient.patientIdentifier} → ${patient.firstName} ${patient.lastName}`);
+    });
+    console.log('\n4. Allez sur /link-patient pour tester la liaison');
+    console.log('5. Créez un compte patient avec email/mot de passe');
+    console.log('6. Le compte sera automatiquement lié au dossier médical');
 
     console.log('\n✅ Base de données enrichie prête pour les tests!');
     console.log('='.repeat(70));

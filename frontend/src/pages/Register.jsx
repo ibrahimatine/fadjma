@@ -398,6 +398,59 @@ const Register = () => {
             </button>
           </form>
 
+          {/* Patient identifier link banner - Plus prominent */}
+          <div className="mt-6 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl shadow-sm">
+            <div className="text-center">
+              <div className="flex justify-center mb-3">
+                <div className="p-2 bg-blue-100 rounded-full">
+                  <User className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                Votre médecin vous a créé un profil ?
+              </h3>
+              <p className="text-sm text-blue-700 mb-4">
+                Si vous avez reçu un <strong>identifiant patient</strong> de votre médecin
+                (format: PAT-AAAAMMJJ-XXXX), utilisez-le pour créer votre compte et accéder
+                immédiatement à votre dossier médical.
+              </p>
+              <div className="space-y-3">
+                <Link
+                  to="/link-patient"
+                  className="inline-flex items-center px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+                >
+                  <User className="h-5 w-5 mr-2" />
+                  J'ai un identifiant patient
+                </Link>
+                <div className="text-xs text-blue-600">
+                  <p>Exemple d'identifiant : PAT-20241201-A7B9</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Séparateur "OU" */}
+          <div className="mt-6 mb-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-4 bg-white text-gray-500 font-medium">OU</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Titre pour inscription classique */}
+          <div className="text-center mb-4">
+            <h3 className="text-lg font-medium text-gray-700">
+              Créer un nouveau compte patient
+            </h3>
+            <p className="text-sm text-gray-500">
+              Si vous n'avez pas d'identifiant de votre médecin
+            </p>
+          </div>
+
           <p className="mt-6 text-center text-sm text-gray-600">
             Déjà un compte?{' '}
             <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">

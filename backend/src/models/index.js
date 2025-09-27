@@ -1,5 +1,4 @@
 const { sequelize } = require('../config/database');
-const User = require('./User'); // Ancien modèle - sera supprimé
 const BaseUser = require('./BaseUser');
 const Patient = require('./Patient');
 const Doctor = require('./Doctor');
@@ -46,7 +45,6 @@ MedicalRecordAccessRequest.belongsTo(BaseUser, { as: 'reviewer', foreignKey: 're
 
 module.exports = {
   sequelize,
-  User, // Ancien modèle - conservé pour compatibilité temporaire
   BaseUser,
   Patient,
   Doctor,

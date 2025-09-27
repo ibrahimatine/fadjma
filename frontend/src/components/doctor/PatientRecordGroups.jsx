@@ -80,7 +80,7 @@ const PatientRecordGroups = () => {
     setLoading(true);
     try {
       const allPatientsResponse = await patientService.getAll();
-      const patients = allPatientsResponse?.patients || allPatientsResponse || [];
+      const patients = allPatientsResponse?.data || allPatientsResponse || [];
       setAllPatients(patients);
 
       const groupedResponse = await medicalRecordService.getGroupedByPatient(1, 50);
@@ -217,7 +217,7 @@ const PatientRecordGroups = () => {
   // Submit access request
   const handleSubmitAccessRequest = async (requestData) => {
     try {
-      const response = await accessService.requestReadAccess(requestData.patientId, requestData.reason);
+      const response = await accessService.requestReadAccess(requestData.patientId, requestData.reason, requestData.accessLevel);
       if (response.success) {
         toast.success("Demande d'accès envoyée avec succès");
         setShowAccessModal(false);

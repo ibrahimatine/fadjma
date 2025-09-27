@@ -22,7 +22,7 @@ class HederaService {
         // Generate hash
         const hash = hashService.generateRecordHash(record);
 
-        // Prepare message for Hedera
+        // Prepare message for Hedera 
         const message = JSON.stringify({
           recordId: record.id,
           hash: hash,

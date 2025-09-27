@@ -102,6 +102,23 @@ class UserService {
       };
     }
   }
-}
 
+  async getDoctorStats() {
+    try {
+      const response = await this.api.get(`/records/stats`);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error fetching doctor stats:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Error fetching doctor stats',
+        error: error
+      };
+    }
+  }
+}
+ 
 export const userService = new UserService();

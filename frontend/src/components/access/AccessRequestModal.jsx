@@ -130,24 +130,6 @@ const AccessRequestModal = ({
             </p>
           </div>
 
-          {/* Expiration */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Date d'expiration
-            </label>
-            <input
-              type="date"
-              name="expiresAt"
-              value={formData.expiresAt}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-              min={new Date().toISOString().split('T')[0]}
-              disabled={loading}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              L'accès sera automatiquement révoqué à cette date
-            </p>
-          </div>
 
           {/* Patient Info */}
           <div className="bg-gray-50 rounded-lg p-4">

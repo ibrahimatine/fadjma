@@ -21,6 +21,17 @@ class AccessController {
       }
 
       const { patientId, reason, accessLevel = 'read', expiresAt } = req.body;
+      // Log the incoming request details
+      console.log("<=============================================>")
+      console.log("<=============================================>")
+      console.log("New access request received:");
+      console.log("Patient ID:", patientId);
+      console.log("Reason:", reason);
+      console.log("Access Level:", accessLevel);
+      console.log("Expires At:", expiresAt);
+      console.log("<=============================================>")
+      console.log("<=============================================>")
+
       const requesterId = req.user.id;
 
       // Prevent self-requests (unless admin)

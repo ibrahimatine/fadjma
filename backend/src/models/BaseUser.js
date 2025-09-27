@@ -10,7 +10,7 @@ const BaseUser = sequelize.define('BaseUser', {
   },
   email: {
     type: DataTypes.STRING,
-    allowNull: false,
+    allowNull: true, // Allow null for unclaimed patient profiles
     unique: true,
     validate: {
       isEmail: true
@@ -18,7 +18,7 @@ const BaseUser = sequelize.define('BaseUser', {
   },
   password: {
     type: DataTypes.STRING,
-    allowNull: false
+    allowNull: true // Allow null for unclaimed patient profiles
   },
   firstName: {
     type: DataTypes.STRING,
@@ -56,15 +56,70 @@ const BaseUser = sequelize.define('BaseUser', {
   address: {
     type: DataTypes.STRING,
     allowNull: true
+  },
+  // Patient identifier for unclaimed profiles
+  patientIdentifier: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true,
+    validate: {
+      len: [8, 50]
+    }
+  },
+  // Track if this is an unclaimed patient profile
+  isUnclaimed: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  // Doctor who created this unclaimed profile
+  createdByDoctorId: {
+    type: DataTypes.UUID,
+    allowNull: true
+  },
+  // Additional patient info for unclaimed profiles
+  dateOfBirth: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+  gender: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: {
+      isIn: [['male', 'female', 'other']]
+    }
+  },
+  emergencyContactName: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  emergencyContactPhone: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    validate: {
+      is: {
+        args: /^[+]?[0-9\s\-()]{0,20}$/i,
+        msg: 'Le numéro de téléphone d\'urgence ne peut contenir que des chiffres, espaces, tirets et parenthèses'
+      },
+      len: {
+        args: [0, 20],
+        msg: 'Le numéro de téléphone d\'urgence ne peut pas dépasser 20 caractères'
+      }
+    }
+  },
+  socialSecurityNumber: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 }, {
   timestamps: true,
   hooks: {
     beforeCreate: async (user) => {
-      user.password = await bcrypt.hash(user.password, 10);
+      if (user.password) {
+        user.password = await bcrypt.hash(user.password, 10);
+      }
     },
     beforeUpdate: async (user) => {
-      if (user.changed('password')) {
+      if (user.changed('password') && user.password) {
         user.password = await bcrypt.hash(user.password, 10);
       }
     }
@@ -72,6 +127,9 @@ const BaseUser = sequelize.define('BaseUser', {
 });
 
 BaseUser.prototype.validatePassword = async function(password) {
+  if (!this.password) {
+    return false; // Unclaimed profiles cannot authenticate
+  }
   return bcrypt.compare(password, this.password);
 };
 

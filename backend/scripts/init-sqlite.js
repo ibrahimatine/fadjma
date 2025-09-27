@@ -24,12 +24,18 @@ async function initSQLite() {
     console.log('🔧 Configuration du système de matricules...');
     await setupMatriculeSystem();
 
-    console.log('✅ Système de matricules configuré !');
+    // Configuration du système d'identifiants patients
+    console.log('🔧 Configuration du système d\'identifiants patients...');
+    await setupPatientIdentifierSystem();
+
+    console.log('✅ Systèmes configurés !');
     console.log('\n📋 Fonctionnalités activées:');
     console.log('   ✅ Génération automatique de matricules pour nouvelles prescriptions');
     console.log('   ✅ API de recherche par matricule pour pharmaciens');
     console.log('   ✅ Dashboard pharmacien avec onglets de recherche');
     console.log('   ✅ Sécurité et audit des accès');
+    console.log('   ✅ Système d\'identifiants patients pour profils non réclamés');
+    console.log('   ✅ Liaison d\'identifiants pour création de comptes patients');
     console.log('\n📝 Prochaines étapes:');
     console.log('   1. npm run seed (pour données de test)');
     console.log('   2. npm start (démarrer le serveur)');
@@ -153,6 +159,177 @@ async function testMatriculeUniqueness() {
   }
 }
 
+async function setupPatientIdentifierSystem() {
+  try {
+    // Vérifier que la table BaseUsers est créée
+    const tables = await sequelize.getQueryInterface().showAllTables();
+
+    if (!tables.includes('BaseUsers')) {
+      throw new Error('Table BaseUsers non trouvée');
+    }
+
+    // Vérifier les colonnes du système d'identifiants patients
+    const baseUserTable = await sequelize.getQueryInterface().describeTable('BaseUsers');
+
+    const requiredColumns = [
+      'patientIdentifier',
+      'isUnclaimed',
+      'createdByDoctorId',
+      'dateOfBirth',
+      'gender',
+      'emergencyContactName',
+      'emergencyContactPhone',
+      'socialSecurityNumber'
+    ];
+
+    for (const column of requiredColumns) {
+      if (!baseUserTable[column]) {
+        console.log(`   ⚠️  Colonne ${column} manquante, ajout en cours...`);
+
+        let columnDefinition;
+        switch (column) {
+          case 'patientIdentifier':
+            columnDefinition = {
+              type: sequelize.Sequelize.DataTypes.STRING,
+              allowNull: true,
+              unique: true
+            };
+            break;
+          case 'isUnclaimed':
+            columnDefinition = {
+              type: sequelize.Sequelize.DataTypes.BOOLEAN,
+              defaultValue: false
+            };
+            break;
+          case 'createdByDoctorId':
+            columnDefinition = {
+              type: sequelize.Sequelize.DataTypes.UUID,
+              allowNull: true
+            };
+            break;
+          case 'dateOfBirth':
+            columnDefinition = {
+              type: sequelize.Sequelize.DataTypes.DATEONLY,
+              allowNull: true
+            };
+            break;
+          case 'gender':
+            columnDefinition = {
+              type: sequelize.Sequelize.DataTypes.STRING,
+              allowNull: true
+            };
+            break;
+          case 'emergencyContactName':
+          case 'emergencyContactPhone':
+          case 'socialSecurityNumber':
+            columnDefinition = {
+              type: sequelize.Sequelize.DataTypes.STRING,
+              allowNull: true
+            };
+            break;
+          default:
+            columnDefinition = {
+              type: sequelize.Sequelize.DataTypes.STRING,
+              allowNull: true
+            };
+        }
+
+        await sequelize.getQueryInterface().addColumn('BaseUsers', column, columnDefinition);
+        console.log(`   ✅ Colonne ${column} ajoutée`);
+      } else {
+        console.log(`   ✅ Colonne ${column} présente`);
+      }
+    }
+
+    // Créer l'index unique pour les identifiants patients
+    try {
+      await sequelize.query('CREATE UNIQUE INDEX IF NOT EXISTS base_users_patient_identifier_unique ON BaseUsers(patientIdentifier);');
+      console.log('   ✅ Index unique créé pour les identifiants patients');
+    } catch (indexError) {
+      if (!indexError.message.includes('already exists')) {
+        console.warn('   ⚠️  Avertissement lors de la création de l\'index identifiants:', indexError.message);
+      } else {
+        console.log('   ✅ Index unique déjà existant pour les identifiants patients');
+      }
+    }
+
+    // Modifier la contrainte email pour permettre NULL
+    try {
+      // SQLite ne supporte pas ALTER COLUMN, on doit recréer la table si nécessaire
+      const emailColumn = baseUserTable.email;
+      if (emailColumn && emailColumn.allowNull === false) {
+        console.log('   ⚠️  Modification de la contrainte email pour permettre NULL...');
+        // Note: En production, il faudrait une migration appropriée
+        console.log('   ℹ️  La contrainte email sera gérée par les hooks du modèle');
+      }
+    } catch (emailError) {
+      console.warn('   ⚠️  Avertissement lors de la modification de la contrainte email:', emailError.message);
+    }
+
+    // Test de génération d'identifiant patient
+    await testPatientIdentifierGeneration();
+
+  } catch (error) {
+    console.error('❌ Erreur lors de la configuration des identifiants patients:', error);
+    throw error;
+  }
+}
+
+async function testPatientIdentifierGeneration() {
+  try {
+    console.log('   🧪 Test de génération d\'identifiant patient...');
+
+    // Test du format d'identifiant patient
+    const testDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const testRandom = crypto.randomBytes(2).toString('hex').toUpperCase();
+    const testIdentifier = `PAT-${testDate}-${testRandom}`;
+
+    // Vérifier le format
+    const identifierRegex = /^PAT-\d{8}-[A-F0-9]{4}$/;
+    if (!identifierRegex.test(testIdentifier)) {
+      throw new Error(`Format d'identifiant patient invalide: ${testIdentifier}`);
+    }
+
+    console.log(`   ✅ Format d'identifiant patient valide: ${testIdentifier}`);
+
+    // Test de l'unicité (simulé)
+    const uniquenessTest = await testPatientIdentifierUniqueness();
+    if (uniquenessTest) {
+      console.log('   ✅ Système d\'unicité des identifiants patients fonctionnel');
+    }
+
+  } catch (error) {
+    console.error('   ❌ Échec du test d\'identifiant patient:', error.message);
+    throw error;
+  }
+}
+
+async function testPatientIdentifierUniqueness() {
+  try {
+    // Générer quelques identifiants de test
+    const testIdentifiers = new Set();
+    const iterations = 10;
+
+    for (let i = 0; i < iterations; i++) {
+      const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const random = crypto.randomBytes(2).toString('hex').toUpperCase();
+      const identifier = `PAT-${date}-${random}`;
+
+      if (testIdentifiers.has(identifier)) {
+        console.warn(`   ⚠️  Collision détectée: ${identifier}`);
+        return false;
+      }
+
+      testIdentifiers.add(identifier);
+    }
+
+    return testIdentifiers.size === iterations;
+  } catch (error) {
+    console.error('Erreur lors du test d\'unicité des identifiants:', error);
+    return false;
+  }
+}
+
 // Fonction pour afficher des informations de debug
 async function displaySystemInfo() {
   try {
@@ -176,6 +353,15 @@ async function displaySystemInfo() {
     console.log('   🤖 Génération automatique via hook beforeCreate');
     console.log('   🔍 API recherche: /api/pharmacy/by-matricule/:matricule');
     console.log('   🛡️  Rate limiting: 50 requêtes/15min');
+
+    // Informations sur les identifiants patients
+    console.log('\n🏥 Configuration identifiants patients:');
+    console.log('   📋 Format: PAT-YYYYMMDD-XXXX');
+    console.log('   🔒 Champ unique avec index');
+    console.log('   👨‍⚕️ Création par médecins uniquement');
+    console.log('   🔗 API liaison: /api/auth/link-patient-identifier');
+    console.log('   ✅ API vérification: /api/auth/verify-patient-identifier/:identifier');
+    console.log('   🛡️  Rate limiting: 5 tentatives/15min');
 
   } catch (error) {
     console.warn('Impossible d\'afficher les informations système:', error.message);

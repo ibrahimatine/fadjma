@@ -6,6 +6,7 @@ class AccessService {
   // Create new access request
   async createAccessRequest(requestData) {
     try {
+      console.log('AccessService: createAccessRequest appelé avec:', requestData);
       const response = await api.post('/access-requests', requestData);
       return response.data;
     } catch (error) {
@@ -168,12 +169,12 @@ class AccessService {
   }
 
   // Quick request for read access
-  async requestReadAccess(patientId, reason = '') {
+  async requestReadAccess(patientId, reason = '', accessLevel = 'read') {
     try {
       const response = await this.createAccessRequest({
         patientId,
         reason: reason || 'Demande d\'accès pour consultation et modification',
-        accessLevel: 'write',
+        accessLevel,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
       });
       return response;
