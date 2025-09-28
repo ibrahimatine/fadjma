@@ -9,105 +9,87 @@ const {
 class HederaClient {
   constructor() {
     this.client = null;
-    this.topicId = process.env.HEDERA_TOPIC_ID || null;
-    this.accountId = process.env.HEDERA_ACCOUNT_ID || null;
-    this.privateKey = process.env.HEDERA_PRIVATE_KEY || null;
-    this.simulation = false;
+    // Topic ID fixe pour le testnet FADJMA
+    this.topicId = process.env.HEDERA_TOPIC_ID || process.env.HEDERA_ECDSA_TOPIC_ID || "0.0.6854064";
+    this.accountId = process.env.HEDERA_ACCOUNT_ID || process.env.HEDERA_ECDSA_ACCOUNT_ID || "0.0.6089195";
+    this.privateKey = process.env.HEDERA_PRIVATE_KEY || process.env.HEDERA_ECDSA_PRIVATE_KEY || null;
     this.init();
   }
 
   init() {
     // Utiliser les credentials ECDSA qui correspondent au topic créé
-    const accountId = process.env.HEDERA_ECDSA_ACCOUNT_ID;
-    const privateKey = process.env.HEDERA_ECDSA_PRIVATE_KEY;
+    const accountId = process.env.HEDERA_ECDSA_ACCOUNT_ID || this.accountId;
+    const privateKey = process.env.HEDERA_ECDSA_PRIVATE_KEY || this.privateKey;
 
-    if (!accountId || !privateKey) {
-      console.warn("⚠️ Hedera ECDSA credentials missing - simulation mode enabled");
-      this.simulation = true;
-      return;
+    if (!privateKey) {
+      throw new Error("❌ Hedera private key is required - no simulation mode allowed");
     }
 
     try {
       this.client = Client.forTestnet().setOperator(accountId, privateKey);
       this.accountId = accountId;
       this.privateKey = privateKey;
-      console.log("✅ Hedera client initialized for Testnet with ECDSA credentials");
+      console.log("✅ Hedera client initialized for Testnet (Production Mode)");
       console.log("   Account ID:", this.accountId);
-      console.log("   Topic ID:", this.topicId || "To be created");
+      console.log("   Topic ID:", this.topicId);
+      console.log("   Network: Hedera Testnet");
     } catch (error) {
       console.error("❌ Hedera client initialization error:", error.message);
-      this.simulation = true;
+      throw new Error(`Failed to initialize Hedera client: ${error.message}`);
     }
   }
 
   async createTopic() {
-    if (this.simulation) {
-      console.log("⚠️ Simulation mode: returning simulated topic ID");
-      return "0.0.SIMULATED";
-    }
-    try {
-      const tx = await new TopicCreateTransaction().execute(this.client);
-      const receipt = await tx.getReceipt(this.client);
-      this.topicId = receipt.topicId.toString();
-      console.log(`✅ Topic created with ID: ${this.topicId}`);
-      return this.topicId;
-    } catch (error) {
-      console.error("❌ Error creating topic:", error);
-      throw error;
-    }
+    console.log("ℹ️ Using existing topic:", this.topicId);
+    return this.topicId;
   }
 
   async submitMessage(message) {
-    if (this.simulation || !this.topicId) {
-      console.log("⚠️ Simulation mode - message not sent");
-      return {
-        status: "SIMULATED",
-        topicId: this.topicId || "0.0.SIMULATED",
-        transactionId: `SIMULATED_TX_${Math.random().toString(36).substring(2, 15)}`, // Unique simulated ID
-        sequenceNumber: Math.floor(Math.random() * 1000).toString(),
-        timestamp: new Date().toISOString()
-      };
+    if (!this.topicId) {
+      throw new Error("Topic ID is required for message submission");
     }
+
     try {
+      console.log(`📤 Submitting message to Hedera topic ${this.topicId}...`);
+
       const tx = await new TopicMessageSubmitTransaction()
         .setTopicId(this.topicId)
         .setMessage(message)
         .freezeWith(this.client)
         .sign(PrivateKey.fromStringDer(this.privateKey));
+
       const submitMsgTxSubmit = await tx.execute(this.client);
       const receipt = await submitMsgTxSubmit.getReceipt(this.client);
-      console.log("✅ Message sent to Hedera topic");
-      return {
-        status: receipt.status.toString(),
+
+      const result = {
+        status: "SUCCESS",
         topicId: this.topicId,
         transactionId: submitMsgTxSubmit.transactionId.toString(),
         sequenceNumber: receipt.topicSequenceNumber?.toString(),
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        consensusTimestamp: receipt.consensusTimestamp?.toString()
       };
+
+      console.log("✅ Message successfully submitted to Hedera testnet");
+      console.log("   Transaction ID:", result.transactionId);
+      console.log("   Sequence Number:", result.sequenceNumber);
+
+      return result;
     } catch (error) {
-      console.error("❌ Error submitting message:", error);
-      return {
-        status: "ERROR",
-        topicId: this.topicId,
-        transactionId: null,
-        error: error.message,
-        timestamp: new Date().toISOString()
-      };
+      console.error("❌ Error submitting message to Hedera:", error);
+      throw new Error(`Failed to submit message to Hedera: ${error.message}`);
     }
   }
 
   async getBalance() {
-    if (this.simulation) {
-      return "Simulation mode";
-    }
     try {
       const query = new AccountBalanceQuery().setAccountId(this.accountId);
       const balance = await query.execute(this.client);
-      console.log("The hbar account balance for this account is " + balance.hbars);
+      console.log("💰 Account balance:", balance.hbars.toString(), "HBAR");
       return balance.hbars.toString();
     } catch (error) {
       console.error("❌ Error fetching balance:", error);
-      return "Error";
+      throw new Error(`Failed to fetch balance: ${error.message}`);
     }
   }
 }

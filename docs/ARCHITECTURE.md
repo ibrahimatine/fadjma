@@ -27,7 +27,7 @@ FADJMA utilise une architecture moderne en 3 couches avec intégration blockchai
 ├─────────────────────────────────────────────────────────────┤
 │                    Data Layer                               │
 │  ┌─────────────────────────────────────────────────────────┤
-│  │ PostgreSQL/SQLite   │  Hedera Blockchain              │  │
+│  │ SQLite              │  Hedera Blockchain              │  │
 │  │ ├─ Users            │  ├─ Medical Records Hash        │  │
 │  │ ├─ Medical Records  │  ├─ Prescriptions Hash         │  │
 │  │ ├─ Access Requests  │  └─ Audit Trail                │  │
@@ -204,7 +204,7 @@ Response ← JSON ← Controller ← Service ← Model ← Database
 - **Node.js 18+** : Runtime
 - **Express.js** : Framework web
 - **Sequelize** : ORM
-- **PostgreSQL/SQLite** : Base de données
+- **SQLite** : Base de données
 - **JWT** : Authentification
 - **bcrypt** : Hachage mots de passe
 - **Hedera SDK** : Blockchain
@@ -493,7 +493,7 @@ Environment Variables:
 ```
 Frontend: Static hosting (Netlify, Vercel)
 Backend: Node.js server (PM2, Docker)
-Database: PostgreSQL (managed service)
+Database: SQLite (managed service)
 Blockchain: Hedera Mainnet/Testnet
 ```
 

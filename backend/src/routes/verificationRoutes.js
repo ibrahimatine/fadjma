@@ -5,6 +5,8 @@ const auth = require('../middleware/auth');
 const { MedicalRecord, Prescription } = require('../models');
 const hederaService = require('../services/hederaService');
 const hashscanService = require('../services/hashscanService');
+const hashService = require('../services/hashService');
+const mirrorNodeService = require('../services/mirrorNodeService');
 
 // Routes existantes (avec auth)
 router.post('/record/:id', auth, verificationController.verifyRecord);
@@ -26,7 +28,7 @@ router.get('/hashscan-info', (req, res) => {
   }
 });
 
-// GET /api/verify/record/:id - Vérifier un dossier médical (auth required)
+// GET /api/verify/record/:id - Vérifier un dossier médical avec HCS (auth required)
 router.get('/record/:id', auth, async (req, res) => {
   try {
     const record = await MedicalRecord.findByPk(req.params.id);
@@ -35,7 +37,10 @@ router.get('/record/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Dossier médical non trouvé' });
     }
 
-    // Générer les informations de vérification
+    // Effectuer la vérification complète avec HCS
+    const hcsVerification = await hashService.verifyHashWithHCS(record);
+
+    // Générer les informations de vérification étendues
     const verification = {
       record: {
         id: record.id,
@@ -47,9 +52,10 @@ router.get('/record/:id', auth, async (req, res) => {
       hedera: {
         topicId: record.hederaTransactionId,
         sequenceNumber: record.hederaSequenceNumber,
-        status: record.isVerified ? 'VERIFIED' : 'PENDING'
+        status: hcsVerification.isFullyVerified ? 'VERIFIED' : 'PENDING'
       },
       verification: {
+        ...hcsVerification,
         topicUrl: hashscanService.getTopicUrl(record.hederaTransactionId),
         messageUrl: hashscanService.getTopicMessageUrl(
           record.hederaTransactionId,
@@ -111,6 +117,66 @@ router.get('/prescription/:matricule', async (req, res) => {
 
   } catch (error) {
     console.error('Prescription verification error:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/verify/hcs-status/:transactionId - Vérifier le statut HCS d'une transaction (public)
+router.get('/hcs-status/:transactionId', async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+    const { topicId, sequenceNumber } = req.query;
+
+    if (!topicId || !sequenceNumber) {
+      return res.status(400).json({
+        message: 'topicId et sequenceNumber requis en paramètres de requête'
+      });
+    }
+
+    // Vérifier le statut complet via Mirror Node
+    const hcsStatus = await mirrorNodeService.verifyHCSTransactionStatus(
+      transactionId,
+      topicId,
+      sequenceNumber
+    );
+
+    res.json({
+      success: true,
+      data: {
+        transactionId,
+        topicId,
+        sequenceNumber,
+        ...hcsStatus,
+        verifiedAt: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('HCS status verification error:', error);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/verify/topic-stats/:topicId - Statistiques d'un topic (public)
+router.get('/topic-stats/:topicId', async (req, res) => {
+  try {
+    const { topicId } = req.params;
+
+    const [details, stats] = await Promise.allSettled([
+      mirrorNodeService.getTopicDetails(topicId),
+      mirrorNodeService.getTopicStats(topicId)
+    ]);
+
+    const response = {
+      topicId,
+      details: details.status === 'fulfilled' ? details.value : { error: details.reason },
+      stats: stats.status === 'fulfilled' ? stats.value : { error: stats.reason }
+    };
+
+    res.json({ success: true, data: response });
+
+  } catch (error) {
+    console.error('Topic stats error:', error);
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });

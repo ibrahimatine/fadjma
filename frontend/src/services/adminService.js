@@ -119,6 +119,56 @@ export const adminService = {
     return response.data;
   },
 
+  // Vérifier le statut HCS d'une transaction
+  async verifyHCSStatus(transactionId, topicId, sequenceNumber) {
+    const response = await api.get(`/verify/hcs-status/${encodeURIComponent(transactionId)}`, {
+      params: { topicId, sequenceNumber }
+    });
+    console.log('HCS Status:', response);
+    return response.data;
+  },
+
+  // Obtenir les statistiques d'un topic HCS
+  async getTopicStats(topicId) {
+    const response = await api.get(`/verify/topic-stats/${encodeURIComponent(topicId)}`);
+    return response.data;
+  },
+
+  // Vérifier un dossier médical avec HCS
+  async verifyRecordWithHCS(recordId) {
+    const response = await api.get(`/verify/record/${recordId}`);
+    return response.data;
+  },
+
+  // Services de monitoring
+  async getMonitoringMetrics() {
+    const response = await api.get('/monitoring/metrics');
+    return response.data;
+  },
+
+  async getSystemHealth() {
+    const response = await api.get('/monitoring/health');
+    return response.data;
+  },
+
+  async getActiveAlerts() {
+    const response = await api.get('/monitoring/alerts');
+    return response.data;
+  },
+
+  async getSystemLogs(limit = 50, type = null) {
+    const params = { limit };
+    if (type) params.type = type;
+
+    const response = await api.get('/monitoring/logs', { params });
+    return response.data;
+  },
+
+  async resetMonitoringMetrics() {
+    const response = await api.post('/monitoring/reset');
+    return response.data;
+  },
+
   // Obtenir les détails d'une transaction Hedera
   async getTransactionDetails(transactionId) {
     try {

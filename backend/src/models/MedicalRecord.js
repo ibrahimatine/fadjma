@@ -66,6 +66,10 @@ const MedicalRecord = sequelize.define('MedicalRecord', {
     type: DataTypes.STRING,
     allowNull: true
   },
+  hederaTopicId: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
   hederaTimestamp: {
     type: DataTypes.DATE,
     allowNull: true

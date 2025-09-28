@@ -174,8 +174,30 @@ class MonitoringService extends EventEmitter {
     this.metrics.system.cpuUsage = Math.round(Math.random() * 20 + 10); // Simulation
   }
 
+  // Initialiser les compteurs avec les données existantes
+  async initializeDatabaseCounters() {
+    try {
+      const { MedicalRecord, Prescription } = require('../models');
+
+      // Compter les records existants
+      const totalRecords = await MedicalRecord.count();
+      const totalPrescriptions = await Prescription.count();
+
+      // Initialiser les métriques
+      this.metrics.database.totalRecords = totalRecords;
+      this.metrics.database.prescriptions = totalPrescriptions;
+
+      console.log(`📊 Métriques initialisées: ${totalRecords} records, ${totalPrescriptions} prescriptions`);
+    } catch (error) {
+      console.error('Erreur initialisation métriques DB:', error);
+    }
+  }
+
   // Monitoring périodique
   startPeriodicMonitoring() {
+    // Initialiser les compteurs au démarrage
+    this.initializeDatabaseCounters();
+
     setInterval(() => {
       this.calculateSystemMetrics();
 

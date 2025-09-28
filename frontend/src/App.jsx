@@ -9,6 +9,7 @@ import RecordDetails from './pages/RecordDetails';
 import CreateMedicalRecord from './pages/CreateMedicalRecord';
 import PatientMedicalRecordsView from './components/patient/PatientMedicalRecordsView';
 import AdminRegistry from './pages/AdminRegistry';
+import AdminMonitoring from './pages/AdminMonitoring';
 import HistoryView from './pages/HistoryView';
 import PatientLinkForm from './components/auth/PatientLinkForm';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -80,6 +81,7 @@ function App() {
         <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin/registry" element={<AdminRegistry />} />
+          <Route path="/admin/monitoring" element={<AdminMonitoring />} />
         </Route>
         {/* Route accessible à tous les utilisateurs connectés */}
         <Route element={<ProtectedRoute allowedRoles={["patient", "doctor", "admin"]} />}>

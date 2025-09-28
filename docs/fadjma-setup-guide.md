@@ -1,6 +1,6 @@
-# 🔧 Configuration PostgreSQL + Hedera + Lancement
+# 🔧 Configuration SQLite + Hedera + Lancement
 
-## 📊 Étape 1: Installation PostgreSQL (10 min)
+## 📊 Étape 1: Installation SQLite (10 min)
 
 ### Sur Windows
 ```bash
@@ -28,8 +28,10 @@ sudo systemctl start postgresql
 
 ### Option A: Ligne de commande
 ```bash
-# Se connecter à PostgreSQL
-psql -U postgres
+# Se connecter à SQLite (pas de commande directe comme psql)
+# Pour SQLite, vous interagissez directement avec le fichier de base de données.
+# Vous pouvez utiliser `sqlite3` si installé, ou un client GUI.
+# Exemple: sqlite3 database.sqlite
 
 # Créer la base de données
 CREATE DATABASE fadjma_db;
@@ -209,7 +211,7 @@ const { sequelize } = require('../src/config/database');
 async function testConnection() {
   try {
     await sequelize.authenticate();
-    console.log('✅ Connexion PostgreSQL réussie!');
+    console.log('✅ Connexion SQLite réussie!');
     
     // Sync les modèles
     await sequelize.sync({ alter: true });
@@ -275,7 +277,7 @@ Dans la console backend, vous devriez voir les logs Hedera lors de la création 
 
 ## 🐛 Troubleshooting
 
-### Erreur PostgreSQL "FATAL: password authentication failed"
+### Erreur SQLite
 ```bash
 # Vérifier le mot de passe dans .env
 # Essayer avec l'utilisateur postgres par défaut
@@ -309,8 +311,8 @@ kill -9 <PID>
 
 ## ✅ Checklist de Validation
 
-- [ ] PostgreSQL installé et démarré
-- [ ] Database `fadjma_db` créée
+- [ ] SQLite configuré
+- [ ] Database `fadjma_db` (fichier .sqlite) créée
 - [ ] Compte Hedera créé avec HBAR de test
 - [ ] Topic ID créé et ajouté dans .env
 - [ ] Backend démarre sans erreur
@@ -354,4 +356,4 @@ Si vous avez une erreur, envoyez-moi :
 2. La commande qui a causé l'erreur
 3. Le contenu de votre .env (sans les clés privées!)
 
-**Prêt à lancer ? Faites-moi savoir quand PostgreSQL et Hedera sont configurés !**
+**Prêt à lancer ? Faites-moi savoir quand SQLite et Hedera sont configurés !**

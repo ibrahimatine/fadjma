@@ -1,6 +1,7 @@
 const { MedicalRecord, BaseUser, MedicalRecordAccessRequest, Prescription } = require('../models');
 const hederaService = require('../services/hederaService');
 const medicalRecordService = require('../services/medicalRecordService'); // Add this line
+const monitoringService = require('../services/monitoringService');
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
 
@@ -334,6 +335,7 @@ exports.create = async (req, res) => {
     }
     
     // Create record
+    const startTime = Date.now();
     const record = await MedicalRecord.create({
       patientId,
       doctorId,
@@ -345,9 +347,18 @@ exports.create = async (req, res) => {
       metadata: metadata || {}
     });
 
+    // Record database operation metrics
+    const queryTime = Date.now() - startTime;
+    monitoringService.recordDatabaseOperation('record', queryTime, {
+      type,
+      patientId,
+      doctorId
+    });
+
     // Si c'est une prescription, créer des enregistrements séparés dans la table Prescription
     if (type === 'prescription' && prescription && Array.isArray(prescription)) {
       for (const med of prescription) {
+        const prescStartTime = Date.now();
         const prescriptionRecord = await Prescription.create({
           patientId,
           doctorId,
@@ -358,6 +369,15 @@ exports.create = async (req, res) => {
           quantity: parseInt(med.duration) || 1,
           issueDate: new Date(),
           deliveryStatus: 'pending'
+        });
+
+        // Record prescription database operation
+        const prescQueryTime = Date.now() - prescStartTime;
+        monitoringService.recordDatabaseOperation('prescription', prescQueryTime, {
+          matricule: prescriptionRecord.matricule,
+          medication: med.name,
+          patientId,
+          doctorId
         });
 
         // Ancrer chaque prescription individuellement sur Hedera
@@ -399,6 +419,7 @@ exports.create = async (req, res) => {
         hash: hederaResult.hash,
         hederaTransactionId: hederaResult.transactionId,
         hederaSequenceNumber: hederaResult.sequenceNumber,
+        hederaTopicId: hederaResult.topicId,
         hederaTimestamp: new Date(),
         isVerified: true
       });
@@ -485,6 +506,7 @@ exports.update = async (req, res) => {
         hash: hederaResult.hash,
         hederaTransactionId: hederaResult.transactionId,
         hederaSequenceNumber: hederaResult.sequenceNumber,
+        hederaTopicId: hederaResult.topicId,
         hederaTimestamp: new Date()
       });
     } catch (hederaError) {

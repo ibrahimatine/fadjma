@@ -1,43 +1,59 @@
-# 📁 Structure du Projet FadjMa
+# 📁 Structure du Projet FADJMA - Innovation Mondiale Blockchain Médicale
+
+## 🌟 **Projet Révolutionnaire**
+FADJMA - Premier système mondial d'ancrage enrichi de données médicales complètes sur blockchain Hedera.
+
+**Status** : ✅ **PRODUCTION TESTNET** - Compte Hedera 0.0.6089195, Topic 0.0.6854064
 
 ```
 fadjma/
-├── backend/
+├── backend/                           # API Node.js + Express + Sequelize
 │   ├── src/
 │   │   ├── config/
-│   │   │   ├── database.js
-│   │   │   ├── hedera.js
-│   │   │   └── jwt.js
+│   │   │   ├── database.js           # Configuration SQLite/PostgreSQL
+│   │   │   ├── hedera.js             # ✅ Client Hedera PRODUCTION (0.0.6089195)
+│   │   │   └── security.js           # Configuration sécurité JWT
 │   │   ├── controllers/
-│   │   │   ├── authController.js
-│   │   │   ├── recordController.js
-│   │   │   └── verificationController.js
+│   │   │   ├── newAuthController.js  # ✅ Authentification BaseUser
+│   │   │   ├── recordController.js   # ✅ Dossiers médicaux + ancrage enrichi
+│   │   │   ├── adminController.js    # ✅ Administration avec monitoring
+│   │   │   ├── verificationController.js # ✅ Vérification HCS + Mirror Node
+│   │   │   ├── patientController.js  # ✅ Gestion patients + identifiants
+│   │   │   └── pharmacyController.js # ✅ Traçabilité prescriptions matricules
 │   │   ├── middleware/
-│   │   │   ├── auth.js
-│   │   │   └── errorHandler.js
+│   │   │   ├── auth.js              # ✅ JWT + autorisation rôles
+│   │   │   ├── requestLogger.js     # ✅ Logging centralisé requêtes
+│   │   │   └── errorHandler.js      # ✅ Gestion erreurs globale
 │   │   ├── models/
-│   │   │   ├── User.js
-│   │   │   ├── MedicalRecord.js
-│   │   │   └── HederaTransaction.js
+│   │   │   ├── BaseUser.js          # ✅ Modèle utilisateur unifié
+│   │   │   ├── MedicalRecord.js     # ✅ Dossiers avec ancrage Hedera
+│   │   │   └── Prescription.js      # ✅ Prescriptions + matricules uniques
 │   │   ├── routes/
-│   │   │   ├── authRoutes.js
-│   │   │   ├── recordRoutes.js
-│   │   │   └── verificationRoutes.js
+│   │   │   ├── newAuthRoutes.js     # ✅ Routes authentification
+│   │   │   ├── recordRoutes.js      # ✅ Routes dossiers médicaux
+│   │   │   ├── verificationRoutes.js # ✅ Routes vérification blockchain
+│   │   │   ├── adminRoutes.js       # ✅ Routes administration
+│   │   │   ├── pharmacyRoutes.js    # ✅ Routes traçabilité prescriptions
+│   │   │   └── logRoutes.js         # ✅ Routes monitoring logs
 │   │   ├── services/
-│   │   │   ├── hederaService.js
-│   │   │   ├── hashService.js
-│   │   │   └── recordService.js
+│   │   │   ├── hederaService.js     # ✅ ANCRAGE ENRICHI V2.0 (innovation mondiale)
+│   │   │   ├── hashService.js       # ✅ Génération hash + vérification HCS
+│   │   │   ├── mirrorNodeService.js # ✅ Vérification Mirror Node API
+│   │   │   ├── monitoringService.js # ✅ Métriques temps réel
+│   │   │   └── patientIdentifierService.js # ✅ Identifiants patients
 │   │   ├── utils/
-│   │   │   ├── logger.js
-│   │   │   └── validators.js
-│   │   └── app.js
-│   ├── tests/
-│   │   ├── unit/
-│   │   └── integration/
+│   │   │   ├── logger.js            # ✅ Logging centralisé (4 fichiers)
+│   │   │   └── validators.js        # ✅ Validation données
+│   │   └── app.js                   # ✅ Configuration Express + WebSocket
+│   ├── logs/                        # ✅ Logs structurés système
+│   │   ├── client-actions.log       # Actions utilisateurs
+│   │   ├── server-internal.log      # Opérations serveur
+│   │   ├── errors.log              # Erreurs système
+│   │   └── combined.log            # Logs généraux
+│   ├── test-*.js                   # ✅ Tests d'intégration Hedera
 │   ├── .env.example
-│   ├── .gitignore
 │   ├── package.json
-│   └── server.js
+│   └── server.js                   # Point d'entrée serveur
 │
 ├── frontend/
 │   ├── public/
@@ -116,7 +132,7 @@ fadjma/
 ### Jours 1-3: Foundation Backend & Hedera Setup
 **Jour 1:**
 - Setup projet Node.js + Express
-- Configuration PostgreSQL/MongoDB
+- Configuration SQLite/MongoDB
 - Structure de base du backend
 - Installation Hedera SDK
 

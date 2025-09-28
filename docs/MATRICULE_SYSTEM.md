@@ -74,7 +74,7 @@ node scripts/generate-existing-matricules.js
 node scripts/setup-matricule-sqlite.js --check
 ```
 
-**Note SQLite**: Contrairement à PostgreSQL, SQLite ne permet pas d'ajouter des contraintes NOT NULL sur des colonnes existantes. Le champ `matricule` reste donc nullable pour les prescriptions existantes, mais toutes les nouvelles prescriptions auront automatiquement un matricule via le hook `beforeCreate`.
+**Note SQLite**: SQLite ne permet pas d'ajouter des contraintes NOT NULL sur des colonnes existantes. Le champ `matricule` reste donc nullable pour les prescriptions existantes, mais toutes les nouvelles prescriptions auront automatiquement un matricule via le hook `beforeCreate`.
 
 ### 2. Dépendances
 

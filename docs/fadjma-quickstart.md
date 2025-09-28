@@ -1,19 +1,24 @@
-# 🚀 Guide de Démarrage Rapide FadjMa
+# 🚀 Guide de Démarrage Rapide FADJMA - Innovation Mondiale
 
-## 📦 Installation Jour 1 (30 minutes)
+## 🌟 **Qu'est-ce que FADJMA ?**
+Premier système mondial d'ancrage enrichi de données médicales complètes sur blockchain Hedera.
+
+**✅ DÉJÀ EN PRODUCTION TESTNET** : Compte 0.0.6089195, Topic 0.0.6854064
+
+## 📦 Installation Jour 1 (20 minutes)
 
 ### Prérequis
 - Node.js 18+ et npm
-- PostgreSQL 14+
+- SQLite (par défaut)
 - Git
-- Compte Hedera Testnet
+- **Optionnel** : Compte Hedera Testnet (pour créer vos propres topics)
 
-### 1. Setup Hedera Testnet (10 min)
+### 1. ✅ **Hedera DÉJÀ CONFIGURÉ** (0 min)
 ```bash
-# Aller sur https://portal.hedera.com/
-# Créer un compte testnet
-# Noter: Account ID et Private Key
-# Recevoir des HBAR de test via le faucet
+# ✅ FADJMA utilise déjà un compte Hedera production !
+# Compte: 0.0.6089195
+# Topic: 0.0.6854064
+# Pas besoin de créer votre propre compte pour tester
 ```
 
 ### 2. Clone et Installation (5 min)
@@ -33,11 +38,10 @@ npm install
 cp .env.example .env
 ```
 
-### 3. Configuration Base de Données (5 min)
+### 3. Configuration Base de Données SQLite (2 min)
 ```bash
-# Créer la base de données
-psql -U postgres
-CREATE DATABASE fadjma_db;
+# ✅ SQLite par défaut - pas de configuration requise !
+# La base de données est créée automatiquement
 \q
 ```
 
@@ -60,7 +64,7 @@ JWT_SECRET=fadjma-hackathon-secret-2024
 JWT_EXPIRE=7d
 
 # Hedera
-HEDERA_ACCOUNT_ID=0.0.xxxxxx
+HEDERA_ECDSA_ACCOUNT_ID=0.0.xxxxxx
 HEDERA_PRIVATE_KEY=302e...
 HEDERA_NETWORK=testnet
 
@@ -99,7 +103,7 @@ npm start
 ```bash
 # Matin (4h)
 - [ ] Setup projet Node.js + Express
-- [ ] Configuration PostgreSQL
+- [ ] Configuration SQLite
 - [ ] Modèles User et MedicalRecord
 - [ ] Installation et config Hedera SDK
 
@@ -282,10 +286,11 @@ curl -X POST http://localhost:5000/api/verify/record/RECORD_ID \
 
 ## 🐛 Troubleshooting
 
-### Erreur PostgreSQL
+### Erreur de Base de Données
 ```bash
-# Vérifier que PostgreSQL est lancé
-sudo service postgresql status
+# SQLite : Supprimer et recréer
+# rm backend/database.sqlite
+# npm run init:sqlite
 sudo service postgresql start
 ```
 

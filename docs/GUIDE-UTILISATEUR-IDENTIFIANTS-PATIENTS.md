@@ -1,4 +1,7 @@
-# Guide Utilisateur : Système d'Identifiants Patients
+# Guide Utilisateur : Système d'Identifiants Patients FADJMA
+
+## 🌟 **Révolution Médicale avec Blockchain**
+FADJMA utilise la blockchain Hedera pour sécuriser vos données médicales avec un système d'identifiants unique au monde.
 
 ## 🏥 Pour les Patients
 
@@ -6,8 +9,8 @@
 
 **Qu'est-ce qu'un identifiant patient ?**
 - C'est un code unique au format `PAT-AAAAMMJJ-XXXX` (ex: `PAT-20241201-A7B9`)
-- Votre médecin l'a généré pour vous créer un profil médical
-- Il vous donne accès immédiat à votre dossier médical complet
+- Votre médecin l'a généré pour vous créer un profil médical **sécurisé sur blockchain**
+- Il vous donne accès immédiat à votre dossier médical complet **avec vérification cryptographique**
 
 **Comment utiliser votre identifiant :**
 

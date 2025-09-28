@@ -17,7 +17,10 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
-  ExternalLink
+  ExternalLink,
+  Server,
+  Zap,
+  Info
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { adminService } from '../services/adminService';
@@ -36,6 +39,8 @@ const AdminRegistry = () => {
   const [sortBy, setSortBy] = useState('timestamp');
   const [sortOrder, setSortOrder] = useState('desc');
   const [expandedItems, setExpandedItems] = useState({});
+  const [hcsVerifications, setHcsVerifications] = useState({});
+  const [loadingVerifications, setLoadingVerifications] = useState({});
   const [stats, setStats] = useState({
     total: 0,
     verified: 0,
@@ -165,6 +170,8 @@ const AdminRegistry = () => {
 
       if (overviewResponse.success && dataResponse.success) {
         console.log('Registry data loaded:', dataResponse.data);
+        console.log('Number of records received:', dataResponse.data?.length || 0);
+        console.log('Overview stats:', overviewResponse.stats);
         setRegistryData(dataResponse.data);
         setStats({
           total: overviewResponse.stats.total,
@@ -211,36 +218,53 @@ const AdminRegistry = () => {
   };
 
   const applyFilters = () => {
+    console.log('🔍 Applying filters with:', {
+      registryData: registryData.length,
+      searchQuery,
+      activeFilters,
+      sortBy,
+      sortOrder
+    });
+
     let filtered = [...registryData];
 
     // Filtre par recherche
     if (searchQuery) {
+      const initialCount = filtered.length;
       filtered = filtered.filter(item =>
-        item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.topicId.includes(searchQuery) ||
-        item.hash.includes(searchQuery.toLowerCase()) ||
+        (item.id && item.id.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.topicId && item.topicId.includes(searchQuery)) ||
+        (item.hash && item.hash.includes(searchQuery.toLowerCase())) ||
         (item.payload?.matricule && item.payload.matricule.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (item.payload?.medication && item.payload.medication.toLowerCase().includes(searchQuery.toLowerCase()))
       );
+      console.log(`📝 Search filter: ${initialCount} → ${filtered.length} items`);
     }
 
     // Filtre par type
     if (activeFilters.type !== 'all') {
+      const initialCount = filtered.length;
       filtered = filtered.filter(item => item.type === activeFilters.type);
+      console.log(`📂 Type filter (${activeFilters.type}): ${initialCount} → ${filtered.length} items`);
     }
 
     // Filtre par statut
     if (activeFilters.status !== 'all') {
+      const initialCount = filtered.length;
       filtered = filtered.filter(item => item.status === activeFilters.status);
+      console.log(`🔄 Status filter (${activeFilters.status}): ${initialCount} → ${filtered.length} items`);
     }
 
     // Filtre par topic ID
     if (activeFilters.topicId) {
-      filtered = filtered.filter(item => item.topicId.includes(activeFilters.topicId));
+      const initialCount = filtered.length;
+      filtered = filtered.filter(item => item.topicId && item.topicId.includes(activeFilters.topicId));
+      console.log(`🏷️ Topic filter (${activeFilters.topicId}): ${initialCount} → ${filtered.length} items`);
     }
 
     // Filtre par date
     if (activeFilters.dateRange !== 'all') {
+      const initialCount = filtered.length;
       const now = new Date();
       const cutoff = new Date();
 
@@ -256,9 +280,11 @@ const AdminRegistry = () => {
           break;
       }
 
-      filtered = filtered.filter(item =>
-        new Date(item.consensusTimestamp) >= cutoff
-      );
+      filtered = filtered.filter(item => {
+        if (!item.consensusTimestamp) return false;
+        return new Date(item.consensusTimestamp) >= cutoff;
+      });
+      console.log(`📅 Date filter (${activeFilters.dateRange}): ${initialCount} → ${filtered.length} items`);
     }
 
     // Tri
@@ -294,6 +320,7 @@ const AdminRegistry = () => {
       }
     });
 
+    console.log(`✅ Final filtered result: ${filtered.length} items`);
     setFilteredData(filtered);
   };
 
@@ -332,6 +359,74 @@ const AdminRegistry = () => {
     } catch (error) {
       console.error('Status update error:', error);
       toast.error('Erreur lors de la mise à jour des statuts');
+    }
+  };
+
+  const verifyWithHCS = async (item) => {
+    setLoadingVerifications(prev => ({ ...prev, [item.id]: true }));
+
+    try {
+      // Tous les items doivent avoir des données Hedera valides
+      if (!item.topicId || !item.transactionId || !item.sequenceNumber) {
+        throw new Error('Données Hedera incomplètes pour la vérification HCS');
+      }
+
+      const hcsResult = await adminService.verifyHCSStatus(
+        item.transactionId,
+        item.topicId,
+        item.sequenceNumber
+      );
+
+      setHcsVerifications(prev => ({
+        ...prev,
+        [item.id]: hcsResult.data
+      }));
+
+      if (hcsResult.data.isFullyVerified) {
+        toast.success('Vérification HCS réussie');
+      } else {
+        toast.error('Vérification HCS incomplète');
+      }
+
+    } catch (error) {
+      console.error('HCS verification error:', error);
+      toast.error('Erreur lors de la vérification HCS');
+
+      setHcsVerifications(prev => ({
+        ...prev,
+        [item.id]: {
+          isFullyVerified: false,
+          errors: [error.message]
+        }
+      }));
+    } finally {
+      setLoadingVerifications(prev => ({ ...prev, [item.id]: false }));
+    }
+  };
+
+  const getTopicStats = async (topicId) => {
+    try {
+      if (!topicId) {
+        toast.error('Topic ID requis');
+        return;
+      }
+
+      const response = await adminService.getTopicStats(topicId);
+      const stats = response.data.stats.stats;
+      const isSuccess = response.data.stats.success;
+      console.log('Topic stats received:', stats, isSuccess);
+      if (stats.totalMessages !== undefined) {
+        toast.success(`Topic ${topicId}: ${stats.lastMessageTimestamp}  TimeStamp`);
+      } else if (isSuccess && stats.lastMessageTimestamp !== undefined) {
+        // Structure alternative directe depuis le backend
+        toast.success(`Topic ${topicId}: ${stats.lastMessageTimestamp}  TimeStamp`);
+      } else {
+        console.log('Stats structure received:', stats);
+        toast.error(`Topic ${topicId}: Aucune donnée disponible`);
+      }
+    } catch (error) {
+      console.error('Topic stats error:', error);
+      toast.error(`Erreur récupération stats topic ${topicId}`);
     }
   };
 
@@ -376,6 +471,13 @@ const AdminRegistry = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
+              <a
+                href="/admin/monitoring"
+                className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <Activity className="h-4 w-4" />
+                Monitoring
+              </a>
               <button
                 onClick={loadRegistryData}
                 disabled={loading}
@@ -589,11 +691,35 @@ const AdminRegistry = () => {
 
                     <div className="flex items-center gap-2">
                       <button
+                        onClick={() => verifyWithHCS(item)}
+                        disabled={loadingVerifications[item.id]}
+                        className="flex items-center gap-1 px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors disabled:opacity-50"
+                        title="Vérifier via Hedera Consensus Service"
+                      >
+                        {loadingVerifications[item.id] ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Server className="h-4 w-4" />
+                        )}
+                        Vérifier HCS
+                      </button>
+
+                      <button
+                        onClick={() => getTopicStats(item.topicId)}
+                        className="flex items-center gap-1 px-3 py-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                        title="Voir les statistiques du topic"
+                      >
+                        <Info className="h-4 w-4" />
+                        Stats Topic
+                      </button>
+
+                      <button
                         onClick={() => window.open(`https://hashscan.io/testnet/transaction/${item.transactionId}`, '_blank')}
                         className="flex items-center gap-1 px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Voir sur HashScan Testnet"
                       >
                         <ExternalLink className="h-4 w-4" />
-                        HashScan Testnet
+                        HashScan
                       </button>
 
                       <button
@@ -608,7 +734,7 @@ const AdminRegistry = () => {
 
                   {expandedItems[item.id] && (
                     <div className="mt-6 pt-6 border-t border-gray-200">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {/* Informations techniques */}
                         <div>
                           <h4 className="font-semibold text-gray-900 mb-3">Informations techniques</h4>
@@ -634,6 +760,68 @@ const AdminRegistry = () => {
                               <dd className="text-gray-900">{item.metadata.node}</dd>
                             </div>
                           </dl>
+                        </div>
+
+                        {/* Vérification HCS */}
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                            <Server className="h-4 w-4 text-purple-600" />
+                            Vérification HCS
+                          </h4>
+                          {hcsVerifications[item.id] ? (
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2">
+                                {hcsVerifications[item.id].isFullyVerified ? (
+                                  <CheckCircle className="h-5 w-5 text-green-600" />
+                                ) : (
+                                  <AlertTriangle className="h-5 w-5 text-orange-600" />
+                                )}
+                                <span className={`text-sm font-medium ${
+                                  hcsVerifications[item.id].isFullyVerified ? 'text-green-800' : 'text-orange-800'
+                                }`}>
+                                  {hcsVerifications[item.id].isFullyVerified ? 'Entièrement vérifié' : 'Vérification partielle'}
+                                </span>
+                              </div>
+
+                              <div className="text-xs space-y-1">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Transaction:</span>
+                                  <span className={hcsVerifications[item.id].transactionVerified ? 'text-green-600' : 'text-red-600'}>
+                                    {hcsVerifications[item.id].transactionVerified ? '✓' : '✗'}
+                                  </span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-500">Message:</span>
+                                  <span className={hcsVerifications[item.id].messageVerified ? 'text-green-600' : 'text-red-600'}>
+                                    {hcsVerifications[item.id].messageVerified ? '✓' : '✗'}
+                                  </span>
+                                </div>
+                                {hcsVerifications[item.id].consensusTimestamp && (
+                                  <div className="flex justify-between">
+                                    <span className="text-gray-500">Consensus:</span>
+                                    <span className="text-gray-700">
+                                      {new Date(hcsVerifications[item.id].consensusTimestamp * 1000).toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {hcsVerifications[item.id].errors && hcsVerifications[item.id].errors.length > 0 && (
+                                <div className="mt-2">
+                                  <p className="text-xs text-gray-500 mb-1">Erreurs:</p>
+                                  <ul className="text-xs text-red-600 space-y-1">
+                                    {hcsVerifications[item.id].errors.map((error, index) => (
+                                      <li key={index}>• {error}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-500 italic">
+                              Cliquez sur "Vérifier HCS" pour lancer la vérification
+                            </div>
+                          )}
                         </div>
 
                         {/* Payload */}

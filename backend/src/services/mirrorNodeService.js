@@ -5,10 +5,43 @@ class MirrorNodeService {
     this.baseUrl = 'https://testnet.mirrornode.hedera.com/api/v1';
   }
 
+  // Format transaction ID from Hedera @ format to Mirror Node - format
+  formatTransactionId(transactionId) {
+    if (typeof transactionId !== 'string') {
+      return transactionId;
+    }
+
+    // If already in correct format, return as is
+    if (!transactionId.includes('@')) {
+      return transactionId;
+    }
+
+    // Convert from: 0.0.6089195@1758958633.731955949
+    // To:           0.0.6089195-1758958633-731955949
+    const parts = transactionId.split('@');
+    if (parts.length === 2) {
+      const accountId = parts[0];
+      const timestampParts = parts[1].split('.');
+      if (timestampParts.length === 2) {
+        const seconds = timestampParts[0];
+        const nanoseconds = timestampParts[1];
+        return `${accountId}-${seconds}-${nanoseconds}`;
+      }
+    }
+
+    // If format is unexpected, return original
+    return transactionId;
+  }
+
   // Vérifier une transaction spécifique
   async verifyTransaction(transactionId) {
     try {
-      const response = await axios.get(`${this.baseUrl}/transactions/${transactionId}`);
+      // Convert transaction ID from @ format to - format for Mirror Node API
+      // From: 0.0.6089195@1758958633.731955949
+      // To:   0.0.6089195-1758958633-731955949
+      const formattedTxId = this.formatTransactionId(transactionId);
+
+      const response = await axios.get(`${this.baseUrl}/transactions/${formattedTxId}`);
 
       if (response.data && response.data.transactions.length > 0) {
         const tx = response.data.transactions[0];
@@ -76,6 +109,131 @@ class MirrorNodeService {
     } catch (error) {
       console.error('Mirror Node error:', error.message);
       return { isVerified: false, error: error.message };
+    }
+  }
+
+  // Vérifier le statut complet d'une transaction HCS
+  async verifyHCSTransactionStatus(transactionId, topicId, sequenceNumber) {
+    try {
+      const results = await Promise.allSettled([
+        this.verifyTransaction(transactionId),
+        this.verifyTopicMessage(topicId, sequenceNumber)
+      ]);
+
+      const [transactionResult, messageResult] = results;
+
+      const verification = {
+        transactionVerified: false,
+        messageVerified: false,
+        consensusTimestamp: null,
+        transactionStatus: null,
+        messageContent: null,
+        errors: []
+      };
+
+      // Analyser le résultat de la transaction
+      if (transactionResult.status === 'fulfilled') {
+        const txData = transactionResult.value;
+        verification.transactionVerified = txData.isVerified;
+        verification.transactionStatus = txData.result;
+        verification.consensusTimestamp = txData.consensusTimestamp;
+
+        if (txData.error) {
+          verification.errors.push(`Transaction: ${txData.error}`);
+        }
+      } else {
+        verification.errors.push(`Transaction fetch failed: ${transactionResult.reason}`);
+      }
+
+      // Analyser le résultat du message
+      if (messageResult.status === 'fulfilled') {
+        const msgData = messageResult.value;
+        verification.messageVerified = msgData.isVerified;
+
+        if (msgData.isVerified) {
+          try {
+            const decodedMessage = Buffer.from(msgData.message, 'base64').toString();
+            verification.messageContent = JSON.parse(decodedMessage);
+          } catch (parseError) {
+            verification.messageContent = decodedMessage;
+          }
+        }
+
+        if (msgData.error) {
+          verification.errors.push(`Message: ${msgData.error}`);
+        }
+      } else {
+        verification.errors.push(`Message fetch failed: ${messageResult.reason}`);
+      }
+
+      // Vérification globale - Si le message est vérifié, c'est suffisant
+      verification.isFullyVerified = verification.messageVerified;
+
+      return verification;
+
+    } catch (error) {
+      console.error('HCS verification error:', error.message);
+      return {
+        transactionVerified: false,
+        messageVerified: false,
+        isFullyVerified: false,
+        errors: [error.message]
+      };
+    }
+  }
+
+  // Obtenir les détails complets d'un topic
+  async getTopicDetails(topicId) {
+    try {
+      const response = await axios.get(`${this.baseUrl}/topics/${topicId}`);
+
+      if (response.data) {
+        return {
+          success: true,
+          topic: {
+            id: response.data.topic_id,
+            memo: response.data.memo,
+            runningHash: response.data.running_hash,
+            sequenceNumber: response.data.sequence_number,
+            submitKey: response.data.submit_key,
+            adminKey: response.data.admin_key,
+            createdTimestamp: response.data.created_timestamp
+          }
+        };
+      }
+
+      return { success: false, error: 'Topic non trouvé' };
+
+    } catch (error) {
+      console.error('Topic details error:', error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Obtenir les statistiques d'un topic
+  async getTopicStats(topicId) {
+    try {
+      const response = await axios.get(`${this.baseUrl}/topics/${topicId}/messages?limit=1`);
+
+      if (response.data && response.data.messages) {
+        const totalMessages = response.data.messages.length > 0 ?
+          response.data.messages[0].sequence_number : 0;
+
+        return {
+          success: true,
+          stats: {
+            totalMessages,
+            lastMessageTimestamp: response.data.messages[0]?.consensus_timestamp,
+            topicId
+          }
+        };
+      }
+
+      return { success: false, error: 'Pas de messages trouvés' };
+
+    } catch (error) {
+      console.error('Topic stats error:', error.message);
+      return { success: false, error: error.message };
     }
   }
 }

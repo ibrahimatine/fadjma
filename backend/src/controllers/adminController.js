@@ -147,15 +147,24 @@ exports.getRegistryData = async (req, res) => {
       });
 
       records.forEach(record => {
+        // Déterminer le statut en fonction des données Hedera
+        let status = 'failed';
+        let topicId = null;
+
+        if (record.hederaTransactionId && record.hederaTransactionId !== 'FALLBACK') {
+          status = record.isVerified ? 'verified' : 'pending';
+          topicId = record.hederaTopicId || (record.hederaTransactionId.split('@')[0]);
+        }
+
         registryData.push({
           id: record.id,
           type: 'medical_record',
-          consensusTimestamp: record.createdAt,
-          transactionId: record.hederaTransactionId,
-          topicId: record.hederaTransactionId ? record.hederaTransactionId.split('@')[0] : null,
-          sequenceNumber: record.hederaSequenceNumber || 0,
+          consensusTimestamp: record.hederaTimestamp || record.createdAt,
+          transactionId: record.hederaTransactionId || null,
+          topicId: topicId,
+          sequenceNumber: record.hederaSequenceNumber || null,
           hash: record.hash,
-          status: record.isVerified ? 'verified' : (record.hederaTransactionId ? 'failed' : 'pending'),
+          status: status,
           payload: {
             recordId: record.id,
             patientId: record.patientId,
@@ -167,9 +176,9 @@ exports.getRegistryData = async (req, res) => {
             doctor: record.doctor
           },
           metadata: {
-            size: record.hash ? record.hash.length : 0,
+            size: JSON.stringify(record.toJSON()).length,
             fees: '0.0001 HBAR',
-            node: '0.0.3',
+            node: '0.0.3', // Consistent node for testnet
             created_at: record.createdAt,
             updated_at: record.updatedAt
           }
@@ -194,17 +203,25 @@ exports.getRegistryData = async (req, res) => {
       });
 
       prescriptions.forEach(prescription => {
+        // Déterminer le statut en fonction des données Hedera
+        let status = 'failed';
+        let topicId = null;
+
+        if (prescription.hederaTransactionId && prescription.hederaTransactionId !== 'FALLBACK') {
+          status = prescription.isVerified ? 'verified' : 'pending';
+          topicId = prescription.hederaTopicId || (prescription.hederaTransactionId.split('@')[0]);
+        }
+
         const isDispensed = prescription.deliveryStatus === 'delivered';
         registryData.push({
           id: prescription.id,
           type: isDispensed ? 'dispensation' : 'prescription',
-          consensusTimestamp: isDispensed ? prescription.updatedAt : prescription.createdAt,
-          transactionId: prescription.hederaTransactionId || prescription.id,
-          topicId: prescription.hederaTopicId || '0.0.SIMULATED', // Use actual topic ID or simulated
-          topicId: prescription.deliveryConfirmationHash ? prescription.deliveryConfirmationHash.split('@')[0] : `0.0.${Math.floor(Math.random() * 999999)}`,
-          sequenceNumber: Math.floor(Math.random() * 10000),
-          hash: prescription.deliveryConfirmationHash || `sha256_${Math.random().toString(36).substr(2, 32)}`,
-          status: isDispensed ? 'verified' : 'pending',
+          consensusTimestamp: prescription.hederaTimestamp || (isDispensed ? prescription.updatedAt : prescription.createdAt),
+          transactionId: prescription.hederaTransactionId || null,
+          topicId: topicId,
+          sequenceNumber: prescription.hederaSequenceNumber || null,
+          hash: prescription.deliveryConfirmationHash || null,
+          status: status,
           payload: {
             matricule: prescription.matricule,
             patientId: prescription.patientId,
@@ -218,9 +235,9 @@ exports.getRegistryData = async (req, res) => {
             doctor: prescription.doctor
           },
           metadata: {
-            size: prescription.matricule ? prescription.matricule.length * 64 : 512,
+            size: JSON.stringify(prescription.toJSON()).length,
             fees: isDispensed ? '0.0002 HBAR' : '0.0001 HBAR',
-            node: `0.0.${Math.floor(Math.random() * 10) + 3}`,
+            node: '0.0.3', // Consistent node for testnet
             created_at: prescription.createdAt,
             updated_at: prescription.updatedAt
           }

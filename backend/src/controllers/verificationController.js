@@ -1,25 +1,42 @@
 const { MedicalRecord } = require('../models'); // Utiliser le nouveau fichier index.js
 const hederaService = require('../services/hederaService');
+const monitoringService = require('../services/monitoringService');
 
 exports.verifyRecord = async (req, res) => {
   try {
+    const startTime = Date.now();
     const record = await MedicalRecord.findByPk(req.params.id);
-    
+
     if (!record) {
       return res.status(404).json({ message: 'Record not found' });
     }
-    
-    // Verify the record
-    const verificationResult = await hederaService.verifyRecord(record);
-    
+
+    // Verify the record using hashService instead of hederaService
+    const hashService = require('../services/hashService');
+    const verificationResult = await hashService.verifyHashWithHCS(record);
+
+    // Record verification operation metrics
+    const verificationTime = Date.now() - startTime;
+    monitoringService.recordDatabaseOperation('verification', verificationTime, {
+      recordId: record.id,
+      isValid: verificationResult.isFullyVerified,
+      type: record.type
+    });
+
     // Update last verified timestamp
     await record.update({
-      lastVerifiedAt: new Date()
+      lastVerifiedAt: new Date(),
+      isVerified: verificationResult.isFullyVerified
     });
-    
+
+    // Format response for frontend IntegrityButton
     res.json({
       message: 'Verification completed',
-      ...verificationResult
+      isValid: verificationResult.isFullyVerified,
+      currentHash: verificationResult.currentHash,
+      storedHash: verificationResult.storedHash,
+      hederaTransactionId: record.hederaTransactionId,
+      verification: verificationResult
     });
   } catch (error) {
     console.error('Verify record error:', error);

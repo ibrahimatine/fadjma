@@ -2,9 +2,15 @@
 
 ## Vue d'ensemble
 
-L'API FADJMA est une API REST qui fournit des endpoints sécurisés pour la gestion des dossiers médicaux, utilisateurs et autorisations.
+L'API FADJMA est une API REST révolutionnaire qui fournit des endpoints sécurisés pour :
+- 🏥 **Dossiers médicaux** avec ancrage enrichi blockchain Hedera
+- 💊 **Prescriptions** avec matricules uniques et traçabilité
+- 🔐 **Authentification** BaseUser et autorisation rôles
+- 📊 **Monitoring** logs centralisés et métriques temps réel
+- ⛓️ **Vérification blockchain** via HCS et Mirror Node
 
 **Base URL :** `http://localhost:3001/api`
+**Production Hedera :** Compte 0.0.6089195, Topic 0.0.6854064
 
 ## Authentification
 

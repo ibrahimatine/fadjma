@@ -2,7 +2,14 @@
 
 ## Introduction
 
-Ce guide vous accompagne pas à pas pour configurer et lancer l'application FADJMA en local.
+FADJMA est une plateforme médicale révolutionnaire qui utilise la blockchain Hedera pour sécuriser les dossiers médicaux et tracer les prescriptions. Ce guide vous accompagne pour configurer et lancer l'application en local.
+
+## 🌟 **Fonctionnalités Principales**
+- ✅ **Ancrage Enrichi v2.0** : Premier système mondial d'ancrage complet de données médicales
+- ✅ **Traçabilité Prescription-to-Dispensation** : Matricules uniques et suivi blockchain
+- ✅ **Production Hedera Testnet** : Intégration réelle (compte 0.0.6089195, topic 0.0.6854064)
+- ✅ **12+ Types Consultations** : Classification intelligente automatique
+- ✅ **Monitoring Temps Réel** : Dashboard admin et logging centralisé
 
 ## Prérequis Système
 
@@ -18,8 +25,8 @@ npm --version   # doit afficher 9.x.x ou plus
 # Git pour le versioning
 git --version
 
-# PostgreSQL (optionnel, SQLite par défaut)
-psql --version  # si vous voulez utiliser PostgreSQL
+# SQLite (par défaut)
+# Pas de commande de version directe comme psql, la version est gérée par Node.js
 ```
 
 ### Installation des Prérequis
@@ -32,8 +39,10 @@ brew install node
 # Ou télécharger depuis https://nodejs.org/
 
 # PostgreSQL (optionnel)
-brew install postgresql
-brew services start postgresql
+# Si vous souhaitez utiliser PostgreSQL, installez-le manuellement.
+# Exemple pour macOS:
+# # brew install postgresql
+# # brew services start postgresql
 ```
 
 #### Sur Ubuntu/Debian
@@ -42,15 +51,18 @@ brew services start postgresql
 curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs
 
-# PostgreSQL (optionnel)
-sudo apt-get install postgresql postgresql-contrib
-sudo systemctl start postgresql
+# Exemple pour Debian/Ubuntu:
+# # sudo apt-get install postgresql postgresql-contrib
+# # sudo systemctl start postgresql
 ```
 
 #### Sur Windows
 ```bash
 # Télécharger Node.js depuis https://nodejs.org/
-# Installer PostgreSQL depuis https://www.postgresql.org/download/windows/
+# Installer SQLite (généralement inclus avec Node.js ou via npm)
+# Si vous souhaitez utiliser PostgreSQL, installez-le manuellement.
+# Exemple pour Windows:
+# # Installer PostgreSQL depuis https://www.postgresql.org/download/windows/
 ```
 
 ## Installation du Projet
@@ -90,13 +102,13 @@ nano .env  # ou votre éditeur préféré
 npm run init:sqlite
 ```
 
-**Option B : PostgreSQL (Production)**
+**Option B : PostgreSQL (pour la production, si nécessaire)**
 ```bash
 # Créer une base de données
 createdb fadjma_dev
 
 # Mettre à jour .env
-DATABASE_URL=postgresql://username:password@localhost:5432/fadjma_dev
+# DATABASE_URL=postgresql://username:password@localhost:5432/fadjma_dev
 
 # Synchroniser la base
 npm run setup:db
@@ -116,7 +128,7 @@ DB_USER=your_username
 DB_PASS=your_password
 
 # JWT (générer une clé sécurisée)
-JWT_SECRET=your-super-secret-jwt-key-very-long-and-secure
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 
 # Frontend URL
 FRONTEND_URL=http://localhost:3000
@@ -290,8 +302,8 @@ PORT=3002 npm start
 rm backend/database.sqlite
 npm run init:sqlite
 
-# PostgreSQL : Vérifier la connexion
-psql -U your_username -d fadjma_dev -c "SELECT version();"
+# PostgreSQL (si utilisé) : Vérifier la connexion
+# # psql -U your_username -d fadjma_dev -c "SELECT version();"
 ```
 
 ### Erreurs de Dépendances
@@ -319,12 +331,13 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 
 ## Configuration Avancée
 
-### Base de Données PostgreSQL
+### Base de Données (PostgreSQL si utilisé)
 
 ```bash
-# Créer un utilisateur dédié
-sudo -u postgres createuser --interactive fadjma_user
-sudo -u postgres createdb -O fadjma_user fadjma_dev
+# Si vous utilisez PostgreSQL:
+# # Créer un utilisateur dédié
+# sudo -u postgres createuser --interactive fadjma_user
+# sudo -u postgres createdb -O fadjma_user fadjma_dev
 
 # Configuration .env
 DB_HOST=localhost

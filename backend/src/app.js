@@ -11,6 +11,8 @@ const errorHandler = require('./middleware/errorHandler');
 const pharmacyRoutes = require('./routes/pharmacyRoutes');
 const monitoringRoutes = require('./routes/monitoringRoutes');
 const websocketMiddleware = require('./middleware/websocket');
+const requestLogger = require('./middleware/requestLogger');
+const logger = require('./utils/logger');
 
 const app = express();
 
@@ -25,8 +27,9 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Logging
-app.use(morgan('dev'));
+// Logging middleware
+app.use(requestLogger); // Notre système de logging personnalisé
+app.use(morgan('dev')); // Garder morgan pour la console en développement
 
 // WebSocket middleware
 app.use(websocketMiddleware);
@@ -48,6 +51,7 @@ app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/history', require('./routes/historyRoutes'));
 app.use('/api/medication', require('./routes/medicationTraceabilityRoutes'));
 app.use('/api/monitoring', monitoringRoutes);
+app.use('/api/logs', require('./routes/logRoutes'));
 // Error handling
 app.use(errorHandler);
 

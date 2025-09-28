@@ -1,7 +1,7 @@
 class HealthTokenService {
   constructor() {
     this.tokenId = process.env.HEDERA_HEALTH_TOKEN_ID || "0.0.HEALTH";
-    this.treasury = process.env.HEDERA_ACCOUNT_ID;
+    this.treasury = process.env.HEDERA_ECDSA_ACCOUNT_ID || process.env.HEDERA_ACCOUNT_ID;
     
     // Système de récompenses
     this.rewards = {
