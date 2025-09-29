@@ -22,7 +22,7 @@ Démontrer comment FADJMA intègre seamlessly les données legacy avec Hedera DL
 1. **HCS (Consensus Service)** - Live anchoring
    ```bash
    # Montrer dans terminal
-   node test-complete-hedera-anchoring.js
+   node test-complete-hedera-anchoring.jscal
    ```
    - ✅ Montrer transaction réussie sur HashScan
    - ✅ Hash généré et topic ID
