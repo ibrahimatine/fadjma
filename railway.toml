@@ -1,0 +1,76 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm start"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[environments.production]
+variables = [
+  "NODE_ENV=production",
+  "PORT=5000"
+]
+
+[environments.production.database]
+plugins = ["postgresql"]
+
+[environments.staging]
+variables = [
+  "NODE_ENV=staging",
+  "PORT=5000"
+]
+
+# Service configuration
+[service]
+name = "fadjma-backend"
+source = "backend/"
+
+# Healthcheck configuration
+[healthcheck]
+path = "/health"
+method = "GET"
+timeout = 30
+interval = 60
+
+# Build configuration
+[build.env]
+NODE_VERSION = "18"
+NPM_VERSION = "latest"
+
+# Auto-scaling (Railway Pro only)
+[scaling]
+minReplicas = 1
+maxReplicas = 1
+
+# Storage for SQLite persistence
+[volumes]
+data = "/app/data"
+
+# Environment variables template
+[env]
+# JWT Configuration
+JWT_SECRET = { required = true, description = "Secret for JWT token signing" }
+
+# Hedera Blockchain Configuration
+HEDERA_NETWORK = { default = "testnet", description = "Hedera network (testnet/mainnet)" }
+HEDERA_ACCOUNT_ID = { required = true, description = "Your Hedera account ID" }
+HEDERA_PRIVATE_KEY = { required = true, description = "Your Hedera private key" }
+HEDERA_TOPIC_ID = { required = true, description = "Topic ID for medical records" }
+
+# CORS Configuration
+FRONTEND_URL = { required = true, description = "Frontend URL for CORS" }
+
+# Database Configuration
+DATABASE_URL = { default = "sqlite:./data/database.sqlite", description = "Database connection string" }
+
+# Server Configuration
+PORT = { default = "5000", description = "Server port" }
+NODE_ENV = { default = "production", description = "Environment" }
+
+# Optional: Logging level
+LOG_LEVEL = { default = "info", description = "Logging level" }
+
+# Optional: Rate limiting
+RATE_LIMIT_WINDOW_MS = { default = "900000", description = "Rate limit window in ms" }
+RATE_LIMIT_MAX = { default = "100", description = "Max requests per window" }

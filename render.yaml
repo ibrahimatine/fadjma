@@ -1,0 +1,88 @@
+# Render configuration for FADJMA Backend
+services:
+  - type: web
+    name: fadjma-backend
+    runtime: node
+    plan: free  # or starter for paid plan
+    region: oregon  # or your preferred region
+    branch: main
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+
+    # Auto-scaling
+    numInstances: 1
+
+    # Environment variables
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: PORT
+        generateValue: true  # Render auto-generates this
+
+      - key: JWT_SECRET
+        generateValue: true  # Auto-generate secure JWT secret
+
+      - key: HEDERA_NETWORK
+        value: testnet
+
+      - key: HEDERA_ACCOUNT_ID
+        sync: false  # Set manually in Render dashboard
+
+      - key: HEDERA_PRIVATE_KEY
+        sync: false  # Set manually in Render dashboard
+
+      - key: HEDERA_TOPIC_ID
+        sync: false  # Set manually in Render dashboard
+
+      - key: FRONTEND_URL
+        value: https://fadjma.netlify.app  # Update with your frontend URL
+
+      - key: DATABASE_URL
+        value: sqlite:./database.sqlite
+
+      - key: LOG_LEVEL
+        value: info
+
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+
+      - key: RATE_LIMIT_MAX
+        value: 100
+
+  # Optional: Database service (PostgreSQL)
+  - type: pserv
+    name: fadjma-postgres
+    plan: free
+    region: oregon
+    databaseName: fadjma_db
+    databaseUser: fadjma_user
+    # This will generate DATABASE_URL automatically
+
+# Optional: Static site service for frontend
+  - type: static_site
+    name: fadjma-frontend
+    staticPublishPath: frontend/build
+    pullRequestPreviewsEnabled: true
+    branch: main
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+
+    # Environment variables for frontend
+    envVars:
+      - key: REACT_APP_API_URL
+        value: https://fadjma-backend.onrender.com
+
+      - key: REACT_APP_ENVIRONMENT
+        value: production
+
+# Optional: Cron jobs
+  - type: cron_job
+    name: fadjma-cleanup
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    buildCommand: npm install
+    startCommand: node scripts/cleanup.js
+    branch: main
+    rootDir: backend
