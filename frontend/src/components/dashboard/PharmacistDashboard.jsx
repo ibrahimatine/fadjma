@@ -1,5 +1,5 @@
 // src/components/dashboard/PharmacistDashboard.jsx
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Pill,
   Search,
@@ -22,6 +22,7 @@ import DispensationWorkflow from "../pharmacy/DispensationWorkflow";
 import BatchDispensationWorkflow from "../pharmacy/BatchDispensationWorkflow";
 import PharmacyCart from "../pharmacy/PharmacyCart";
 import websocketService from "../../services/websocketService";
+import toast from "react-hot-toast";
 
 /**
  * Dashboard pour pharmacien - gestion des ordonnances et prescriptions
@@ -46,6 +47,7 @@ const PharmacistDashboard = ({
   const [dispensationMode, setDispensationMode] = useState(false);
   const [currentPrescription, setCurrentPrescription] = useState(null);
   const [batchDispensation, setBatchDispensation] = useState(null);
+  const [cartItems, setCartItems] = useState([]);
 
   // Configuration des statuts avec couleurs
   const statusConfig = {
@@ -121,6 +123,83 @@ const PharmacistDashboard = ({
     // Tri par date (plus récent en premier)
     return filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }, [prescriptions, query, statusFilter]);
+
+  // Charger le panier depuis localStorage au démarrage
+  useEffect(() => {
+    const savedCart = localStorage.getItem('pharmacyCart');
+    if (savedCart) {
+      try {
+        const parsedCart = JSON.parse(savedCart);
+        setCartItems(parsedCart);
+      } catch (error) {
+        console.error('Erreur parsing panier:', error);
+        localStorage.removeItem('pharmacyCart');
+      }
+    }
+  }, []);
+
+  // Fonction d'ajout au panier
+  const addToPharmacyCart = useCallback((prescription, quantity = 1) => {
+    console.log('🛒 Ajout au panier depuis Dashboard:', prescription?.matricule);
+
+    if (!prescription || !prescription.matricule) {
+      console.error('❌ Prescription invalide:', prescription);
+      toast.error('Prescription invalide');
+      return;
+    }
+
+    setCartItems(currentItems => {
+      const existingIndex = currentItems.findIndex(
+        item => item.prescription.matricule === prescription.matricule
+      );
+
+      let newItems;
+      if (existingIndex >= 0) {
+        // Mettre à jour la quantité si déjà présent
+        newItems = currentItems.map((item, index) =>
+          index === existingIndex
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
+        toast.success('Quantité mise à jour dans le panier');
+        console.log('📦 Quantité mise à jour pour:', prescription.matricule);
+      } else {
+        // Ajouter nouveau item
+        const cartItem = {
+          id: Date.now(),
+          prescription,
+          quantity,
+          addedAt: new Date().toISOString(),
+          status: 'pending'
+        };
+        newItems = [...currentItems, cartItem];
+        toast.success('Médicament ajouté au panier');
+        console.log('➕ Nouveau médicament ajouté:', prescription.matricule);
+      }
+
+      // Sauvegarder dans localStorage
+      localStorage.setItem('pharmacyCart', JSON.stringify(newItems));
+      return newItems;
+    });
+  }, []);
+
+  // Exposer la fonction globalement
+  useEffect(() => {
+    console.log('🛒 Exposition de window.addToPharmacyCart depuis Dashboard');
+    window.addToPharmacyCart = addToPharmacyCart;
+
+    // Test si la fonction est bien exposée
+    if (typeof window.addToPharmacyCart === 'function') {
+      console.log('✅ window.addToPharmacyCart exposée avec succès depuis Dashboard');
+    } else {
+      console.error('❌ Échec exposition window.addToPharmacyCart depuis Dashboard');
+    }
+
+    return () => {
+      // Ne pas nettoyer lors du démontage car d'autres composants peuvent l'utiliser
+      console.log('🔄 Dashboard démontage - conservation de window.addToPharmacyCart');
+    };
+  }, [addToPharmacyCart]);
 
   // Actions sur les prescriptions
   const handleValidate = async (prescriptionId) => {
@@ -451,6 +530,17 @@ const PharmacistDashboard = ({
               {/* Actions */}
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => {
+                    console.log('🛒 Ajout manuel au panier via fonction directe');
+                    addToPharmacyCart(foundPrescription);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                  <ShoppingCart className="h-5 w-5" />
+                  Ajouter au panier
+                </button>
+
+                <button
                   onClick={() => startDispensationWorkflow(foundPrescription)}
                   className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-lg"
                 >
@@ -672,8 +762,13 @@ const PharmacistDashboard = ({
       {activeTab === "cart" && (
         <div className="mt-6">
           <PharmacyCart
+            cartItems={cartItems}
+            setCartItems={setCartItems}
             onStartBatchDispensation={handleBatchDispensation}
-            onClearCart={() => {/* Optionnel: actions après vider panier */}}
+            onClearCart={() => {
+              setCartItems([]);
+              localStorage.removeItem('pharmacyCart');
+            }}
           />
         </div>
       )}

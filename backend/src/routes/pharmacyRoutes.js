@@ -41,6 +41,18 @@ router.put(
   pharmacyController.confirmDrugDelivery
 );
 
+// Nouvelle route: Confirmer délivrance par matricule
+router.put(
+  '/deliver/:matricule',
+  authMiddleware,
+  authorize(['pharmacy']),
+  matriculeSearchLimit,
+  validateMatriculeAccess,
+  logFailedAccess,
+  sanitizeResponse,
+  pharmacyController.confirmDeliveryByMatricule
+);
+
 // Route pour obtenir les informations de matricule (médecins et patients)
 router.get(
   '/prescription/:prescriptionId/matricule',

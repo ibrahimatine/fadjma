@@ -228,7 +228,30 @@ class HederaService {
 
   extractTreatments(prescription) {
     if (!prescription) return [];
-    return prescription.split(',').map(t => t.trim()).filter(t => t.length > 0);
+
+    // Si c'est un array, extraire les noms des médicaments
+    if (Array.isArray(prescription)) {
+      return prescription.map(p => {
+        if (typeof p === 'object' && p.medication) {
+          return p.medication;
+        } else if (typeof p === 'string') {
+          return p;
+        }
+        return null;
+      }).filter(t => t && t.length > 0);
+    }
+
+    // Si c'est une chaîne, diviser par virgules
+    if (typeof prescription === 'string') {
+      return prescription.split(',').map(t => t.trim()).filter(t => t.length > 0);
+    }
+
+    // Si c'est un objet unique avec medication
+    if (typeof prescription === 'object' && prescription.medication) {
+      return [prescription.medication];
+    }
+
+    return [];
   }
 
   extractRecommendations(description) {
@@ -258,15 +281,47 @@ class HederaService {
 
   extractMedications(prescription) {
     if (!prescription) return [];
-    // Parser les médicaments depuis la prescription
-    const medications = prescription.split(',').map(med => {
-      const parts = med.trim().split(' ');
-      return {
-        name: parts[0],
-        dosage: parts.slice(1).join(' ') || 'non spécifié'
-      };
-    });
-    return medications;
+
+    // Si c'est un array d'objets medication
+    if (Array.isArray(prescription)) {
+      return prescription.map(p => {
+        if (typeof p === 'object' && p.medication) {
+          return {
+            name: p.medication,
+            dosage: p.dosage || 'non spécifié'
+          };
+        } else if (typeof p === 'string') {
+          const parts = p.trim().split(' ');
+          return {
+            name: parts[0],
+            dosage: parts.slice(1).join(' ') || 'non spécifié'
+          };
+        }
+        return null;
+      }).filter(m => m !== null);
+    }
+
+    // Si c'est une chaîne, parser les médicaments
+    if (typeof prescription === 'string') {
+      const medications = prescription.split(',').map(med => {
+        const parts = med.trim().split(' ');
+        return {
+          name: parts[0],
+          dosage: parts.slice(1).join(' ') || 'non spécifié'
+        };
+      });
+      return medications;
+    }
+
+    // Si c'est un objet unique
+    if (typeof prescription === 'object' && prescription.medication) {
+      return [{
+        name: prescription.medication,
+        dosage: prescription.dosage || 'non spécifié'
+      }];
+    }
+
+    return [];
   }
 
   // Méthodes pour types spécifiques

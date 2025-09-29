@@ -261,6 +261,10 @@ class AccessService {
   // Get access status for multiple patients for a specific requester
   async getAccessStatusForPatients(patientIds, requesterId) {
     try {
+      // Get all patients to check createdByDoctorId
+      const allPatientsResponse = await api.get('/patients?limit=100');
+      const allPatients = allPatientsResponse.data?.data || [];
+
       const response = await this.getRequestsByRequester(requesterId);
 
       if (!response.success) {
@@ -271,6 +275,13 @@ class AccessService {
       const statusMap = {};
 
       patientIds.forEach(patientId => {
+        // Check if patient was created by this doctor
+        const patient = allPatients.find(p => p.id === patientId);
+        if (patient && patient.createdByDoctorId === requesterId) {
+          statusMap[patientId] = { status: 'approved', request: { type: 'creator' } };
+          return;
+        }
+
         const patientRequests = requests.filter(req => req.patientId === patientId);
 
         // Check for pending requests

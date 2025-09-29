@@ -39,6 +39,7 @@ const PatientRecordGroups = () => {
   const [selectedPatientForAccess, setSelectedPatientForAccess] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedPatient, setExpandedPatient] = useState(null);
+  const [isSubmittingAccessRequest, setIsSubmittingAccessRequest] = useState(false);
 
   const typeConfig = {
     allergy: {
@@ -81,6 +82,7 @@ const PatientRecordGroups = () => {
     try {
       const allPatientsResponse = await patientService.getAll();
       const patients = allPatientsResponse?.data || allPatientsResponse || [];
+      console.log('fetchAllData: All patients fetched:', patients.length);
       setAllPatients(patients);
 
       const groupedResponse = await medicalRecordService.getGroupedByPatient(1, 50);
@@ -175,9 +177,18 @@ const PatientRecordGroups = () => {
       });
     });
 
-    // Add non-accessible patients
+    // Add patients not in patientsData (might still have access without records)
     allPatients.forEach(patient => {
       if (!accessiblePatientIds.has(patient.id)) {
+        // Check if doctor has access via access status
+        const status = accessStatus[patient.id];
+        const hasActiveAccess = status && (
+          status.status === 'approved' ||
+          status.status === 'granted' ||
+          // Check if patient was created by this doctor
+          patient.createdByDoctorId === user?.id
+        );
+
         combinedPatients.push({
           patient,
           records: [],
@@ -187,7 +198,7 @@ const PatientRecordGroups = () => {
             recordTypes: [],
             recentRecords: []
           },
-          hasAccess: false
+          hasAccess: hasActiveAccess
         });
       }
     });
@@ -216,12 +227,20 @@ const PatientRecordGroups = () => {
 
   // Submit access request
   const handleSubmitAccessRequest = async (requestData) => {
+    if (isSubmittingAccessRequest) {
+      return; // Prevent double submission
+    }
+
+    setIsSubmittingAccessRequest(true);
+
     try {
+      console.log('🔄 Envoi demande d\'accès en cours...', requestData.patientId);
+
       const response = await accessService.requestReadAccess(requestData.patientId, requestData.reason, requestData.accessLevel);
+
       if (response.success) {
         toast.success("Demande d'accès envoyée avec succès");
-        setShowAccessModal(false);
-        setSelectedPatientForAccess(null);
+        console.log('✅ Demande d\'accès envoyée avec succès');
 
         // Update local access status immediately
         setAccessStatus(prev => ({
@@ -236,15 +255,22 @@ const PatientRecordGroups = () => {
           }
         }));
 
+        // Close modal and reset selected patient
+        setShowAccessModal(false);
+        setSelectedPatientForAccess(null);
+
         // Refresh data to get latest status from server
         setTimeout(() => fetchAllData(), 1000);
+
       } else {
         throw new Error(response.message || "Erreur lors de l'envoi de la demande");
       }
     } catch (error) {
-      console.error("Request access error:", error);
+      console.error("❌ Erreur demande d'accès:", error);
       toast.error(error.message || "Impossible d'envoyer la demande d'accès");
-      throw error;
+      throw error; // Re-throw to let modal handle it
+    } finally {
+      setIsSubmittingAccessRequest(false);
     }
   };
 
@@ -252,7 +278,7 @@ const PatientRecordGroups = () => {
   const getAccessButton = (patientData) => {
     const patient = patientData.patient;
     const status = accessStatus[patient.id];
-
+    console.log('getAccessButton: Patient:', patient.id, 'patient:', patientData);
     if (!patientData.hasAccess) {
       if (!status || status.status === 'none' || status.status === 'rejected') {
         // No access request OR rejected request - show request button
@@ -608,11 +634,14 @@ Ce document contient des informations médicales confidentielles.
         <AccessRequestModal
           isOpen={showAccessModal}
           onClose={() => {
-            setShowAccessModal(false);
-            setSelectedPatientForAccess(null);
+            if (!isSubmittingAccessRequest) {
+              setShowAccessModal(false);
+              setSelectedPatientForAccess(null);
+            }
           }}
           patient={selectedPatientForAccess}
           onSubmit={handleSubmitAccessRequest}
+          loading={isSubmittingAccessRequest}
         />
       )}
     </div>

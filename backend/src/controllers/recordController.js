@@ -357,6 +357,8 @@ exports.create = async (req, res) => {
 
     // Si c'est une prescription, créer des enregistrements séparés dans la table Prescription
     if (type === 'prescription' && prescription && Array.isArray(prescription)) {
+      console.log(`📋 Création de ${prescription.length} prescription(s) pour le patient ${patientId}`);
+
       for (const med of prescription) {
         const prescStartTime = Date.now();
         const prescriptionRecord = await Prescription.create({
@@ -370,6 +372,8 @@ exports.create = async (req, res) => {
           issueDate: new Date(),
           deliveryStatus: 'pending'
         });
+
+        console.log(`💊 Prescription créée: ${prescriptionRecord.medication} - Matricule: ${prescriptionRecord.matricule} - Statut: ${prescriptionRecord.deliveryStatus}`);
 
         // Record prescription database operation
         const prescQueryTime = Date.now() - prescStartTime;
@@ -399,14 +403,18 @@ exports.create = async (req, res) => {
             deliveryConfirmationHash: prescriptionHederaResult.hash,
             hederaTransactionId: prescriptionHederaResult.transactionId,
             hederaSequenceNumber: prescriptionHederaResult.sequenceNumber,
-            hederaTopicId: prescriptionHederaResult.topicId
+            hederaTopicId: prescriptionHederaResult.topicId,
+            isVerified: true,
+            verifiedAt: new Date()
           });
 
-          console.log(`✅ Prescription ${prescriptionRecord.matricule} ancrée avec succès`);
+          console.log(`✅ Prescription ${prescriptionRecord.matricule} ancrée avec succès - Statut: ${prescriptionRecord.deliveryStatus}`);
         } catch (hederaError) {
           console.error(`❌ Échec ancrage prescription ${prescriptionRecord.matricule}:`, hederaError);
         }
       }
+
+      console.log(`✅ Processus de prescription terminé: ${prescription.length} matricule(s) généré(s) et ancré(s) en mode pending`);
     }
     
     // Anchor to Hedera

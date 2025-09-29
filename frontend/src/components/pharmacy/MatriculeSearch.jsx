@@ -77,8 +77,22 @@ const MatriculeSearch = ({ onPrescriptionFound, loading = false }) => {
       toast.success("Prescription trouvée !");
 
       // Ajouter automatiquement au panier si la fonction existe
-      if (window.addToPharmacyCart) {
-        window.addToPharmacyCart(data.prescription);
+      console.log('🔍 Tentative d\'ajout au panier depuis MatriculeSearch');
+      console.log('📋 Prescription trouvée:', data.prescription);
+      console.log('🛒 window.addToPharmacyCart existe?', typeof window.addToPharmacyCart);
+
+      if (window.addToPharmacyCart && typeof window.addToPharmacyCart === 'function') {
+        console.log('✅ Ajout au panier en cours...');
+        try {
+          window.addToPharmacyCart(data.prescription);
+          console.log('✅ Ajout au panier terminé');
+        } catch (error) {
+          console.error('❌ Erreur lors de l\'ajout au panier:', error);
+          toast.error('Erreur lors de l\'ajout au panier');
+        }
+      } else {
+        console.warn('⚠️ window.addToPharmacyCart non disponible');
+        toast.error('Fonction d\'ajout au panier non disponible');
       }
 
       onPrescriptionFound(data.prescription);

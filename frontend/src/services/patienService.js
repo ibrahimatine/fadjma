@@ -2,7 +2,8 @@ import api from './api';
 
 export const patientService = {
   async getAll(filters = {}) {
-    const response = await api.get('/patients');
+    // Augmenter la limite pour récupérer tous les patients
+    const response = await api.get('/patients?limit=100');
     return response.data;
   },
 

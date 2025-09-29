@@ -137,10 +137,14 @@ exports.confirmDrugDelivery = async (req, res) => {
     const { id: pharmacyId } = req.user;
     const { prescriptionId } = req.params;
 
+    console.log(`🏪 Tentative de confirmation de délivrance - Prescription: ${prescriptionId}, Pharmacie: ${pharmacyId}`);
+
     const prescription = await Prescription.findOne({
       where: { id: prescriptionId, pharmacyId, deliveryStatus: 'pending' },
       include: [
-        { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName'] }
+        { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName'] },
+        { model: BaseUser, as: 'doctor', attributes: ['id', 'firstName', 'lastName'] },
+        { model: BaseUser, as: 'pharmacy', attributes: ['id', 'firstName', 'lastName'] }
       ]
     });
 
@@ -148,13 +152,54 @@ exports.confirmDrugDelivery = async (req, res) => {
       return res.status(404).json({ message: 'Prescription not found or already delivered/cancelled' });
     }
 
-    // Record delivery on Hedera
-    const memo = `Drug delivery confirmed for Prescription ID: ${prescription.id} by Pharmacy ID: ${pharmacyId}`;
-    const hederaTransactionId = await hederaService.submitMedicalRecord(memo); // Reusing submitMedicalRecord for simplicity, can create a specific one
+    console.log(`💊 Prescription trouvée: ${prescription.medication} - Matricule: ${prescription.matricule}`);
 
-    prescription.deliveryStatus = 'delivered';
-    prescription.deliveryConfirmationHash = hederaTransactionId;
-    await prescription.save();
+    // Ancrage complet de la délivrance sur Hedera avec toutes les informations
+    try {
+      console.log(`🔗 Début ancrage délivrance pour ${prescription.matricule}...`);
+
+      const deliveryData = {
+        id: prescription.id,
+        matricule: prescription.matricule,
+        patientId: prescription.patientId,
+        doctorId: prescription.doctorId,
+        pharmacyId,
+        type: 'prescription_delivery',
+        medication: prescription.medication,
+        dosage: prescription.dosage,
+        quantity: prescription.quantity,
+        deliveryDate: new Date(),
+        originalIssueDate: prescription.issueDate,
+        deliveryStatus: 'delivered'
+      };
+
+      const hederaResult = await hederaService.anchorRecord(deliveryData);
+
+      // Mise à jour complète des informations de délivrance
+      await prescription.update({
+        deliveryStatus: 'delivered',
+        deliveryConfirmationHash: hederaResult.hash,
+        hederaTransactionId: hederaResult.transactionId,
+        hederaSequenceNumber: hederaResult.sequenceNumber,
+        hederaTopicId: hederaResult.topicId,
+        isVerified: true,
+        verifiedAt: new Date()
+      });
+
+      console.log(`✅ Prescription ${prescription.matricule} délivrée et ancrée avec succès - TX: ${hederaResult.transactionId}`);
+
+    } catch (hederaError) {
+      console.error(`❌ Échec ancrage délivrance ${prescription.matricule}:`, hederaError);
+
+      // Même en cas d'échec d'ancrage, on peut marquer comme délivré localement
+      await prescription.update({
+        deliveryStatus: 'delivered',
+        deliveryConfirmationHash: `LOCAL_DELIVERY_${Date.now()}`, // Hash local de secours
+        verifiedAt: new Date()
+      });
+
+      console.log(`⚠️ Prescription ${prescription.matricule} marquée comme délivrée localement (ancrage échoué)`);
+    }
 
     // Send WebSocket notification to patient about delivery
     if (req.io && prescription.patient) {
@@ -168,10 +213,157 @@ exports.confirmDrugDelivery = async (req, res) => {
       console.log(`🔔 WebSocket notification sent for delivered prescription: ${prescription.id} to patient: ${prescription.patient.id}`);
     }
 
-    res.status(200).json({ message: 'Drug delivery confirmed and recorded on Hedera', prescription });
+    res.status(200).json({
+      message: 'Médicament délivré avec succès et enregistré sur Hedera',
+      prescription,
+      hederaInfo: {
+        transactionId: prescription.hederaTransactionId,
+        isAnchored: prescription.isVerified,
+        verifiedAt: prescription.verifiedAt
+      }
+    });
+
   } catch (error) {
     logger.error('Error confirming drug delivery:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// Nouvelle fonction: Confirmer délivrance par matricule
+exports.confirmDeliveryByMatricule = async (req, res) => {
+  try {
+    const { matricule } = req.params;
+    const { id: pharmacyId } = req.user;
+
+    console.log(`🏪 Tentative de délivrance par matricule: ${matricule} - Pharmacie: ${pharmacyId}`);
+
+    // Validation du format du matricule
+    if (!matricule || !/^PRX-\d{8}-[A-F0-9]{4}$/.test(matricule)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Format de matricule invalide. Format attendu: PRX-YYYYMMDD-XXXX'
+      });
+    }
+
+    // Rechercher la prescription par matricule
+    const prescription = await Prescription.findOne({
+      where: {
+        matricule,
+        deliveryStatus: 'pending'
+      },
+      include: [
+        { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
+        { model: BaseUser, as: 'doctor', attributes: ['id', 'firstName', 'lastName'] },
+        { model: BaseUser, as: 'pharmacy', attributes: ['id', 'firstName', 'lastName'] }
+      ]
+    });
+
+    if (!prescription) {
+      return res.status(404).json({
+        success: false,
+        message: 'Prescription non trouvée ou déjà délivrée/annulée'
+      });
+    }
+
+    // Assigner la pharmacie si pas encore assignée
+    if (!prescription.pharmacyId) {
+      await prescription.update({ pharmacyId });
+      console.log(`📋 Prescription ${matricule} assignée à la pharmacie ${pharmacyId}`);
+    } else if (prescription.pharmacyId !== pharmacyId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Cette prescription est assignée à une autre pharmacie'
+      });
+    }
+
+    console.log(`💊 Délivrance: ${prescription.medication} - Patient: ${prescription.patient?.firstName} ${prescription.patient?.lastName}`);
+
+    // Ancrage complet de la délivrance sur Hedera
+    try {
+      console.log(`🔗 Ancrage délivrance matricule ${matricule}...`);
+
+      const deliveryData = {
+        id: prescription.id,
+        matricule: prescription.matricule,
+        patientId: prescription.patientId,
+        doctorId: prescription.doctorId,
+        pharmacyId,
+        type: 'prescription_delivery',
+        medication: prescription.medication,
+        dosage: prescription.dosage,
+        quantity: prescription.quantity,
+        deliveryDate: new Date(),
+        originalIssueDate: prescription.issueDate,
+        deliveryStatus: 'delivered'
+      };
+
+      const hederaResult = await hederaService.anchorRecord(deliveryData);
+
+      // Mise à jour complète des informations de délivrance
+      await prescription.update({
+        deliveryStatus: 'delivered',
+        deliveryConfirmationHash: hederaResult.hash,
+        hederaTransactionId: hederaResult.transactionId,
+        hederaSequenceNumber: hederaResult.sequenceNumber,
+        hederaTopicId: hederaResult.topicId,
+        isVerified: true,
+        verifiedAt: new Date()
+      });
+
+      console.log(`✅ Matricule ${matricule} délivré et ancré - TX: ${hederaResult.transactionId}`);
+
+    } catch (hederaError) {
+      console.error(`❌ Échec ancrage délivrance ${matricule}:`, hederaError);
+
+      // Délivrance locale en cas d'échec d'ancrage
+      await prescription.update({
+        deliveryStatus: 'delivered',
+        deliveryConfirmationHash: `LOCAL_DELIVERY_${Date.now()}`,
+        verifiedAt: new Date()
+      });
+
+      console.log(`⚠️ Matricule ${matricule} délivré localement (ancrage échoué)`);
+    }
+
+    // Notification WebSocket
+    if (req.io && prescription.patient) {
+      req.io.notifyPrescriptionUpdate(
+        prescription.id,
+        'delivered',
+        prescription.patient.id,
+        pharmacyId
+      );
+
+      console.log(`🔔 Notification délivrance envoyée - Patient: ${prescription.patient.id}`);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Médicament ${prescription.medication} délivré avec succès`,
+      prescription: {
+        id: prescription.id,
+        matricule: prescription.matricule,
+        medication: prescription.medication,
+        dosage: prescription.dosage,
+        quantity: prescription.quantity,
+        deliveryStatus: prescription.deliveryStatus,
+        patient: prescription.patient,
+        doctor: prescription.doctor
+      },
+      hederaInfo: {
+        transactionId: prescription.hederaTransactionId,
+        isAnchored: prescription.isVerified,
+        verifiedAt: prescription.verifiedAt
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error confirming delivery by matricule:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de la confirmation de délivrance',
+      error: error.message
+    });
   }
 };
 

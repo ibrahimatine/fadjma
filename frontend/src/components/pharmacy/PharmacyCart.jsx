@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   ShoppingCart,
   Plus,
@@ -16,7 +16,12 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const PharmacyCart = ({ onStartBatchDispensation, onClearCart }) => {
+const PharmacyCart = ({
+  cartItems: externalCartItems,
+  setCartItems: externalSetCartItems,
+  onStartBatchDispensation,
+  onClearCart
+}) => {
   const [cartItems, setCartItems] = useState([]);
   const [cartSummary, setCartSummary] = useState({
     totalItems: 0,
@@ -24,20 +29,31 @@ const PharmacyCart = ({ onStartBatchDispensation, onClearCart }) => {
     totalMedications: 0
   });
 
-  // Charger le panier depuis localStorage au démarrage
+  // Utiliser les items du panier depuis le parent si disponibles
   useEffect(() => {
-    const savedCart = localStorage.getItem('pharmacyCart');
-    if (savedCart) {
-      const parsedCart = JSON.parse(savedCart);
-      setCartItems(parsedCart);
-      updateSummary(parsedCart);
+    if (externalCartItems) {
+      setCartItems(externalCartItems);
+      updateSummary(externalCartItems);
+    } else {
+      // Fallback: charger depuis localStorage
+      const savedCart = localStorage.getItem('pharmacyCart');
+      if (savedCart) {
+        const parsedCart = JSON.parse(savedCart);
+        setCartItems(parsedCart);
+        updateSummary(parsedCart);
+      }
     }
-  }, []);
+  }, [externalCartItems]);
 
-  // Sauvegarder le panier dans localStorage
+  // Sauvegarder le panier dans localStorage et synchroniser avec le parent
   const saveCart = (items) => {
     localStorage.setItem('pharmacyCart', JSON.stringify(items));
     updateSummary(items);
+
+    // Synchroniser avec le parent si disponible
+    if (externalSetCartItems) {
+      externalSetCartItems(items);
+    }
   };
 
   const updateSummary = (items) => {
@@ -50,36 +66,51 @@ const PharmacyCart = ({ onStartBatchDispensation, onClearCart }) => {
   };
 
   // Ajouter une prescription au panier
-  const addToCart = (prescription, quantity = 1) => {
-    const existingIndex = cartItems.findIndex(
-      item => item.prescription.matricule === prescription.matricule
-    );
+  const addToCart = useCallback((prescription, quantity = 1) => {
+    console.log('🛒 Tentative d\'ajout au panier:', prescription?.matricule);
 
-    let newItems;
-    if (existingIndex >= 0) {
-      // Mettre à jour la quantité si déjà présent
-      newItems = cartItems.map((item, index) =>
-        index === existingIndex
-          ? { ...item, quantity: item.quantity + quantity }
-          : item
-      );
-      toast.success('Quantité mise à jour dans le panier');
-    } else {
-      // Ajouter nouveau item
-      const cartItem = {
-        id: Date.now(),
-        prescription,
-        quantity,
-        addedAt: new Date().toISOString(),
-        status: 'pending' // pending, processing, completed
-      };
-      newItems = [...cartItems, cartItem];
-      toast.success('Médicament ajouté au panier');
+    if (!prescription || !prescription.matricule) {
+      console.error('❌ Prescription invalide:', prescription);
+      toast.error('Prescription invalide');
+      return;
     }
 
-    setCartItems(newItems);
-    saveCart(newItems);
-  };
+    setCartItems(currentItems => {
+      const existingIndex = currentItems.findIndex(
+        item => item.prescription.matricule === prescription.matricule
+      );
+
+      let newItems;
+      if (existingIndex >= 0) {
+        // Mettre à jour la quantité si déjà présent
+        newItems = currentItems.map((item, index) =>
+          index === existingIndex
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
+        toast.success('Quantité mise à jour dans le panier');
+        console.log('📦 Quantité mise à jour pour:', prescription.matricule);
+      } else {
+        // Ajouter nouveau item
+        const cartItem = {
+          id: Date.now(),
+          prescription,
+          quantity,
+          addedAt: new Date().toISOString(),
+          status: 'pending' // pending, processing, completed
+        };
+        newItems = [...currentItems, cartItem];
+        toast.success('Médicament ajouté au panier');
+        console.log('➕ Nouveau médicament ajouté:', prescription.matricule);
+      }
+
+      // Sauvegarder directement les nouveaux items
+      localStorage.setItem('pharmacyCart', JSON.stringify(newItems));
+      updateSummary(newItems);
+
+      return newItems;
+    });
+  }, []);
 
   // Retirer du panier
   const removeFromCart = (matricule) => {
@@ -137,8 +168,24 @@ const PharmacyCart = ({ onStartBatchDispensation, onClearCart }) => {
     onStartBatchDispensation(cartItems, groupedByPatient);
   };
 
-  // Fonction exposée pour ajouter au panier depuis l'extérieur
-  window.addToPharmacyCart = addToCart;
+  // Exposer la fonction globalement dès le chargement du composant
+  useEffect(() => {
+    console.log('🛒 Exposition de window.addToPharmacyCart');
+    window.addToPharmacyCart = addToCart;
+
+    // Test si la fonction est bien exposée
+    if (typeof window.addToPharmacyCart === 'function') {
+      console.log('✅ window.addToPharmacyCart exposée avec succès');
+    } else {
+      console.error('❌ Échec exposition window.addToPharmacyCart');
+    }
+
+    return () => {
+      // Nettoyer lors du démontage du composant
+      console.log('🗑️ Nettoyage de window.addToPharmacyCart');
+      delete window.addToPharmacyCart;
+    };
+  }, [addToCart]);
 
   if (cartItems.length === 0) {
     return (
