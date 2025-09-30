@@ -18,6 +18,19 @@ import Header from './components/common/Header';
 import Footer from './components/common/Footer';
 import websocketService from './services/websocketService';
 
+// Appointment pages
+import PatientAppointments from './pages/PatientAppointments';
+import DoctorAppointments from './pages/DoctorAppointments';
+import AssistantDashboard from './pages/AssistantDashboard';
+
+// Prescription group components
+import PrescriptionGroupForm from './components/doctor/PrescriptionGroupForm';
+import PharmacyGroupSearch from './components/pharmacy/PharmacyGroupSearch';
+
+// Admin pages
+import AdminSpecialtyManagement from './pages/AdminSpecialtyManagement';
+import AdminUserManagement from './pages/AdminUserManagement';
+
 function App() {
   const { user, token } = useAuth();
 
@@ -54,40 +67,47 @@ function App() {
       {user && <Header />}
       <main className="flex-1">
         <Routes>
-        <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
-        <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
-        <Route path="/link-patient" element={user ? <Navigate to="/dashboard" /> : <PatientLinkForm />} />
-        <Route element={<ProtectedRoute allowedRoles={["patient"]} />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/records" element={<Records />} />
-          <Route path="/records/:id" element={
-            user?.role === 'patient' ? (
-              <PatientRecordGuard>
+          <Route path="/login" element={user ? <Navigate to="/dashboard" /> : <Login />} />
+          <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
+          <Route path="/link-patient" element={user ? <Navigate to="/dashboard" /> : <PatientLinkForm />} />
+          <Route element={<ProtectedRoute allowedRoles={["patient"]} />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/records" element={<Records />} />
+            <Route path="/records/:id" element={
+              user?.role === 'patient' ? (
+                <PatientRecordGuard>
+                  <RecordDetails />
+                </PatientRecordGuard>
+              ) : (
                 <RecordDetails />
-              </PatientRecordGuard>
-            ) : (
-              <RecordDetails />
-            )
-          } />
-          <Route path="/patient/medical-records" element={<PatientMedicalRecordsView />} />
-        </Route>
-        <Route element={<ProtectedRoute allowedRoles={["doctor"]} />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/create-medical-record" element={<CreateMedicalRecord />} />
-        </Route>
-        <Route element={<ProtectedRoute allowedRoles={["pharmacy"]} />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-        </Route>
-        <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/admin/registry" element={<AdminRegistry />} />
-          <Route path="/admin/monitoring" element={<AdminMonitoring />} />
-        </Route>
-        {/* Route accessible à tous les utilisateurs connectés */}
-        <Route element={<ProtectedRoute allowedRoles={["patient", "doctor", "admin"]} />}>
-          <Route path="/history" element={<HistoryView />} />
-        </Route>
-        <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
+              )
+            } />
+            <Route path="/patient/medical-records" element={<PatientMedicalRecordsView />} />
+          </Route>
+          <Route path="/patient/appointments" element={<PatientAppointments />} />
+          <Route element={<ProtectedRoute allowedRoles={["doctor"]} />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/create-medical-record" element={<CreateMedicalRecord />} />
+            <Route path="/doctor/appointments" element={<DoctorAppointments />} />
+            <Route path="/doctor/prescription-groups" element={<PrescriptionGroupForm />} />
+          </Route>
+          <Route path="/pharmacy/group-search" element={<PharmacyGroupSearch />} />
+          <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/admin/registry" element={<AdminRegistry />} />
+            <Route path="/admin/monitoring" element={<AdminMonitoring />} />
+            <Route path="/admin/specialties" element={<AdminSpecialtyManagement />} />
+            <Route path="/admin/users" element={<AdminUserManagement />} />
+          </Route>
+          <Route element={<ProtectedRoute allowedRoles={["assistant"]} />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/assistant/appointments" element={<AssistantDashboard />} />
+          </Route>
+          {/* Route accessible à tous les utilisateurs connectés */}
+          <Route element={<ProtectedRoute allowedRoles={["patient", "doctor", "admin"]} />}>
+            <Route path="/history" element={<HistoryView />} />
+          </Route>
+          <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
         </Routes>
       </main>
       <Footer />

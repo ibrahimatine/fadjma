@@ -43,6 +43,26 @@ const MedicalRecordAccessRequest = sequelize.define('MedicalRecordAccessRequest'
   reviewNotes: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  isEmergency: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  emergencyJustification: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  emergencyApprovedBy: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: 'BaseUsers',
+      key: 'id'
+    }
+  },
+  emergencyApprovedAt: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   timestamps: true,

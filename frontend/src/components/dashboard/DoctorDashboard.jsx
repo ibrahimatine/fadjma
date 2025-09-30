@@ -8,8 +8,11 @@ import {
   ChevronDown,
   X,
   CheckCircle,
-  Plus
+  Plus,
+  Calendar,
+  Package
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import DoctorRequestsModal from "../access/DoctorRequestsModal";
 import PatientDetailsModal from "../patient/PatientDetailsModal";
 import websocketService from "../../services/websocketService";
@@ -33,6 +36,7 @@ const DoctorDashboard = ({
   accessRequests = [], // Add accessRequests prop
   onRefreshAccessRequests // Add onRefreshAccessRequests prop
 }) => {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [sortBy, setSortBy] = useState("lastName");
   const [showFilters, setShowFilters] = useState(false);
@@ -225,8 +229,24 @@ const DoctorDashboard = ({
             <FileText className="h-4 w-4 text-gray-600" />
             Mes demandes
           </button>
+        </div>
 
-          
+        {/* Quick Actions */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate('/doctor/appointments')}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+          >
+            <Calendar className="h-4 w-4" />
+            Rendez-vous
+          </button>
+          <button
+            onClick={() => navigate('/doctor/prescription-groups')}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors"
+          >
+            <Package className="h-4 w-4" />
+            Groupes
+          </button>
         </div>
 
         <div className="flex items-center gap-3">

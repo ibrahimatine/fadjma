@@ -32,7 +32,7 @@ const BaseUser = sequelize.define('BaseUser', {
     type: DataTypes.STRING,
     allowNull: false,
     validate: {
-      isIn: [['patient', 'doctor', 'pharmacy', 'admin']]
+      isIn: [['patient', 'doctor', 'pharmacy', 'admin', 'assistant', 'radiologist']]
     }
   },
   isActive: {
@@ -63,7 +63,10 @@ const BaseUser = sequelize.define('BaseUser', {
     allowNull: true,
     unique: true,
     validate: {
-      len: [8, 50]
+      is: {
+        args: /^PAT-\d{8}-[A-F0-9]{4}$/,
+        msg: 'Le matricule doit suivre le format PAT-YYYYMMDD-XXXX'
+      }
     }
   },
   // Track if this is an unclaimed patient profile
@@ -109,13 +112,40 @@ const BaseUser = sequelize.define('BaseUser', {
   socialSecurityNumber: {
     type: DataTypes.STRING,
     allowNull: true
-  }
+  },
+  
 }, {
   timestamps: true,
   hooks: {
     beforeCreate: async (user) => {
       if (user.password) {
         user.password = await bcrypt.hash(user.password, 10);
+      }
+
+      // Générer un matricule unique pour TOUS les patients
+      if (user.role === 'patient' && !user.patientIdentifier) {
+        const crypto = require('crypto');
+        let newMatricule;
+        let exists = true;
+        let attempts = 0;
+        const maxAttempts = 10;
+
+        while (exists && attempts < maxAttempts) {
+          const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+          const random = crypto.randomBytes(2).toString('hex').toUpperCase();
+          newMatricule = `PAT-${date}-${random}`;
+
+          // Vérifier l'unicité
+          const existing = await BaseUser.findOne({ where: { patientIdentifier: newMatricule } });
+          exists = !!existing;
+          attempts++;
+        }
+
+        if (!exists) {
+          user.patientIdentifier = newMatricule;
+        } else {
+          throw new Error('Impossible de générer un matricule unique après plusieurs tentatives');
+        }
       }
     },
     beforeUpdate: async (user) => {

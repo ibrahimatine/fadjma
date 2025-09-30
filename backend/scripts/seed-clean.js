@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { sequelize, BaseUser, Patient, Doctor, Pharmacy } = require('../src/models');
+const { sequelize, BaseUser, Patient, Doctor, Pharmacy, Specialty, DoctorSpecialty, DoctorAvailability } = require('../src/models');
 
 async function seedCleanDatabase() {
   try {
@@ -73,6 +73,28 @@ async function seedCleanDatabase() {
         role: 'admin',
         phoneNumber: '+221 33 900 0001',
         address: 'Siège FadjMa, Dakar'
+      },
+
+      // Assistant/Secrétaire
+      {
+        email: 'secretaire@fadjma.com',
+        password: 'Demo2024!',
+        firstName: 'Aminata',
+        lastName: 'Sy',
+        role: 'assistant',
+        phoneNumber: '+221 77 400 5001',
+        address: '10 Rue de la Clinique, Dakar'
+      },
+
+      // Radiologue
+      {
+        email: 'radio@fadjma.com',
+        password: 'Demo2024!',
+        firstName: 'Cheikh',
+        lastName: 'Ndiaye',
+        role: 'radiologist',
+        phoneNumber: '+221 77 500 6001',
+        address: 'Centre d\'Imagerie Médicale, Dakar'
       }
     ], { individualHooks: true });
 
@@ -142,6 +164,84 @@ async function seedCleanDatabase() {
 
     console.log('✅ Profils spécialisés créés');
 
+    // Créer les spécialités médicales
+    console.log('🔄 Création des spécialités médicales...');
+
+    const specialties = await Specialty.bulkCreate([
+      {
+        name: 'Médecine Générale',
+        code: 'GENERAL',
+        description: 'Soins de santé primaires et consultations générales',
+        dailyAppointmentLimit: 30,
+        averageConsultationDuration: 30,
+        color: '#3B82F6',
+        icon: 'stethoscope',
+        isActive: true
+      },
+      {
+        name: 'Cardiologie',
+        code: 'CARDIO',
+        description: 'Diagnostic et traitement des maladies cardiovasculaires',
+        dailyAppointmentLimit: 15,
+        averageConsultationDuration: 45,
+        color: '#EF4444',
+        icon: 'heart-pulse',
+        isActive: true
+      }
+    ]);
+
+    console.log('✅ Spécialités créées');
+
+    // Lier les médecins à leurs spécialités
+    console.log('🔄 Liaison des médecins aux spécialités...');
+
+    await DoctorSpecialty.bulkCreate([
+      {
+        doctorId: baseUsers[0].id, // Dr. Martin
+        specialtyId: specialties[0].id, // Médecine Générale
+        isPrimary: true,
+        yearsOfExperience: 15
+      },
+      {
+        doctorId: baseUsers[1].id, // Dr. Diop
+        specialtyId: specialties[1].id, // Cardiologie
+        isPrimary: true,
+        yearsOfExperience: 12
+      }
+    ]);
+
+    console.log('✅ Médecins liés aux spécialités');
+
+    // Créer les disponibilités pour les médecins
+    console.log('🔄 Création des disponibilités des médecins...');
+
+    const availabilities = [];
+    const doctors = [baseUsers[0], baseUsers[1]]; // Dr. Martin et Dr. Diop
+
+    for (const doctor of doctors) {
+      // Lundi à Vendredi (1-5)
+      for (let dayOfWeek = 1; dayOfWeek <= 5; dayOfWeek++) {
+        availabilities.push({
+          doctorId: doctor.id,
+          dayOfWeek: dayOfWeek,
+          startTime: '08:00:00',
+          endTime: '12:00:00',
+          isActive: true
+        });
+        availabilities.push({
+          doctorId: doctor.id,
+          dayOfWeek: dayOfWeek,
+          startTime: '14:00:00',
+          endTime: '18:00:00',
+          isActive: true
+        });
+      }
+    }
+
+    await DoctorAvailability.bulkCreate(availabilities);
+
+    console.log('✅ Disponibilités créées');
+
     // Résumé
     console.log('\n' + '='.repeat(60));
     console.log('📊 BASE DE DONNÉES PROPRE POUR VOS TESTS');
@@ -159,6 +259,12 @@ async function seedCleanDatabase() {
 
     console.log('\n👨‍💼 ADMINISTRATEUR:');
     console.log('  📧 admin@fadjma.com         🔑 Admin2024!');
+
+    console.log('\n👔 ASSISTANT/SECRÉTAIRE:');
+    console.log('  📧 secretaire@fadjma.com    🔑 Demo2024!');
+
+    console.log('\n🔬 RADIOLOGUE:');
+    console.log('  📧 radio@fadjma.com         🔑 Demo2024!');
 
     console.log('\n✅ Base de données propre prête pour vos tests personnalisés!');
     console.log('🚀 Vous pouvez maintenant créer vos propres données via l\'interface');

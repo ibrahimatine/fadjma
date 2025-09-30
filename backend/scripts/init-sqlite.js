@@ -20,26 +20,29 @@ async function initSQLite() {
 
     console.log('✅ Base SQLite créée avec succès !');
 
-    // Configuration automatique du système de matricules
-    console.log('🔧 Configuration du système de matricules...');
+    // Configuration automatique du système de matricules prescriptions
+    console.log('🔧 Configuration du système de matricules prescriptions...');
     await setupMatriculeSystem();
 
-    // Configuration du système d'identifiants patients
+    // Configuration du système d'identifiants patients (tous les patients)
     console.log('🔧 Configuration du système d\'identifiants patients...');
     await setupPatientIdentifierSystem();
 
     console.log('✅ Systèmes configurés !');
     console.log('\n📋 Fonctionnalités activées:');
-    console.log('   ✅ Génération automatique de matricules pour nouvelles prescriptions');
+    console.log('   ✅ Génération automatique de matricules prescriptions (PRX-YYYYMMDD-XXXX)');
+    console.log('   ✅ Génération automatique de matricules patients (PAT-YYYYMMDD-XXXX)');
     console.log('   ✅ API de recherche par matricule pour pharmaciens');
+    console.log('   ✅ API de délivrance par matricule avec ancrage Hedera');
     console.log('   ✅ Dashboard pharmacien avec onglets de recherche');
+    console.log('   ✅ Dispensation en lot avec ancrage blockchain');
     console.log('   ✅ Sécurité et audit des accès');
-    console.log('   ✅ Système d\'identifiants patients pour profils non réclamés');
+    console.log('   ✅ Système d\'identifiants patients pour TOUS les patients');
     console.log('   ✅ Liaison d\'identifiants pour création de comptes patients');
     console.log('\n📝 Prochaines étapes:');
     console.log('   1. npm run seed (pour données de test)');
     console.log('   2. npm start (démarrer le serveur)');
-    console.log('   3. Tester la recherche par matricule dans le dashboard pharmacien');
+    console.log('   3. Tester la recherche et délivrance par matricule dans le dashboard pharmacien');
 
     process.exit(0);
   } catch (error) {
@@ -357,8 +360,9 @@ async function displaySystemInfo() {
     // Informations sur les identifiants patients
     console.log('\n🏥 Configuration identifiants patients:');
     console.log('   📋 Format: PAT-YYYYMMDD-XXXX');
-    console.log('   🔒 Champ unique avec index');
-    console.log('   👨‍⚕️ Création par médecins uniquement');
+    console.log('   🔒 Champ unique avec index (patientIdentifier)');
+    console.log('   🤖 Génération automatique pour TOUS les nouveaux patients');
+    console.log('   👨‍⚕️ Hook beforeCreate dans BaseUser.js');
     console.log('   🔗 API liaison: /api/auth/link-patient-identifier');
     console.log('   ✅ API vérification: /api/auth/verify-patient-identifier/:identifier');
     console.log('   🛡️  Rate limiting: 5 tentatives/15min');

@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { sequelize, BaseUser, Patient, Doctor, Pharmacy, MedicalRecord, Prescription, MedicalRecordAccessRequest } = require('../src/models');
+const { sequelize, BaseUser, Patient, Doctor, Pharmacy, MedicalRecord, Prescription, MedicalRecordAccessRequest, Specialty, DoctorSpecialty, DoctorAvailability } = require('../src/models');
 const PatientIdentifierService = require('../src/services/patientIdentifierService');
 
 async function seedDatabase() {
@@ -128,6 +128,37 @@ async function seedDatabase() {
         role: 'admin',
         phoneNumber: '+221 33 900 0001',
         address: 'Siège FadjMa, Dakar'
+      },
+
+      // Assistants/Secrétaires
+      {
+        email: 'secretaire.accueil@fadjma.com',
+        password: 'Demo2024!',
+        firstName: 'Fatou',
+        lastName: 'Diallo',
+        role: 'assistant',
+        phoneNumber: '+221 77 400 5001',
+        address: '10 Rue de la Clinique, Dakar'
+      },
+      {
+        email: 'secretaire.rdv@fadjma.com',
+        password: 'Demo2024!',
+        firstName: 'Aminata',
+        lastName: 'Sy',
+        role: 'assistant',
+        phoneNumber: '+221 77 400 5002',
+        address: '12 Avenue des Soins, Dakar'
+      },
+
+      // Radiologue
+      {
+        email: 'radio.imaging@fadjma.com',
+        password: 'Demo2024!',
+        firstName: 'Cheikh',
+        lastName: 'Ndiaye',
+        role: 'radiologist',
+        phoneNumber: '+221 77 500 6001',
+        address: 'Centre d\'Imagerie Médicale, Dakar'
       }
     ], { individualHooks: true });
     
@@ -251,11 +282,121 @@ async function seedDatabase() {
 
     console.log('✅ Profils spécialisés créés');
 
+    // Créer les spécialités médicales
+    console.log('🔄 Création des spécialités médicales...');
+
+    const specialties = await Specialty.bulkCreate([
+      {
+        name: 'Médecine Générale',
+        code: 'GENERAL',
+        description: 'Soins de santé primaires et consultations générales',
+        dailyAppointmentLimit: 30,
+        averageConsultationDuration: 30,
+        color: '#3B82F6',
+        icon: 'stethoscope',
+        isActive: true
+      },
+      {
+        name: 'Cardiologie',
+        code: 'CARDIO',
+        description: 'Diagnostic et traitement des maladies cardiovasculaires',
+        dailyAppointmentLimit: 15,
+        averageConsultationDuration: 45,
+        color: '#EF4444',
+        icon: 'heart-pulse',
+        isActive: true
+      },
+      {
+        name: 'Pédiatrie',
+        code: 'PEDIATRIE',
+        description: 'Soins médicaux pour les enfants et adolescents',
+        dailyAppointmentLimit: 25,
+        averageConsultationDuration: 30,
+        color: '#10B981',
+        icon: 'baby',
+        isActive: true
+      },
+      {
+        name: 'Gynécologie-Obstétrique',
+        code: 'GYNECO',
+        description: 'Santé reproductive et suivi de grossesse',
+        dailyAppointmentLimit: 20,
+        averageConsultationDuration: 40,
+        color: '#EC4899',
+        icon: 'user',
+        isActive: true
+      }
+    ]);
+
+    console.log('✅ Spécialités créées:', specialties.length);
+
     // Récupérer les IDs
     const drMartin = baseUsers[0];
     const drDiop = baseUsers[1];
     const drFall = baseUsers[2];
     const drKane = baseUsers[3];
+
+    // Lier les médecins à leurs spécialités
+    console.log('🔄 Liaison des médecins aux spécialités...');
+
+    await DoctorSpecialty.bulkCreate([
+      {
+        doctorId: drMartin.id,
+        specialtyId: specialties[0].id, // Médecine Générale
+        isPrimary: true,
+        yearsOfExperience: 15
+      },
+      {
+        doctorId: drDiop.id,
+        specialtyId: specialties[1].id, // Cardiologie
+        isPrimary: true,
+        yearsOfExperience: 12
+      },
+      {
+        doctorId: drFall.id,
+        specialtyId: specialties[2].id, // Pédiatrie
+        isPrimary: true,
+        yearsOfExperience: 8
+      },
+      {
+        doctorId: drKane.id,
+        specialtyId: specialties[3].id, // Gynécologie
+        isPrimary: true,
+        yearsOfExperience: 10
+      }
+    ]);
+
+    console.log('✅ Médecins liés aux spécialités');
+
+    // Créer les disponibilités pour les médecins (Lundi à Vendredi, 8h-18h)
+    console.log('🔄 Création des disponibilités des médecins...');
+
+    const availabilities = [];
+    const doctors = [drMartin, drDiop, drFall, drKane];
+
+    for (const doctor of doctors) {
+      // Lundi à Vendredi (1-5)
+      for (let dayOfWeek = 1; dayOfWeek <= 5; dayOfWeek++) {
+        availabilities.push({
+          doctorId: doctor.id,
+          dayOfWeek: dayOfWeek,
+          startTime: '08:00:00',
+          endTime: '12:00:00',
+          isActive: true
+        });
+        availabilities.push({
+          doctorId: doctor.id,
+          dayOfWeek: dayOfWeek,
+          startTime: '14:00:00',
+          endTime: '18:00:00',
+          isActive: true
+        });
+      }
+    }
+
+    await DoctorAvailability.bulkCreate(availabilities);
+
+    console.log('✅ Disponibilités créées:', availabilities.length);
     const patientJean = baseUsers[4];
     const patientFatou = baseUsers[5];
     const patientMamadou = baseUsers[6];
@@ -809,7 +950,9 @@ async function seedDatabase() {
     console.log(`  📋 Total dossiers médicaux: ${recordsJean.length + recordsFatou.length + recordsMamadou.length + recordsAwa.length + recordsIbrahim.length + recordsUnclaimed.length}`);
     console.log(`  💊 Total prescriptions: ${prescriptions.length}`);
     console.log(`  🔐 Dossiers ancrés Hedera: ${recordsToAnchor.length}`);
-    console.log(`  🏥 Spécialités médicales: 4`);
+    console.log(`  🏥 Spécialités médicales: ${specialties.length}`);
+    console.log(`  👨‍⚕️ Médecins avec spécialités: 4`);
+    console.log(`  📅 Créneaux de disponibilité: ${availabilities.length}`);
     console.log(`  💊 Pharmacies partenaires: 2`);
     console.log(`  🎯 Prescriptions avec matricules: ${prescriptions.filter(p => p.matricule).length}`);
     console.log(`  🆔 Identifiants patients générés: ${unclaimedPatients.length}`);

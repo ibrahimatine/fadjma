@@ -1,5 +1,6 @@
 // src/pages/Dashboard.jsx
 import { useEffect, useState, useCallback } from "react";
+import { useNavigate } from 'react-router-dom';
 import toast from "react-hot-toast";
 import { useAuth } from "../hooks/useAuth";
 import DashboardLayout from "../components/dashboard/DashboardLayout";
@@ -16,7 +17,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [doctorStats, setDoctorStats] = useState({});
-  const [patientStats, setPatientStats] = useState({});
+  const navigate = useNavigate();
 
   // pagination states
   const [page, setPage] = useState(1);
@@ -104,6 +105,10 @@ const Dashboard = () => {
 
   useEffect(() => {
     // initial load - seulement pour les médecins
+    if (user?.role === "admin" && user?.role !== "doctor" && user?.role !== "pharmacy" && user?.role !== "patient") {
+      navigate('/admin/registry');
+      return;
+    }
     fetchUserStats();
     if (user?.role === "doctor") {
       setPage(1);
@@ -152,35 +157,11 @@ const Dashboard = () => {
     }
   };
 
-  // Données de test pour pharmacien
-  const mockPrescriptions = [
-    {
-      id: 'RX001',
-      patientName: 'Jean Dupont',
-      doctorName: 'Dr. Martin',
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      medications: [
-        { name: 'Paracétamol', dosage: '500mg', quantity: '30 comprimés' },
-        { name: 'Ibuprofène', dosage: '200mg', quantity: '20 comprimés' }
-      ]
-    },
-    {
-      id: 'RX002',
-      patientName: 'Marie Durand',
-      doctorName: 'Dr. Leroy',
-      status: 'validated',
-      createdAt: new Date(Date.now() - 3600000).toISOString(),
-      medications: [
-        { name: 'Amoxicilline', dosage: '1g', quantity: '14 comprimés' }
-      ]
-    }
-  ];
+
 
   if (loading && page === 1) {
     return <LoadingSpinner text="Chargement du dashboard..." />;
   }
-  console.log("Dashboard render - user:", user, "patients:", patients);
   return (
     <DashboardLayout
       loading={loading}
@@ -193,7 +174,7 @@ const Dashboard = () => {
         <PatientDashboard />
       ) : user?.role === "pharmacy" ? (
         <PharmacistDashboard
-          prescriptions={prescriptions.length > 0 ? prescriptions : mockPrescriptions}
+          prescriptions={prescriptions.length > 0 ? prescriptions : []}
           loading={loading}
           onValidatePrescription={handleValidatePrescription}
           onPrepareMedication={handlePrepareMedication}

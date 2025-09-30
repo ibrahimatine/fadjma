@@ -1,7 +1,9 @@
 const { MedicalRecord, Prescription, BaseUser } = require('../models');
+const SystemStatus = require('../models/SystemStatus');
 const hederaService = require('../services/hederaService');
 const logger = require('../utils/logger');
 const { Op } = require('sequelize');
+const bcrypt = require('bcryptjs');
 
 exports.getRegistryOverview = async (req, res) => {
   try {
@@ -437,52 +439,116 @@ exports.getTopicDetails = async (req, res) => {
 
 exports.exportRegistryData = async (req, res) => {
   try {
-    // Vérifier que l'utilisateur est admin
     if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Accès refusé - Administrateur uniquement' });
+      return res.status(403).json({ message: 'Accès refusé' });
     }
 
     const { format = 'json', type = 'all', dateRange = '30days' } = req.query;
 
-    // Utiliser la même logique que getRegistryData mais sans limites
-    const data = await exports.getRegistryData({
-      ...req,
-      query: { ...req.query, limit: 10000, offset: 0 }
-    });
+    // Construire le whereClause directement
+    let whereClause = {};
 
-    if (format === 'csv') {
-      // Conversion en CSV
-      const csvData = data.data.map(item => ({
-        id: item.id,
-        type: item.type,
-        timestamp: item.consensusTimestamp,
-        status: item.status,
-        topicId: item.topicId,
-        hash: item.hash,
-        patientId: item.payload.patientId,
-        doctorId: item.payload.doctorId
-      }));
+    if (dateRange !== 'all') {
+      const now = new Date();
+      const cutoffDays = {
+        '1day': 1,
+        '7days': 7,
+        '30days': 30
+      };
+      if (cutoffDays[dateRange]) {
+        whereClause.createdAt = {
+          [Op.gte]: new Date(now.getTime() - cutoffDays[dateRange] * 24 * 60 * 60 * 1000)
+        };
+      }
+    }
 
-      const csvHeaders = Object.keys(csvData[0] || {}).join(',');
-      const csvRows = csvData.map(row => Object.values(row).join(',')).join('\n');
-      const csvContent = `${csvHeaders}\n${csvRows}`;
+    const exportData = [];
 
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="registry-export-${new Date().toISOString().split('T')[0]}.csv"`);
-      res.send(csvContent);
-    } else {
-      // Export JSON par défaut
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="registry-export-${new Date().toISOString().split('T')[0]}.json"`);
-      res.json({
-        exportedAt: new Date().toISOString(),
-        filters: { type, dateRange },
-        totalRecords: data.total,
-        data: data.data
+    // Récupérer les données sans limite
+    if (type === 'all' || type === 'medical_record') {
+      const records = await MedicalRecord.findAll({
+        where: whereClause,
+        include: [
+          { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
+          { model: BaseUser, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] }
+        ],
+        order: [['createdAt', 'DESC']]
+      });
+
+      records.forEach(record => {
+        exportData.push({
+          id: record.id,
+          type: 'medical_record',
+          timestamp: record.createdAt,
+          transactionId: record.hederaTransactionId,
+          hash: record.hash,
+          status: record.isVerified ? 'verified' : 'pending',
+          patientId: record.patientId,
+          patientName: `${record.patient?.firstName} ${record.patient?.lastName}`,
+          doctorId: record.doctorId,
+          doctorName: `${record.doctor?.firstName} ${record.doctor?.lastName}`,
+          recordType: record.type,
+          title: record.title
+        });
       });
     }
 
-    logger.info(`Registry data exported by admin ${req.user.id}, format: ${format}, records: ${data.total}`);
+    if (type === 'all' || type === 'prescription') {
+      const prescriptions = await Prescription.findAll({
+        where: { ...whereClause, matricule: { [Op.not]: null } },
+        include: [
+          { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
+          { model: BaseUser, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] }
+        ],
+        order: [['createdAt', 'DESC']]
+      });
+
+      prescriptions.forEach(prescription => {
+        exportData.push({
+          id: prescription.id,
+          type: 'prescription',
+          timestamp: prescription.createdAt,
+          transactionId: prescription.hederaTransactionId,
+          hash: prescription.deliveryConfirmationHash,
+          status: prescription.isVerified ? 'verified' : 'pending',
+          matricule: prescription.matricule,
+          patientId: prescription.patientId,
+          patientName: `${prescription.patient?.firstName} ${prescription.patient?.lastName}`,
+          doctorId: prescription.doctorId,
+          doctorName: `${prescription.doctor?.firstName} ${prescription.doctor?.lastName}`,
+          medication: prescription.medication,
+          dosage: prescription.dosage,
+          deliveryStatus: prescription.deliveryStatus
+        });
+      });
+    }
+
+    if (format === 'csv') {
+      // Conversion en CSV
+      if (exportData.length === 0) {
+        return res.status(404).json({ success: false, message: 'Aucune donnée à exporter' });
+      }
+
+      const csvHeaders = Object.keys(exportData[0]).join(',');
+      const csvRows = exportData.map(row =>
+        Object.values(row).map(val => `"${val || ''}"`).join(',')
+      ).join('\n');
+      const csvContent = `${csvHeaders}\n${csvRows}`;
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="registry-export-${new Date().toISOString().split('T')[0]}.csv"`);
+      return res.send('\ufeff' + csvContent); // BOM pour UTF-8
+    } else {
+      // Export JSON
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="registry-export-${new Date().toISOString().split('T')[0]}.json"`);
+      return res.json({
+        exportedAt: new Date().toISOString(),
+        filters: { type, dateRange },
+        totalRecords: exportData.length,
+        data: exportData
+      });
+    }
 
   } catch (error) {
     logger.error('Error exporting registry data:', error);
@@ -490,6 +556,403 @@ exports.exportRegistryData = async (req, res) => {
       success: false,
       message: 'Erreur lors de l\'export des données',
       error: error.message
+    });
+  }
+};
+
+// Nouvelle fonction pour mettre à jour le statut système
+exports.updateSystemStatus = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Accès refusé' });
+    }
+
+    const { component, status, reason } = req.body;
+
+    // Validation
+    if (!component || !status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Component et status sont requis'
+      });
+    }
+
+    // Valider les valeurs
+    const validComponents = ['database', 'hedera', 'websocket', 'api', 'blockchain', 'storage', 'authentication'];
+    const validStatuses = ['operational', 'degraded', 'outage', 'maintenance'];
+
+    if (!validComponents.includes(component)) {
+      return res.status(400).json({
+        success: false,
+        message: `Component invalide. Valeurs acceptées: ${validComponents.join(', ')}`
+      });
+    }
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Status invalide. Valeurs acceptées: ${validStatuses.join(', ')}`
+      });
+    }
+
+    // Enregistrer dans la table SystemStatus
+    const statusUpdate = await SystemStatus.create({
+      component,
+      status,
+      reason,
+      updatedBy: req.user.id,
+      timestamp: new Date()
+    });
+
+    logger.info(`System status updated by admin ${req.user.id}: ${component} -> ${status}`);
+
+    res.json({
+      success: true,
+      statusUpdate
+    });
+
+  } catch (error) {
+    logger.error('Error updating system status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour du statut',
+      error: error.message
+    });
+  }
+};
+
+// Nouvelle fonction pour obtenir les logs système
+exports.getSystemLogs = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Accès refusé' });
+    }
+
+    const {
+      level = 'all',
+      limit = 100,
+      offset = 0,
+      startDate,
+      endDate
+    } = req.query;
+
+    // Construction du filtre de date
+    let dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter.timestamp = {};
+      if (startDate) {
+        dateFilter.timestamp[Op.gte] = new Date(startDate);
+      }
+      if (endDate) {
+        dateFilter.timestamp[Op.lte] = new Date(endDate);
+      }
+    }
+
+    // Récupérer les logs depuis SystemStatus
+    const logs = await SystemStatus.findAll({
+      where: dateFilter,
+      include: [
+        {
+          model: BaseUser,
+          as: 'updater',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        }
+      ],
+      order: [['timestamp', 'DESC']],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    const totalLogs = await SystemStatus.count({ where: dateFilter });
+
+    // Formater les logs pour l'affichage
+    const formattedLogs = logs.map(log => ({
+      id: log.id,
+      timestamp: log.timestamp,
+      level: log.status === 'operational' ? 'info' : log.status === 'degraded' ? 'warn' : 'error',
+      component: log.component,
+      status: log.status,
+      message: log.reason || `Status changed to ${log.status}`,
+      admin: log.updater ? `${log.updater.firstName} ${log.updater.lastName}` : 'System',
+      metadata: log.metadata
+    }));
+
+    res.json({
+      success: true,
+      logs: formattedLogs,
+      pagination: {
+        total: totalLogs,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: parseInt(offset) + formattedLogs.length < totalLogs
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error fetching system logs:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des logs',
+      error: error.message
+    });
+  }
+};
+
+// Gestion des utilisateurs
+exports.getAllUsers = async (req, res) => {
+  try {
+    const { role, isActive, search } = req.query;
+
+    let whereClause = {};
+
+    if (role) {
+      whereClause.role = role;
+    }
+
+    if (isActive !== undefined) {
+      whereClause.isActive = isActive === 'true';
+    }
+
+    if (search) {
+      whereClause[Op.or] = [
+        { firstName: { [Op.like]: `%${search}%` } },
+        { lastName: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
+    const users = await BaseUser.findAll({
+      where: whereClause,
+      attributes: { exclude: ['password'] },
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json({
+      success: true,
+      users,
+      total: users.length
+    });
+
+  } catch (error) {
+    logger.error('Error fetching users:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des utilisateurs'
+    });
+  }
+};
+
+exports.createUser = async (req, res) => {
+  try {
+    const {
+      email,
+      password,
+      firstName,
+      lastName,
+      phoneNumber,
+      role,
+      dateOfBirth,
+      address,
+      specialization,
+      licenseNumber
+    } = req.body;
+
+    // Validation
+    if (!email || !password || !firstName || !lastName || !role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email, mot de passe, prénom, nom et rôle sont obligatoires'
+      });
+    }
+
+    // Vérifier que l'email n'existe pas déjà
+    const existingUser = await BaseUser.findOne({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'Un utilisateur avec cet email existe déjà'
+      });
+    }
+
+    // Valider le rôle
+    const validRoles = ['patient', 'doctor', 'pharmacy', 'admin', 'assistant', 'radiologist'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Rôle invalide'
+      });
+    }
+
+    // Hasher le mot de passe
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Créer l'utilisateur
+    const user = await BaseUser.create({
+      email,
+      password: hashedPassword,
+      firstName,
+      lastName,
+      phoneNumber,
+      role,
+      dateOfBirth,
+      address,
+      specialization: role === 'doctor' ? specialization : null,
+      licenseNumber: role === 'doctor' || role === 'pharmacy' ? licenseNumber : null,
+      isActive: true
+    });
+
+    logger.info(`New user created by admin ${req.user.id}: ${user.email} (${user.role})`);
+
+    // Retourner sans le mot de passe
+    const userResponse = user.toJSON();
+    delete userResponse.password;
+
+    res.status(201).json({
+      success: true,
+      message: 'Utilisateur créé avec succès',
+      user: userResponse
+    });
+
+  } catch (error) {
+    logger.error('Error creating user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la création de l\'utilisateur'
+    });
+  }
+};
+
+exports.updateUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const {
+      firstName,
+      lastName,
+      phoneNumber,
+      dateOfBirth,
+      address,
+      specialization,
+      licenseNumber,
+      isActive
+    } = req.body;
+
+    const user = await BaseUser.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+
+    // Ne pas permettre de modifier le rôle ou l'email via cette route
+    await user.update({
+      firstName: firstName || user.firstName,
+      lastName: lastName || user.lastName,
+      phoneNumber: phoneNumber !== undefined ? phoneNumber : user.phoneNumber,
+      dateOfBirth: dateOfBirth !== undefined ? dateOfBirth : user.dateOfBirth,
+      address: address !== undefined ? address : user.address,
+      specialization: specialization !== undefined ? specialization : user.specialization,
+      licenseNumber: licenseNumber !== undefined ? licenseNumber : user.licenseNumber,
+      isActive: isActive !== undefined ? isActive : user.isActive
+    });
+
+    logger.info(`User ${userId} updated by admin ${req.user.id}`);
+
+    const userResponse = user.toJSON();
+    delete userResponse.password;
+
+    res.json({
+      success: true,
+      message: 'Utilisateur mis à jour avec succès',
+      user: userResponse
+    });
+
+  } catch (error) {
+    logger.error('Error updating user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour de l\'utilisateur'
+    });
+  }
+};
+
+exports.resetUserPassword = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le mot de passe doit contenir au moins 6 caractères'
+      });
+    }
+
+    const user = await BaseUser.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await user.update({ password: hashedPassword });
+
+    logger.info(`Password reset for user ${userId} by admin ${req.user.id}`);
+
+    res.json({
+      success: true,
+      message: 'Mot de passe réinitialisé avec succès'
+    });
+
+  } catch (error) {
+    logger.error('Error resetting password:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la réinitialisation du mot de passe'
+    });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await BaseUser.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+
+    // Ne pas permettre de supprimer son propre compte
+    if (user.id === req.user.id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vous ne pouvez pas supprimer votre propre compte'
+      });
+    }
+
+    // Désactiver au lieu de supprimer (soft delete)
+    await user.update({ isActive: false });
+
+    logger.info(`User ${userId} deactivated by admin ${req.user.id}`);
+
+    res.json({
+      success: true,
+      message: 'Utilisateur désactivé avec succès'
+    });
+
+  } catch (error) {
+    logger.error('Error deleting user:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la suppression de l\'utilisateur'
     });
   }
 };

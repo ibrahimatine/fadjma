@@ -116,6 +116,7 @@ export const adminService = {
   // Forcer la mise à jour des statuts
   async updateStatuses() {
     const response = await api.post('/admin/status/update');
+    console.log('Status update response:', response);
     return response.data;
   },
 
@@ -156,11 +157,13 @@ export const adminService = {
     return response.data;
   },
 
-  async getSystemLogs(limit = 50, type = null) {
+  async getSystemLogs(limit = 100, level = null, startDate = null, endDate = null) {
     const params = { limit };
-    if (type) params.type = type;
+    if (level) params.level = level;
+    if (startDate) params.startDate = startDate;
+    if (endDate) params.endDate = endDate;
 
-    const response = await api.get('/monitoring/logs', { params });
+    const response = await api.get('/admin/logs', { params });
     return response.data;
   },
 

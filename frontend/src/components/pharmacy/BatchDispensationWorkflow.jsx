@@ -14,6 +14,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../../services/api';
 
 const BatchDispensationWorkflow = ({ batchDispensation, onComplete, onCancel }) => {
   const [currentStep, setCurrentStep] = useState(0);
@@ -67,22 +68,58 @@ const BatchDispensationWorkflow = ({ batchDispensation, onComplete, onCancel }) 
   };
 
   const handleComplete = async () => {
-    // Ancrage blockchain pour tout le lot
-    const blockchainResults = await Promise.all(
-      cartItems.map(item => ({
-        matricule: item.prescription.matricule,
-        hederaTransactionId: 'HCS-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-        hash: 'sha256_' + Math.random().toString(36).substr(2, 16)
-      }))
-    );
+    try {
+      // Ancrage blockchain réel pour tout le lot via API
+      const blockchainResults = await Promise.all(
+        cartItems.map(async (item) => {
+          try {
+            const response = await api.put(`/pharmacy/deliver/${item.prescription.matricule}`, {
+              batchMode: true,
+              batchData,
+              completedAt: new Date().toISOString()
+            });
 
-    toast.success('Dispensation en lot terminée avec succès !');
-    onComplete({
-      batchResults: blockchainResults,
-      completedAt: new Date().toISOString(),
-      totalItems: totalMedications,
-      totalPatients
-    });
+            return {
+              matricule: item.prescription.matricule,
+              success: response.data.success,
+              hederaTransactionId: response.data.hederaInfo?.transactionId,
+              isAnchored: response.data.hederaInfo?.isAnchored,
+              medication: item.prescription.medication
+            };
+          } catch (error) {
+            console.error(`Erreur ancrage ${item.prescription.matricule}:`, error);
+            return {
+              matricule: item.prescription.matricule,
+              success: false,
+              error: error.response?.data?.message || error.message,
+              medication: item.prescription.medication
+            };
+          }
+        })
+      );
+
+      // Vérifier les succès et échecs
+      const successful = blockchainResults.filter(r => r.success).length;
+      const failed = blockchainResults.filter(r => !r.success).length;
+
+      if (failed === 0) {
+        toast.success(`Dispensation en lot terminée avec succès ! ${successful} médicament(s) ancré(s) sur Hedera`);
+      } else {
+        toast.error(`${successful} succès, ${failed} échec(s). Vérifiez les détails.`);
+      }
+
+      onComplete({
+        batchResults: blockchainResults,
+        completedAt: new Date().toISOString(),
+        totalItems: totalMedications,
+        totalPatients,
+        successful,
+        failed
+      });
+    } catch (error) {
+      console.error('Erreur lors de la dispensation en lot:', error);
+      toast.error('Erreur lors de l\'ancrage blockchain du lot');
+    }
   };
 
   const renderStepContent = () => {
@@ -484,13 +521,34 @@ const BatchDelivery = ({ groupedByPatient, onNext, onDataChange }) => {
 
 const BatchBlockchain = ({ cartItems, batchData, onComplete }) => {
   const [anchoring, setAnchoring] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [currentItem, setCurrentItem] = useState(0);
 
   const handleAnchor = async () => {
     setAnchoring(true);
-    // Simulation ancrage blockchain rapide
-    setTimeout(() => {
-      onComplete();
-    }, 1000);
+    setProgress(0);
+    setCurrentItem(0);
+
+    // Simuler la progression pendant l'ancrage
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        const newProgress = prev + (100 / cartItems.length) * 0.5;
+        return newProgress >= 95 ? 95 : newProgress;
+      });
+    }, 500);
+
+    try {
+      // Appel à la fonction parent qui fait les vrais appels API
+      await onComplete();
+
+      // Finaliser la progression
+      clearInterval(progressInterval);
+      setProgress(100);
+    } catch (error) {
+      clearInterval(progressInterval);
+      setAnchoring(false);
+      setProgress(0);
+    }
   };
 
   return (
@@ -499,6 +557,23 @@ const BatchBlockchain = ({ cartItems, batchData, onComplete }) => {
         <Shield className="h-16 w-16 text-blue-600 mx-auto mb-4" />
         <h3 className="text-xl font-semibold mb-2">Ancrage Blockchain Final</h3>
         <p className="text-gray-600">Finalisation sur Hedera pour {cartItems.length} médicaments</p>
+      </div>
+
+      {/* Liste des médicaments à ancrer */}
+      <div className="bg-gray-50 p-4 rounded-lg">
+        <h4 className="font-semibold mb-3">Médicaments du lot</h4>
+        <div className="space-y-2">
+          {cartItems.map((item, index) => (
+            <div key={item.prescription.matricule} className="flex items-center justify-between text-sm">
+              <span className="text-gray-700">
+                {index + 1}. {item.prescription.medication} - {item.prescription.matricule}
+              </span>
+              {anchoring && progress >= ((index + 1) / cartItems.length) * 100 && (
+                <CheckCircle className="h-4 w-4 text-green-600" />
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {!anchoring ? (
@@ -511,9 +586,24 @@ const BatchBlockchain = ({ cartItems, batchData, onComplete }) => {
           </button>
         </div>
       ) : (
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Ancrage en cours...</p>
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <span className="font-medium text-blue-900">Ancrage sur Hedera en cours...</span>
+            </div>
+
+            {/* Barre de progression */}
+            <div className="w-full bg-blue-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              ></div>
+            </div>
+            <div className="text-sm text-blue-700 mt-2">
+              {Math.floor(progress)}% terminé
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -52,6 +52,11 @@ app.use('/api/history', require('./routes/historyRoutes'));
 app.use('/api/medication', require('./routes/medicationTraceabilityRoutes'));
 app.use('/api/monitoring', monitoringRoutes);
 app.use('/api/logs', require('./routes/logRoutes'));
+
+// Nouvelles routes
+app.use('/api/appointments', require('./routes/appointmentRoutes'));
+app.use('/api/prescription-groups', require('./routes/prescriptionGroupRoutes'));
+
 // Error handling
 app.use(errorHandler);
 

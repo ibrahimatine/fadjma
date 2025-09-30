@@ -436,7 +436,7 @@ export const SecureDelivery = ({ prescription, onNext, onDataChange }) => {
 };
 
 // Composant Finalisation Blockchain
-export const BlockchainFinalization = ({ prescription, stepData, onComplete, loading }) => {
+export const BlockchainFinalization = ({ prescription, stepData, onComplete, loading, hederaResult }) => {
   const [blockchainData, setBlockchainData] = useState({
     preparing: false,
     anchoring: false,
@@ -447,43 +447,47 @@ export const BlockchainFinalization = ({ prescription, stepData, onComplete, loa
 
   const [progress, setProgress] = useState(0);
 
+  // Mettre à jour l'état quand les résultats Hedera arrivent
+  React.useEffect(() => {
+    if (hederaResult) {
+      setBlockchainData({
+        preparing: false,
+        anchoring: false,
+        verified: hederaResult.isAnchored,
+        transactionId: hederaResult.transactionId,
+        hash: hederaResult.verifiedAt
+      });
+      setProgress(100);
+    }
+  }, [hederaResult]);
+
   const handleFinalization = async () => {
     setBlockchainData(prev => ({ ...prev, preparing: true }));
     setProgress(10);
 
     // Étape 1: Préparation des données
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 500));
     setProgress(30);
 
-    // Étape 2: Ancrage sur Hedera
+    // Étape 2: Ancrage sur Hedera - l'API sera appelée par le parent
     setBlockchainData(prev => ({ ...prev, preparing: false, anchoring: true }));
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setProgress(70);
+    setProgress(60);
 
-    // Étape 3: Vérification
-    const transactionId = 'HCS-' + Date.now();
-    const hash = 'sha256_' + Math.random().toString(36).substr(2, 16);
-
-    setBlockchainData({
-      preparing: false,
-      anchoring: false,
-      verified: true,
-      transactionId,
-      hash
-    });
-    setProgress(100);
-
-    // Finaliser
-    setTimeout(() => {
-      onComplete({
-        blockchain: {
-          transactionId,
-          hash,
-          timestamp: new Date().toISOString(),
-          verified: true
-        }
+    try {
+      // Appel à la fonction de completion du parent qui fait l'appel API réel
+      await onComplete();
+    } catch (error) {
+      // Réinitialiser en cas d'erreur
+      setBlockchainData({
+        preparing: false,
+        anchoring: false,
+        verified: false,
+        transactionId: null,
+        hash: null
       });
-    }, 1000);
+      setProgress(0);
+      throw error;
+    }
   };
 
   return (

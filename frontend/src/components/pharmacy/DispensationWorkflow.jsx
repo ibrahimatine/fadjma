@@ -15,6 +15,7 @@ import {
   Package
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../../services/api';
 import {
   PharmaceuticalCounseling,
   SecureDelivery,
@@ -93,31 +94,56 @@ const DispensationWorkflow = ({ prescription, onComplete, onCancel }) => {
   const handleComplete = async () => {
     setLoading(true);
     try {
-      // Ancrage final sur blockchain
-      await finalizeDispensation();
-      toast.success('Dispensation terminée avec succès !');
+      // Ancrage final sur blockchain avec API réelle
+      const result = await finalizeDispensation();
+
+      // Sauvegarder le résultat Hedera dans stepData pour l'affichage
+      setStepData(prev => ({ ...prev, hederaResult: result.hederaInfo }));
+
+      toast.success('Dispensation terminée avec succès et ancrée sur Hedera !');
+
+      // Attendre un peu pour permettre l'affichage des résultats
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       onComplete({
         ...prescription,
         dispensationData: stepData,
+        hederaInfo: result.hederaInfo,
         completedAt: new Date().toISOString()
       });
     } catch (error) {
-      toast.error('Erreur lors de la finalisation');
+      console.error('Erreur lors de la finalisation:', error);
+      toast.error(error.message || 'Erreur lors de la finalisation');
     } finally {
       setLoading(false);
     }
   };
 
   const finalizeDispensation = async () => {
-    // Simulation ancrage Hedera
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve({
-          hederaTransactionId: 'HCS-' + Date.now(),
-          hash: 'sha256_hash_' + Math.random().toString(36).substr(2, 9)
-        });
-      }, 2000);
-    });
+    // Appel API réel pour confirmer la délivrance par matricule
+    try {
+      const response = await api.put(`/pharmacy/deliver/${prescription.matricule}`, {
+        dispensationData: stepData,
+        completedAt: new Date().toISOString()
+      });
+
+      if (response.data.success) {
+        return {
+          success: true,
+          prescription: response.data.prescription,
+          hederaInfo: response.data.hederaInfo
+        };
+      } else {
+        throw new Error(response.data.message || 'Échec de la confirmation de délivrance');
+      }
+    } catch (error) {
+      console.error('Erreur API finalizeDispensation:', error);
+      throw new Error(
+        error.response?.data?.message ||
+        error.message ||
+        'Erreur lors de la confirmation de délivrance'
+      );
+    }
   };
 
   const renderStepContent = () => {
@@ -158,6 +184,7 @@ const DispensationWorkflow = ({ prescription, onComplete, onCancel }) => {
           stepData={stepData}
           onComplete={handleComplete}
           loading={loading}
+          hederaResult={stepData.hederaResult}
         />;
 
       default:

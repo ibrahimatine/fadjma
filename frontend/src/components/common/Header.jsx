@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { Home, LogOut, User, Shield, Users, Settings, Clock } from 'lucide-react';
+import { Home, LogOut, User, Shield, Users, Settings, Clock, Stethoscope, UserCog } from 'lucide-react';
 import RealtimeNotifications from '../notifications/RealtimeNotifications';
 import WebSocketTester from '../debug/WebSocketTester';
 
@@ -27,13 +27,13 @@ const Header = () => {
             </Link>
 
             <nav className="ml-10 flex space-x-4">
-              <Link
+             {!_isAdmin && <Link
                 to="/dashboard"
                 className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
               >
                 <Home className="h-4 w-4 mr-1" />
                 Dashboard
-              </Link>
+              </Link>}
 
               {_isDoctor && (
                 <>
@@ -55,6 +55,20 @@ const Header = () => {
                   >
                     <Settings className="h-4 w-4 mr-1" />
                     Registre Hedera
+                  </Link>
+                  <Link
+                    to="/admin/specialties"
+                    className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
+                  >
+                    <Stethoscope className="h-4 w-4 mr-1" />
+                    Spécialités
+                  </Link>
+                  <Link
+                    to="/admin/users"
+                    className="flex items-center px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
+                  >
+                    <UserCog className="h-4 w-4 mr-1" />
+                    Utilisateurs
                   </Link>
                 </>
               )}

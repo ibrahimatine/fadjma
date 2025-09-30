@@ -6,7 +6,7 @@ import {
     Syringe,
     Download,
     Share2,
-    Calendar,
+    Calendar as CalendarIcon,
     Clock,
     User,
     Filter,
@@ -160,6 +160,16 @@ Document généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().
 
                     <div className="flex items-center gap-3">
 
+                        {/* Bouton rendez-vous */}
+                        <button
+                            onClick={() => navigate('/patient/appointments')}
+                            className="flex items-center gap-2 px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg transition-colors"
+                            title="Mes rendez-vous"
+                        >
+                            <CalendarIcon className="h-5 w-5 text-white" />
+                            <span className="text-sm font-medium text-white">Rendez-vous</span>
+                        </button>
+
                         {/* Bouton pour voir tous les dossiers */}
                         <button
                             onClick={() => navigate('/patient/medical-records')}
@@ -279,7 +289,7 @@ Document généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().
 
                                                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
                                                     <div className="flex items-center gap-1">
-                                                        <Calendar className="h-4 w-4" />
+                                                        <CalendarIcon className="h-4 w-4" />
                                                         <span>{new Date(record.createdAt).toLocaleDateString('fr-FR')}</span>
                                                     </div>
                                                     <div className="flex items-center gap-1">

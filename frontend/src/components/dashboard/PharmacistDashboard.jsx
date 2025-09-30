@@ -14,8 +14,10 @@ import {
   Package,
   Eye,
   ShoppingCart,
-  Truck
+  Truck,
+  Layers
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import IntegrityButton from "../verification/IntegrityButton";
 import MatriculeSearch from "../pharmacy/MatriculeSearch";
 import DispensationWorkflow from "../pharmacy/DispensationWorkflow";
@@ -39,6 +41,7 @@ const PharmacistDashboard = ({
   onPrepareMedication,
   onRefreshPrescriptions // Add refresh callback prop
 }) => {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
@@ -375,44 +378,55 @@ const PharmacistDashboard = ({
       </div>
 
       {/* Navigation par onglets */}
-      <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-        <button
-          onClick={() => setActiveTab("search")}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all ${
-            activeTab === "search"
-              ? "bg-white text-green-700 shadow-sm"
-              : "text-gray-600 hover:text-gray-800"
-          }`}
-        >
-          <Search className="h-5 w-5" />
-          Recherche par matricule
-        </button>
+      <div className="flex flex-col gap-3">
+        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => setActiveTab("search")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all ${
+              activeTab === "search"
+                ? "bg-white text-green-700 shadow-sm"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            <Search className="h-5 w-5" />
+            Recherche par matricule
+          </button>
 
-        <button
-          onClick={() => setActiveTab("cart")}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all ${
-            activeTab === "cart"
-              ? "bg-white text-green-700 shadow-sm"
-              : "text-gray-600 hover:text-gray-800"
-          }`}
-        >
-          <ShoppingCart className="h-5 w-5" />
-          Panier
-        </button>
+          <button
+            onClick={() => setActiveTab("cart")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all ${
+              activeTab === "cart"
+                ? "bg-white text-green-700 shadow-sm"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            <ShoppingCart className="h-5 w-5" />
+            Panier
+          </button>
 
+          <button
+            onClick={() => {
+              setActiveTab("list");
+              clearFoundPrescription();
+            }}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all ${
+              activeTab === "list"
+                ? "bg-white text-green-700 shadow-sm"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            <Pill className="h-5 w-5" />
+            Toutes les prescriptions
+          </button>
+        </div>
+
+        {/* Quick Action - Groupes de prescriptions */}
         <button
-          onClick={() => {
-            setActiveTab("list");
-            clearFoundPrescription();
-          }}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all ${
-            activeTab === "list"
-              ? "bg-white text-green-700 shadow-sm"
-              : "text-gray-600 hover:text-gray-800"
-          }`}
+          onClick={() => navigate('/pharmacy/group-search')}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
         >
-          <Pill className="h-5 w-5" />
-          Toutes les prescriptions
+          <Layers className="h-5 w-5" />
+          Rechercher un groupe de prescriptions
         </button>
       </div>
 

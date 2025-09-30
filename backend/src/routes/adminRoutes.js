@@ -51,6 +51,19 @@ router.get('/registry/topic/:topicId', adminController.getTopicDetails);
 // Route pour exporter les données du registre (avec rate limiting plus strict)
 router.get('/registry/export', exportRateLimit, adminController.exportRegistryData);
 
+// Route pour mettre à jour le statut système
+router.put('/status/update', adminController.updateSystemStatus);
+
+// Route pour obtenir les logs système
+router.get('/logs', adminController.getSystemLogs);
+
+// Routes de gestion des utilisateurs
+router.get('/users', adminController.getAllUsers);
+router.post('/users', adminController.createUser);
+router.put('/users/:userId', adminController.updateUser);
+router.put('/users/:userId/reset-password', adminController.resetUserPassword);
+router.delete('/users/:userId', adminController.deleteUser);
+
 // Route pour obtenir l'historique des actions admin (optionnel)
 router.get('/audit-log', (req, res) => {
   // Simulation d'un audit log
