@@ -1,4 +1,3 @@
-// src/components/prescription/MatriculeDisplay.jsx
 import React, { useState } from "react";
 import { Copy, Eye, EyeOff, QrCode, Info, CheckCircle, AlertTriangle, Share2, Smartphone } from "lucide-react";
 import toast from "react-hot-toast";

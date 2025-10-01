@@ -74,18 +74,33 @@ const MatriculeSearch = ({ onPrescriptionFound, loading = false }) => {
         throw new Error(data.message || "Erreur lors de la recherche");
       }
 
-      toast.success("Prescription trouvée !");
+      // Ajouter automatiquement toutes les prescriptions du patient au panier
+      const prescriptionsToAdd = data.allPrescriptions || [data.prescription];
+      const totalPrescriptions = data.totalPrescriptions || 1;
 
-      // Ajouter automatiquement au panier si la fonction existe
+      if (totalPrescriptions > 1) {
+        toast.success(`${totalPrescriptions} prescriptions trouvées pour ce patient !`);
+      } else {
+        toast.success("Prescription trouvée !");
+      }
+
       console.log('🔍 Tentative d\'ajout au panier depuis MatriculeSearch');
-      console.log('📋 Prescription trouvée:', data.prescription);
+      console.log(`📋 ${prescriptionsToAdd.length} prescription(s) à ajouter`);
       console.log('🛒 window.addToPharmacyCart existe?', typeof window.addToPharmacyCart);
 
       if (window.addToPharmacyCart && typeof window.addToPharmacyCart === 'function') {
-        console.log('✅ Ajout au panier en cours...');
+        console.log('✅ Ajout des prescriptions au panier en cours...');
         try {
-          window.addToPharmacyCart(data.prescription);
-          console.log('✅ Ajout au panier terminé');
+          let addedCount = 0;
+          prescriptionsToAdd.forEach(prescription => {
+            window.addToPharmacyCart(prescription);
+            addedCount++;
+          });
+          console.log(`✅ ${addedCount} médicament(s) ajouté(s) au panier`);
+
+          if (addedCount > 1) {
+            toast.success(`${addedCount} médicaments ajoutés au panier`);
+          }
         } catch (error) {
           console.error('❌ Erreur lors de l\'ajout au panier:', error);
           toast.error('Erreur lors de l\'ajout au panier');
@@ -135,7 +150,7 @@ const MatriculeSearch = ({ onPrescriptionFound, loading = false }) => {
             Recherche par Matricule
           </h2>
           <p className="text-sm text-gray-600">
-            Saisissez le matricule pour accéder à une prescription
+            Saisissez le matricule pour ajouter toutes les prescriptions du patient au panier
           </p>
         </div>
       </div>
@@ -238,6 +253,7 @@ const MatriculeSearch = ({ onPrescriptionFound, loading = false }) => {
           <li>• Le patient reçoit le matricule du médecin</li>
           <li>• Le matricule est affiché sur l'ordonnance</li>
           <li>• Format: PRX-AAAAMMJJ-XXXX (année-mois-jour + code)</li>
+          <li>• <strong>Toutes les prescriptions en attente du patient seront ajoutées au panier</strong></li>
         </ul>
       </div>
     </div>

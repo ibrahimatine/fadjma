@@ -524,7 +524,7 @@ async function seedDatabase() {
           cholesterol: '1.8g/L'
         }
       }
-    ]);
+    ], { individualHooks: true });
 
     // Créer des dossiers médicaux pour Fatou Sall
     const recordsFatou = await MedicalRecord.bulkCreate([
@@ -532,7 +532,7 @@ async function seedDatabase() {
         patientId: patientFatou.id,
         doctorId: drDiop.id,
         type: 'prescription',
-        title: 'Traitement hypertension',
+        title: 'Ordonnance - Traitement hypertension',
         description: 'Prescription pour hypertension artérielle diagnostiquée.',
         diagnosis: 'Hypertension artérielle essentielle de grade 1',
         prescription: {
@@ -562,7 +562,7 @@ async function seedDatabase() {
           heartRate: '68 bpm'
         }
       }
-    ]);
+    ], { individualHooks: true });
 
     // Créer des dossiers médicaux pour Mamadou Ba
     const recordsMamadou = await MedicalRecord.bulkCreate([
@@ -585,7 +585,7 @@ async function seedDatabase() {
         patientId: patientMamadou.id,
         doctorId: drMartin.id,
         type: 'prescription',
-        title: 'Traitement diabète type 2',
+        title: 'Ordonnance - Traitement diabète type 2',
         description: 'Diagnostic récent de diabète type 2. Mise en place du traitement.',
         diagnosis: 'Diabète de type 2 nouvellement diagnostiqué. HbA1c à 7.2%.',
         prescription: {
@@ -602,7 +602,7 @@ async function seedDatabase() {
           weight: '85kg'
         }
       }
-    ]);
+    ], { individualHooks: true });
 
     // Créer des dossiers médicaux pour Awa Ndiaye
     const recordsAwa = await MedicalRecord.bulkCreate([
@@ -638,7 +638,7 @@ async function seedDatabase() {
           nextScreening: '2027-09-25'
         }
       }
-    ]);
+    ], { individualHooks: true });
 
     // Créer des dossiers médicaux pour Ibrahim Diallo
     const recordsIbrahim = await MedicalRecord.bulkCreate([
@@ -675,8 +675,8 @@ async function seedDatabase() {
           nextRecall: '2034-09-25'
         }
       }
-    ]);
-    
+    ], { individualHooks: true });
+
     // Créer quelques dossiers médicaux pour les patients non réclamés
     const recordsUnclaimed = await MedicalRecord.bulkCreate([
       {
@@ -728,7 +728,7 @@ async function seedDatabase() {
           patientIdentifier: unclaimedPatient3.patientIdentifier
         }
       }
-    ]);
+    ], { individualHooks: true });
 
     console.log('✅ Dossiers médicaux créés:');
     console.log(`   - ${recordsJean.length} dossiers pour Jean Dupont`);
@@ -765,8 +765,30 @@ async function seedDatabase() {
     
     console.log('✅ Certains dossiers ancrés sur Hedera (simulation)');
 
+    // Afficher les matricules d'ordonnances générés
+    console.log('\n🆔 MATRICULES D\'ORDONNANCES GÉNÉRÉS:');
+    console.log('----------------------------------------');
+    const prescriptionRecords = [
+      ...recordsFatou.filter(r => r.type === 'prescription'),
+      ...recordsMamadou.filter(r => r.type === 'prescription')
+    ];
+
+    prescriptionRecords.forEach(record => {
+      const patient = [patientJean, patientFatou, patientMamadou, patientAwa, patientIbrahim]
+        .find(p => p.id === record.patientId);
+      const doctor = [drMartin, drDiop, drFall, drKane]
+        .find(d => d.id === record.doctorId);
+
+      if (record.prescriptionMatricule) {
+        console.log(`   🎫 ${record.prescriptionMatricule} → ${record.title}`);
+        console.log(`      Patient: ${patient?.firstName} ${patient?.lastName}`);
+        console.log(`      Médecin: Dr. ${doctor?.firstName} ${doctor?.lastName}`);
+        console.log('');
+      }
+    });
+
     // Créer des prescriptions avec matricules automatiques
-    console.log('🔄 Création des prescriptions avec matricules...');
+    console.log('🔄 Création des prescriptions (médicaments individuels) avec matricules...');
 
     const prescriptions = await Prescription.bulkCreate([
       // Prescriptions du Dr Martin
@@ -804,11 +826,11 @@ async function seedDatabase() {
         deliveryStatus: 'pending'
       },
 
-      // Prescriptions du Dr Diop (Cardiologue)
+      // Prescriptions du Dr Diop (Cardiologue) - Liées à l'ordonnance d'hypertension
       {
         patientId: patientFatou.id,
         doctorId: drDiop.id,
-        medicalRecordId: recordsFatou[0].id, // Lié à l'hypertension
+        medicalRecordId: recordsFatou[0].id, // Lié à l'ordonnance d'hypertension
         medication: 'Amlodipine',
         dosage: '5mg',
         quantity: 90,
@@ -819,7 +841,7 @@ async function seedDatabase() {
       {
         patientId: patientFatou.id,
         doctorId: drDiop.id,
-        medicalRecordId: recordsFatou[0].id, // Lié à l'hypertension
+        medicalRecordId: recordsFatou[0].id, // Lié à l'ordonnance d'hypertension
         medication: 'Ramipril',
         dosage: '2.5mg',
         quantity: 90,
@@ -900,6 +922,16 @@ async function seedDatabase() {
     const pendingPrescriptions = prescriptions.filter(p => p.deliveryStatus === 'pending' && p.matricule);
     if (pendingPrescriptions.length > 0) {
       console.log(`\n🧪 Matricules de test (pour pharmaciens):`);
+      console.log('\n   📋 MATRICULES D\'ORDONNANCES (ORD-...) :');
+      prescriptionRecords.forEach(record => {
+        const patient = [patientJean, patientFatou, patientMamadou, patientAwa, patientIbrahim]
+          .find(p => p.id === record.patientId);
+        if (record.prescriptionMatricule) {
+          console.log(`   🎫 ${record.prescriptionMatricule} → ${record.title} (${patient?.firstName} ${patient?.lastName})`);
+        }
+      });
+
+      console.log('\n   💊 MATRICULES DE MÉDICAMENTS (PRX-...) :');
       pendingPrescriptions.slice(0, 3).forEach(p => {
         const patient = [patientJean, patientFatou, patientMamadou, patientAwa, patientIbrahim]
           .find(patient => patient.id === p.patientId);
@@ -954,7 +986,8 @@ async function seedDatabase() {
     console.log(`  👨‍⚕️ Médecins avec spécialités: 4`);
     console.log(`  📅 Créneaux de disponibilité: ${availabilities.length}`);
     console.log(`  💊 Pharmacies partenaires: 2`);
-    console.log(`  🎯 Prescriptions avec matricules: ${prescriptions.filter(p => p.matricule).length}`);
+    console.log(`  🎫 Ordonnances avec matricules (ORD-...): ${prescriptionRecords.filter(r => r.prescriptionMatricule).length}`);
+    console.log(`  🎯 Médicaments avec matricules (PRX-...): ${prescriptions.filter(p => p.matricule).length}`);
     console.log(`  🆔 Identifiants patients générés: ${unclaimedPatients.length}`);
     console.log(`  🔑 Demandes d'accès auto-approuvées: ${accessRequests.length}`);
 

@@ -240,13 +240,6 @@ const DoctorDashboard = ({
             <Calendar className="h-4 w-4" />
             Rendez-vous
           </button>
-          <button
-            onClick={() => navigate('/doctor/prescription-groups')}
-            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors"
-          >
-            <Package className="h-4 w-4" />
-            Groupes
-          </button>
         </div>
 
         <div className="flex items-center gap-3">
@@ -283,7 +276,7 @@ const DoctorDashboard = ({
         {!loading && filtered.length === 0 && (
           <div className="col-span-full text-center py-12">
             <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500 mb-4">Aucun dossier médical trouvé</p>
+            <p className="text-gray-500 mb-4">Aucune fiche médicale trouvée</p>
             {/* <button
               onClick={() => setShowForm(true)}
               className="mt-2 inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700"

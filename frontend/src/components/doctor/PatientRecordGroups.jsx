@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import {
   User,
   FileText,
-  Calendar,
   ChevronRight,
   Download,
   Eye,
@@ -14,9 +13,7 @@ import {
   Syringe,
   Clock,
   Search,
-  Filter,
-  KeyRound,
-  CheckCircle
+  KeyRound
 } from 'lucide-react';
 import { medicalRecordService } from '../../services/medicalRecordService';
 import { patientService } from '../../services/patienService';
@@ -286,7 +283,7 @@ const PatientRecordGroups = () => {
           <button
             onClick={() => handleRequestAccess(patient)}
             className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 transition-colors"
-            title={status?.status === 'rejected' ? "Demande précédente rejetée - Redemander l'accès" : "Demander l'accès aux dossiers"}
+            title={status?.status === 'rejected' ? "Demande précédente rejetée - Redemander l'accès" : "Demander l'accès aux fiches"}
           >
             <KeyRound className="h-4 w-4" />
             {status?.status === 'rejected' ? 'Redemander accès' : 'Demander accès'}
@@ -331,7 +328,7 @@ const PatientRecordGroups = () => {
     const records = patientData.records;
 
     if (records.length === 0) {
-      toast.error('Aucun dossier à télécharger pour ce patient');
+      toast.error('Aucune fiche à télécharger pour ce patient');
       return;
     }
 
@@ -339,7 +336,7 @@ const PatientRecordGroups = () => {
     const sortedRecords = [...records].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
     let content = `═══════════════════════════════════════════════════════════════
-                    DOSSIER MÉDICAL COMPLET
+                     FICHE MÉDICALE COMPLÈTE
 ═══════════════════════════════════════════════════════════════
 
 INFORMATIONS PATIENT
@@ -353,7 +350,7 @@ Genre            : ${patient.gender || 'N/A'}
 Téléphone        : ${patient.phoneNumber || 'N/A'}
 
 Date de génération: ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}
-Nombre de dossiers: ${records.length}
+Nombre de fiches: ${records.length}
 Médecin traitant  : Dr. ${user.firstName} ${user.lastName}
 
 ═══════════════════════════════════════════════════════════════
@@ -393,7 +390,7 @@ ${record.hederaTransactionId ? `• Hedera ID: ${record.hederaTransactionId}` : 
 
     content += `
 ═══════════════════════════════════════════════════════════════
-                    FIN DU DOSSIER MÉDICAL
+                    FIN DE LA FICHE MÉDICALE
 ═══════════════════════════════════════════════════════════════
 
 Document généré par Dr. ${user.firstName} ${user.lastName}
@@ -408,13 +405,13 @@ Ce document contient des informations médicales confidentielles.
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `dossier-complet-${patient.lastName}-${patient.firstName}-${new Date().toISOString().split('T')[0]}.txt`;
+    a.download = `fiche-complete-${patient.lastName}-${patient.firstName}-${new Date().toISOString().split('T')[0]}.txt`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    toast.success(`Dossier complet téléchargé pour ${patient.firstName} ${patient.lastName} (${records.length} dossier${records.length > 1 ? 's' : ''})`);
+    toast.success(`Fiche complète téléchargée pour ${patient.firstName} ${patient.lastName} (${records.length} fiche${records.length > 1 ? 's' : ''})`);
   };
 
   if (loading) {
@@ -443,8 +440,8 @@ Ce document contient des informations médicales confidentielles.
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Dossiers par Patient</h2>
-          <p className="text-gray-600">Vue consolidée des dossiers médicaux groupés par patient</p>
+          <h2 className="text-2xl font-bold text-gray-900">Fiches par Patient</h2>
+          <p className="text-gray-600">Vue consolidée des fiches médicales groupées par patient</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -465,12 +462,12 @@ Ce document contient des informations médicales confidentielles.
         <div className="text-center py-12 bg-white rounded-lg border">
           <FileText className="h-16 w-16 mx-auto mb-4 text-gray-300" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">
-            {searchQuery ? 'Aucun patient trouvé' : 'Aucun dossier patient'}
+            {searchQuery ? 'Aucun patient trouvé' : 'Aucune fiche patient'}
           </h3>
           <p className="text-gray-600">
             {searchQuery
               ? 'Aucun patient ne correspond à votre recherche'
-              : 'Vous n\'avez accès à aucun dossier médical pour le moment'
+              : 'Vous n\'avez accès à aucune fiche médicale pour le moment'
             }
           </p>
         </div>
@@ -501,7 +498,7 @@ Ce document contient des informations médicales confidentielles.
                             <>
                               <span className="flex items-center gap-1">
                                 <FileText className="h-4 w-4" />
-                                {summary.totalRecords} dossier{summary.totalRecords > 1 ? 's' : ''}
+                                {summary.totalRecords} fiche{summary.totalRecords > 1 ? 's' : ''}
                               </span>
                               {summary.lastRecordDate && (
                                 <span className="flex items-center gap-1">
@@ -545,7 +542,7 @@ Ce document contient des informations médicales confidentielles.
                           <button
                             onClick={() => handleDownloadPatientRecords(patientData)}
                             className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            title="Télécharger tous les dossiers"
+                            title="Télécharger toutes les fiches"
                           >
                             <Download className="h-5 w-5" />
                           </button>
@@ -553,7 +550,7 @@ Ce document contient des informations médicales confidentielles.
                           <button
                             onClick={() => handleViewPatient(patientData)}
                             className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Voir le dossier complet"
+                            title="Voir la fiche complète"
                           >
                             <Eye className="h-5 w-5" />
                           </button>
@@ -577,7 +574,7 @@ Ce document contient des informations médicales confidentielles.
                 {/* Recent Records Preview */}
                 {isExpanded && patientData.hasAccess && (
                   <div className="p-6 bg-gray-50">
-                    <h4 className="font-medium text-gray-900 mb-4">Dossiers récents ({summary.totalRecords})</h4>
+                    <h4 className="font-medium text-gray-900 mb-4">Fiches récentes ({summary.totalRecords})</h4>
                     <div className="space-y-3">
                       {summary.recentRecords.map((record) => {
                         const config = typeConfig[record.type] || { icon: FileText, color: 'text-gray-600', label: record.type };
@@ -603,7 +600,7 @@ Ce document contient des informations médicales confidentielles.
                           onClick={() => handleViewPatient(patientData)}
                           className="w-full p-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
                         >
-                          Voir tous les {summary.totalRecords} dossiers →
+                          Voir toutes les {summary.totalRecords} fiches →
                         </button>
                       )}
                     </div>

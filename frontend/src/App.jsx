@@ -23,9 +23,6 @@ import PatientAppointments from './pages/PatientAppointments';
 import DoctorAppointments from './pages/DoctorAppointments';
 import AssistantDashboard from './pages/AssistantDashboard';
 
-// Prescription group components
-import PrescriptionGroupForm from './components/doctor/PrescriptionGroupForm';
-import PharmacyGroupSearch from './components/pharmacy/PharmacyGroupSearch';
 
 // Admin pages
 import AdminSpecialtyManagement from './pages/AdminSpecialtyManagement';
@@ -89,9 +86,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/create-medical-record" element={<CreateMedicalRecord />} />
             <Route path="/doctor/appointments" element={<DoctorAppointments />} />
-            <Route path="/doctor/prescription-groups" element={<PrescriptionGroupForm />} />
           </Route>
-          <Route path="/pharmacy/group-search" element={<PharmacyGroupSearch />} />
           <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/admin/registry" element={<AdminRegistry />} />

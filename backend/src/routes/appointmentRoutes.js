@@ -25,8 +25,13 @@ router.get('/my-appointments',
 );
 
 router.put('/:id/cancel',
-  authorize(['patient', 'assistant']),
+  authorize(['patient', 'assistant', 'doctor']),
   appointmentController.cancelAppointment
+);
+
+router.put('/:id/reschedule',
+  authorize(['patient', 'assistant']),
+  appointmentController.rescheduleAppointment
 );
 
 // Routes Médecins
@@ -59,6 +64,18 @@ router.post('/assistant/create-on-behalf',
 router.get('/assistant/calls',
   authorize(['assistant']),
   appointmentController.getPhoneCalls
+);
+
+// Recherche de patients pour assistant
+router.get('/assistant/search-patients',
+  authorize(['assistant']),
+  appointmentController.searchPatients
+);
+
+// Voir tous les rendez-vous (tous médecins)
+router.get('/assistant/all-appointments',
+  authorize(['assistant']),
+  appointmentController.getAllAppointmentsForAssistant
 );
 
 // Routes Admin - Gestion des spécialités

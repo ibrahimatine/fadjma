@@ -11,8 +11,6 @@ const Appointment = require('./Appointment');
 const Specialty = require('./Specialty');
 const DoctorSpecialty = require('./DoctorSpecialty');
 const DoctorAvailability = require('./DoctorAvailability');
-const PrescriptionGroup = require('./PrescriptionGroup');
-const PrescriptionGroupItem = require('./PrescriptionGroupItem');
 
 // Définir les associations avec BaseUser
 BaseUser.hasMany(MedicalRecord, {
@@ -61,26 +59,14 @@ DoctorSpecialty.belongsTo(Specialty, { as: 'specialty', foreignKey: 'specialtyId
 
 DoctorAvailability.belongsTo(BaseUser, { as: 'doctor', foreignKey: 'doctorId' });
 
-PrescriptionGroup.belongsTo(BaseUser, { as: 'patient', foreignKey: 'patientId' });
-PrescriptionGroup.belongsTo(BaseUser, { as: 'doctor', foreignKey: 'doctorId' });
-PrescriptionGroup.belongsTo(BaseUser, { as: 'pharmacy', foreignKey: 'pharmacyId' });
-
-PrescriptionGroupItem.belongsTo(PrescriptionGroup, { as: 'group', foreignKey: 'groupId' });
-PrescriptionGroupItem.belongsTo(Prescription, { as: 'prescription', foreignKey: 'prescriptionId' });
-
 // Relations inverses
 BaseUser.hasMany(Appointment, { as: 'patientAppointments', foreignKey: 'patientId' });
 BaseUser.hasMany(Appointment, { as: 'doctorAppointments', foreignKey: 'doctorId' });
 BaseUser.hasMany(DoctorSpecialty, { as: 'specialties', foreignKey: 'doctorId' });
 BaseUser.hasMany(DoctorAvailability, { as: 'availabilities', foreignKey: 'doctorId' });
-BaseUser.hasMany(PrescriptionGroup, { as: 'patientGroups', foreignKey: 'patientId' });
-BaseUser.hasMany(PrescriptionGroup, { as: 'doctorGroups', foreignKey: 'doctorId' });
 
 Specialty.hasMany(Appointment, { as: 'appointments', foreignKey: 'specialtyId' });
 Specialty.hasMany(DoctorSpecialty, { as: 'doctors', foreignKey: 'specialtyId' });
-
-PrescriptionGroup.hasMany(PrescriptionGroupItem, { as: 'items', foreignKey: 'groupId' });
-Prescription.hasMany(PrescriptionGroupItem, { as: 'groupMemberships', foreignKey: 'prescriptionId' });
 
 module.exports = {
   sequelize,
@@ -95,7 +81,5 @@ module.exports = {
   Appointment,
   Specialty,
   DoctorSpecialty,
-  DoctorAvailability,
-  PrescriptionGroup,
-  PrescriptionGroupItem
+  DoctorAvailability
 };

@@ -55,7 +55,6 @@ app.use('/api/logs', require('./routes/logRoutes'));
 
 // Nouvelles routes
 app.use('/api/appointments', require('./routes/appointmentRoutes'));
-app.use('/api/prescription-groups', require('./routes/prescriptionGroupRoutes'));
 
 // Error handling
 app.use(errorHandler);

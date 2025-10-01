@@ -40,7 +40,7 @@ const RecordForm = ({ onClose, onSuccess, initialData = null }) => {
         <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             <FileText className="w-5 h-5" />
-            {initialData ? 'Modifier le dossier' : 'Nouveau dossier médical'}
+            {initialData ? 'Modifier la fiche' : 'Nouvelle fiche médicale'}
           </h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
             <X className="w-5 h-5" />

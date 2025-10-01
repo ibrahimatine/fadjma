@@ -766,3 +766,143 @@ exports.getPhoneCalls = async (req, res) => {
     message: 'Fonctionnalité à implémenter'
   });
 };
+
+// Reprogrammer un rendez-vous
+exports.rescheduleAppointment = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { appointmentDate, appointmentTime, reason } = req.body;
+    const { id: userId, role } = req.user;
+
+    const appointment = await Appointment.findByPk(id);
+
+    if (!appointment) {
+      return res.status(404).json({
+        success: false,
+        message: 'Rendez-vous non trouvé'
+      });
+    }
+
+    // Vérifier les permissions
+    if (role === 'patient' && appointment.patientId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Non autorisé'
+      });
+    }
+
+    // Mettre à jour
+    appointment.appointmentDate = appointmentDate;
+    appointment.appointmentTime = appointmentTime;
+    if (reason) appointment.reason = reason;
+    appointment.status = 'pending'; // Repasser en attente
+
+    await appointment.save();
+
+    logger.info(`Appointment ${id} rescheduled by ${role} ${userId}`);
+
+    const updatedAppointment = await Appointment.findByPk(id, {
+      include: [
+        { model: BaseUser, as: 'patient', attributes: ['firstName', 'lastName', 'email'] },
+        { model: BaseUser, as: 'doctor', attributes: ['firstName', 'lastName', 'email'] },
+        { model: Specialty, as: 'specialty', attributes: ['name', 'code'] }
+      ]
+    });
+
+    res.json({
+      success: true,
+      appointment: updatedAppointment
+    });
+
+  } catch (error) {
+    logger.error('Error rescheduling appointment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la reprogrammation'
+    });
+  }
+};
+
+// Recherche de patients pour l'assistant
+exports.searchPatients = async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.length < 2) {
+      return res.json({
+        success: true,
+        patients: []
+      });
+    }
+
+    const patients = await BaseUser.findAll({
+      where: {
+        role: 'patient',
+        [Op.or]: [
+          { firstName: { [Op.iLike]: `%${query}%` } },
+          { lastName: { [Op.iLike]: `%${query}%` } },
+          { email: { [Op.iLike]: `%${query}%` } },
+          { phoneNumber: { [Op.iLike]: `%${query}%` } }
+        ]
+      },
+      attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber', 'dateOfBirth'],
+      limit: 10
+    });
+
+    res.json({
+      success: true,
+      patients
+    });
+
+  } catch (error) {
+    logger.error('Error searching patients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la recherche'
+    });
+  }
+};
+
+// Voir tous les rendez-vous pour l'assistant
+exports.getAllAppointmentsForAssistant = async (req, res) => {
+  try {
+    const { date, status, doctorId } = req.query;
+
+    const where = {};
+
+    if (date) {
+      where.appointmentDate = date;
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (doctorId) {
+      where.doctorId = doctorId;
+    }
+
+    const appointments = await Appointment.findAll({
+      where,
+      include: [
+        { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email', 'phoneNumber'] },
+        { model: BaseUser, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] },
+        { model: Specialty, as: 'specialty', attributes: ['name', 'code', 'color'] }
+      ],
+      order: [['appointmentDate', 'ASC'], ['appointmentTime', 'ASC']]
+    });
+
+    res.json({
+      success: true,
+      appointments,
+      total: appointments.length
+    });
+
+  } catch (error) {
+    logger.error('Error getting all appointments for assistant:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des rendez-vous'
+    });
+  }
+};

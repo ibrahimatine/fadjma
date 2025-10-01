@@ -186,7 +186,7 @@ const CreateMedicalRecord = () => {
       };
 
       await medicalRecordService.createRecord(recordData);
-      setSuccess('Dossier médical créé avec succès');
+      setSuccess('Fiche médicale créée avec succès');
 
       // Rediriger vers le dashboard après 2 secondes
       setTimeout(() => {
@@ -195,7 +195,7 @@ const CreateMedicalRecord = () => {
 
     } catch (err) {
       console.error('Erreur lors de la création:', err);
-      setError(err.message || 'Erreur lors de la création du dossier médical');
+      setError(err.message || 'Erreur lors de la création de la fiche médicale');
     } finally {
       setLoading(false);
     }
@@ -228,7 +228,7 @@ const CreateMedicalRecord = () => {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  Créer un dossier médical - {currentType.label}
+                  Créer une fiche médicale - {currentType.label}
                 </h1>
                 <div className="flex items-center gap-2 mt-2 text-gray-600">
                   <User className="h-4 w-4" />
@@ -258,7 +258,7 @@ const CreateMedicalRecord = () => {
             {/* Type Selection */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-900 mb-3">
-                Type de dossier médical
+                Type de fiche médicale
               </label>
               <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                 {Object.entries(recordTypes).map(([type, config]) => {
@@ -299,7 +299,7 @@ const CreateMedicalRecord = () => {
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Titre du dossier médical"
+                  placeholder="Titre de la fiche médicale"
                   required
                 />
               </div>

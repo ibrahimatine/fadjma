@@ -91,6 +91,31 @@ export const appointmentService = {
     return response.data;
   },
 
+  // Assistant - Rechercher des patients
+  async searchPatients(query) {
+    const response = await api.get('/appointments/assistant/search-patients', {
+      params: { query }
+    });
+    return response.data;
+  },
+
+  // Assistant - Obtenir tous les rendez-vous (tous médecins)
+  async getAllAppointmentsForAssistant(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.date) params.append('date', filters.date);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.doctorId) params.append('doctorId', filters.doctorId);
+
+    const response = await api.get(`/appointments/assistant/all-appointments?${params.toString()}`);
+    return response.data;
+  },
+
+  // Reprogrammer un rendez-vous
+  async rescheduleAppointment(appointmentId, newData) {
+    const response = await api.put(`/appointments/${appointmentId}/reschedule`, newData);
+    return response.data;
+  },
+
   // Formater la date pour l'affichage
   formatDate(dateString) {
     const date = new Date(dateString);

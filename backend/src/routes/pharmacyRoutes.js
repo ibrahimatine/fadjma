@@ -62,4 +62,16 @@ router.get(
   pharmacyController.getPrescriptionMatricule
 );
 
+// Nouvelle route: Recherche par matricule global d'ordonnance
+router.get(
+  '/by-ordonnance/:matricule',
+  authMiddleware,
+  authorize(['pharmacy']),
+  matriculeSearchLimit,
+  validateMatriculeAccess,
+  logFailedAccess,
+  sanitizeResponse,
+  pharmacyController.getMedicationsByOrdonnanceMatricule
+);
+
 module.exports = router;

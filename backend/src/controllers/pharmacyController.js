@@ -118,9 +118,34 @@ exports.getPrescriptionByMatricule = async (req, res) => {
     // Enregistrer l'accès pour audit
     logger.info(`Accès à la prescription ${prescription.id} (matricule: ${matricule}) par la pharmacie ${pharmacyId}`);
 
+    // Rechercher toutes les prescriptions en attente pour le même patient
+    const patientPrescriptions = await Prescription.findAll({
+      where: {
+        patientId: prescription.patientId,
+        deliveryStatus: 'pending'
+      },
+      include: [
+        {
+          model: BaseUser,
+          as: 'patient',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        },
+        {
+          model: BaseUser,
+          as: 'doctor',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        },
+      ],
+      order: [['issueDate', 'DESC']]
+    });
+
+    logger.info(`${patientPrescriptions.length} prescription(s) en attente trouvée(s) pour le patient ${prescription.patientId}`);
+
     res.status(200).json({
       message: 'Prescription trouvée avec succès',
-      prescription
+      prescription,
+      allPrescriptions: patientPrescriptions,
+      totalPrescriptions: patientPrescriptions.length
     });
 
   } catch (error) {
@@ -362,6 +387,137 @@ exports.confirmDeliveryByMatricule = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur serveur lors de la confirmation de délivrance',
+      error: error.message
+    });
+  }
+};
+
+// Nouvelle fonction: Recherche par matricule global d'ordonnance
+exports.getMedicationsByOrdonnanceMatricule = async (req, res) => {
+  try {
+    const { matricule } = req.params;
+    const { id: pharmacyId } = req.user;
+
+    // Validation du format du matricule d'ordonnance
+    if (!matricule || !/^ORD-\d{8}-[A-F0-9]{4}$/.test(matricule)) {
+      return res.status(400).json({
+        message: 'Format de matricule invalide. Format attendu: ORD-YYYYMMDD-XXXX'
+      });
+    }
+
+    const { MedicalRecord } = require('../models');
+
+    // Rechercher le dossier médical (ordonnance) par matricule
+    const medicalRecord = await MedicalRecord.findOne({
+      where: { prescriptionMatricule: matricule },
+      include: [
+        {
+          model: BaseUser,
+          as: 'patient',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        },
+        {
+          model: BaseUser,
+          as: 'doctor',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        },
+      ]
+    });
+
+    if (!medicalRecord) {
+      return res.status(404).json({
+        message: 'Aucune ordonnance trouvée avec ce matricule'
+      });
+    }
+
+    // Vérifier que c'est bien une prescription
+    if (medicalRecord.type !== 'prescription') {
+      return res.status(400).json({
+        message: 'Ce matricule ne correspond pas à une ordonnance'
+      });
+    }
+
+    // Récupérer toutes les prescriptions (médicaments) liées à ce dossier médical
+    const prescriptions = await Prescription.findAll({
+      where: {
+        medicalRecordId: medicalRecord.id,
+        deliveryStatus: 'pending'
+      },
+      include: [
+        {
+          model: BaseUser,
+          as: 'patient',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        },
+        {
+          model: BaseUser,
+          as: 'doctor',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        },
+      ],
+      order: [['createdAt', 'ASC']]
+    });
+
+    if (prescriptions.length === 0) {
+      return res.status(404).json({
+        message: 'Aucun médicament en attente pour cette ordonnance'
+      });
+    }
+
+    // Générer les matricules manquants
+    const crypto = require('crypto');
+    for (const prescription of prescriptions) {
+      if (!prescription.matricule) {
+        let newMatricule;
+        let exists = true;
+
+        while (exists) {
+          const date = prescription.issueDate
+            ? new Date(prescription.issueDate).toISOString().slice(0, 10).replace(/-/g, '')
+            : new Date().toISOString().slice(0, 10).replace(/-/g, '');
+          const random = crypto.randomBytes(2).toString('hex').toUpperCase();
+          newMatricule = `PRX-${date}-${random}`;
+
+          const existing = await Prescription.findOne({ where: { matricule: newMatricule } });
+          exists = !!existing;
+        }
+
+        prescription.matricule = newMatricule;
+        await prescription.save();
+        logger.info(`Matricule ${newMatricule} généré pour la prescription ${prescription.id}`);
+      }
+    }
+
+    logger.info(`Ordonnance ${matricule} trouvée avec ${prescriptions.length} médicament(s) par pharmacie ${pharmacyId}`);
+
+    res.status(200).json({
+      message: 'Ordonnance trouvée avec succès',
+      ordonnance: {
+        matricule: medicalRecord.prescriptionMatricule,
+        title: medicalRecord.title,
+        description: medicalRecord.description,
+        diagnosis: medicalRecord.diagnosis,
+        patient: medicalRecord.patient,
+        doctor: medicalRecord.doctor,
+        createdAt: medicalRecord.createdAt
+      },
+      medications: prescriptions.map(p => ({
+        id: p.id,
+        matricule: p.matricule,
+        medication: p.medication,
+        dosage: p.dosage,
+        quantity: p.quantity,
+        instructions: p.instructions,
+        issueDate: p.issueDate,
+        deliveryStatus: p.deliveryStatus
+      })),
+      totalMedications: prescriptions.length
+    });
+
+  } catch (error) {
+    logger.error('Error fetching medications by ordonnance matricule:', error);
+    res.status(500).json({
+      message: 'Erreur serveur lors de la recherche de l\'ordonnance',
       error: error.message
     });
   }

@@ -13,7 +13,8 @@ import {
   Building2,
   AlertCircle,
   CheckCircle,
-  ArrowRight
+  ArrowRight,
+  UserCog
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -123,6 +124,14 @@ const LoginForm = () => {
       icon: Building2,
       color: 'bg-purple-50 border-purple-200 text-purple-800',
       description: 'Avenue Georges Pompidou'
+    },
+    {
+      email: 'secretaire.accueil@fadjma.com',
+      password: 'Demo2024!',
+      role: 'Assistant - Fatou',
+      icon: UserCog,
+      color: 'bg-orange-50 border-orange-200 text-orange-800',
+      description: 'Secrétaire d\'accueil'
     },
     {
       email: 'admin@fadjma.com',
@@ -314,6 +323,7 @@ const LoginForm = () => {
                               account.role.includes('Patient') ? 'text-blue-600' :
                               account.role.includes('Dr.') ? 'text-green-600' :
                               account.role.includes('Pharmacie') ? 'text-purple-600' :
+                              account.role.includes('Assistant') ? 'text-orange-600' :
                               'text-red-600'
                             }`} />
                           </div>

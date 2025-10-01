@@ -20,6 +20,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import IntegrityButton from "../verification/IntegrityButton";
 import MatriculeSearch from "../pharmacy/MatriculeSearch";
+import OrdonnanceSearch from "../pharmacy/OrdonnanceSearch";
 import DispensationWorkflow from "../pharmacy/DispensationWorkflow";
 import BatchDispensationWorkflow from "../pharmacy/BatchDispensationWorkflow";
 import PharmacyCart from "../pharmacy/PharmacyCart";
@@ -319,6 +320,25 @@ const PharmacistDashboard = ({
     setActiveTab("result");
   };
 
+  // Gestion de l'ordonnance trouvée par matricule global
+  const handleOrdonnanceFound = (data) => {
+    console.log('🎫 Ordonnance trouvée:', data);
+
+    // Ajouter automatiquement tous les médicaments au panier
+    if (data.medications && data.medications.length > 0) {
+      data.medications.forEach(medication => {
+        addToPharmacyCart(medication, 1);
+      });
+
+      toast.success(`${data.medications.length} médicament(s) ajouté(s) au panier`);
+
+      // Basculer vers l'onglet panier
+      setActiveTab("cart");
+    } else {
+      toast.error('Aucun médicament trouvé dans cette ordonnance');
+    }
+  };
+
   // Démarrer le workflow de dispensation
   const startDispensationWorkflow = (prescription) => {
     setCurrentPrescription(prescription);
@@ -389,7 +409,19 @@ const PharmacistDashboard = ({
             }`}
           >
             <Search className="h-5 w-5" />
-            Recherche par matricule
+            Recherche médicament
+          </button>
+
+          <button
+            onClick={() => setActiveTab("ordonnance")}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all ${
+              activeTab === "ordonnance"
+                ? "bg-white text-blue-700 shadow-sm"
+                : "text-gray-600 hover:text-gray-800"
+            }`}
+          >
+            <Layers className="h-5 w-5" />
+            Recherche ordonnance
           </button>
 
           <button
@@ -419,15 +451,6 @@ const PharmacistDashboard = ({
             Toutes les prescriptions
           </button>
         </div>
-
-        {/* Quick Action - Groupes de prescriptions */}
-        <button
-          onClick={() => navigate('/pharmacy/group-search')}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-        >
-          <Layers className="h-5 w-5" />
-          Rechercher un groupe de prescriptions
-        </button>
       </div>
 
       {/* Statistiques rapides - seulement pour l'onglet liste */}
@@ -472,6 +495,12 @@ const PharmacistDashboard = ({
         <MatriculeSearch
           onPrescriptionFound={handlePrescriptionFound}
           loading={loading}
+        />
+      )}
+
+      {activeTab === "ordonnance" && (
+        <OrdonnanceSearch
+          onOrdonnanceFound={handleOrdonnanceFound}
         />
       )}
 

@@ -81,9 +81,37 @@ const MedicalRecord = sequelize.define('MedicalRecord', {
   lastVerifiedAt: {
     type: DataTypes.DATE,
     allowNull: true
+  },
+  prescriptionMatricule: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    unique: true
   }
 }, {
   timestamps: true
+});
+
+// Hook pour générer automatiquement un matricule global de prescription
+MedicalRecord.beforeCreate(async (record) => {
+  // Générer un matricule seulement si c'est une prescription
+  if (record.type === 'prescription') {
+    const crypto = require('crypto');
+    let matricule;
+    let exists = true;
+
+    while (exists) {
+      // Format: ORD-YYYYMMDD-XXXX (ORD = ordonnance)
+      const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const random = crypto.randomBytes(2).toString('hex').toUpperCase();
+      matricule = `ORD-${date}-${random}`;
+
+      // Vérifier l'unicité
+      const existing = await MedicalRecord.findOne({ where: { prescriptionMatricule: matricule } });
+      exists = !!existing;
+    }
+
+    record.prescriptionMatricule = matricule;
+  }
 });
 
 module.exports = MedicalRecord;

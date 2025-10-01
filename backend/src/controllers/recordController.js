@@ -610,6 +610,30 @@ exports.getPrescriptionsByRecordId = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
 
+    // Générer les matricules manquants pour les prescriptions existantes
+    const crypto = require('crypto');
+    for (const prescription of prescriptions) {
+      if (!prescription.matricule) {
+        let newMatricule;
+        let exists = true;
+
+        while (exists) {
+          const date = prescription.issueDate
+            ? new Date(prescription.issueDate).toISOString().slice(0, 10).replace(/-/g, '')
+            : new Date().toISOString().slice(0, 10).replace(/-/g, '');
+          const random = crypto.randomBytes(2).toString('hex').toUpperCase();
+          newMatricule = `PRX-${date}-${random}`;
+
+          const existing = await Prescription.findOne({ where: { matricule: newMatricule } });
+          exists = !!existing;
+        }
+
+        prescription.matricule = newMatricule;
+        await prescription.save();
+        console.log(`Matricule ${newMatricule} généré pour la prescription ${prescription.id}`);
+      }
+    }
+
     res.json({
       prescriptions,
       recordId,
