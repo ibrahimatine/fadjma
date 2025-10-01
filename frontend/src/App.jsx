@@ -21,7 +21,7 @@ import websocketService from './services/websocketService';
 // Appointment pages
 import PatientAppointments from './pages/PatientAppointments';
 import DoctorAppointments from './pages/DoctorAppointments';
-import AssistantDashboard from './pages/AssistantDashboard';
+import AssistantDashboardV2 from './pages/AssistantDashboardV2';
 
 
 // Admin pages
@@ -95,8 +95,9 @@ function App() {
             <Route path="/admin/users" element={<AdminUserManagement />} />
           </Route>
           <Route element={<ProtectedRoute allowedRoles={["assistant"]} />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/assistant/appointments" element={<AssistantDashboard />} />
+            <Route path="/dashboard" element={<AssistantDashboardV2 />} />
+            <Route path="/assistant/appointments" element={<AssistantDashboardV2 />} />
+            <Route path="/assistant/dashboard" element={<AssistantDashboardV2 />} />
           </Route>
           {/* Route accessible à tous les utilisateurs connectés */}
           <Route element={<ProtectedRoute allowedRoles={["patient", "doctor", "admin"]} />}>
