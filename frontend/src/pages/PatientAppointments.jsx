@@ -23,6 +23,20 @@ const PatientAppointments = () => {
     if (activeTab === 'my-appointments') {
       loadMyAppointments();
     }
+
+    // Écouter les événements de rafraîchissement
+    const handleRefreshAppointments = () => {
+      console.log('🔄 Refreshing patient appointments from event...');
+      if (activeTab === 'my-appointments') {
+        loadMyAppointments();
+      }
+    };
+
+    window.addEventListener('refreshAppointments', handleRefreshAppointments);
+
+    return () => {
+      window.removeEventListener('refreshAppointments', handleRefreshAppointments);
+    };
   }, [activeTab]);
 
   // Charger les médecins quand une spécialité est sélectionnée

@@ -82,7 +82,7 @@ function App() {
             <Route path="/patient/medical-records" element={<PatientMedicalRecordsView />} />
           </Route>
           <Route path="/patient/appointments" element={<PatientAppointments />} />
-          <Route element={<ProtectedRoute allowedRoles={["doctor"]} />}>
+          <Route element={<ProtectedRoute allowedRoles={["doctor", "assistant"]} />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/create-medical-record" element={<CreateMedicalRecord />} />
             <Route path="/doctor/appointments" element={<DoctorAppointments />} />

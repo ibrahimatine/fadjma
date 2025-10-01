@@ -72,6 +72,18 @@ const AssistantDashboardV2 = () => {
   useEffect(() => {
     loadAppointments();
     loadSpecialties();
+
+    // Écouter les événements de rafraîchissement
+    const handleRefreshAppointments = () => {
+      console.log('🔄 Refreshing appointments from event...');
+      loadAppointments();
+    };
+
+    window.addEventListener('refreshAppointments', handleRefreshAppointments);
+
+    return () => {
+      window.removeEventListener('refreshAppointments', handleRefreshAppointments);
+    };
   }, [selectedDate, filters]);
 
   useEffect(() => {

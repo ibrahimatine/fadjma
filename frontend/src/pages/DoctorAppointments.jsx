@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, User, Phone, CheckCircle, X, FileText } from 'lucide-react';
 import { appointmentService } from '../services/appointmentService';
+import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 const DoctorAppointments = () => {
+  const { user } = useAuth();
   const [appointments, setAppointments] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterStatus, setFilterStatus] = useState('all');
@@ -11,6 +13,18 @@ const DoctorAppointments = () => {
 
   useEffect(() => {
     loadAppointments();
+
+    // Écouter les événements de rafraîchissement
+    const handleRefreshAppointments = () => {
+      console.log('🔄 Refreshing doctor appointments from event...');
+      loadAppointments();
+    };
+
+    window.addEventListener('refreshAppointments', handleRefreshAppointments);
+
+    return () => {
+      window.removeEventListener('refreshAppointments', handleRefreshAppointments);
+    };
   }, [selectedDate, filterStatus]);
 
   const loadAppointments = async () => {
@@ -20,9 +34,19 @@ const DoctorAppointments = () => {
       if (selectedDate) filters.date = selectedDate;
       if (filterStatus !== 'all') filters.status = filterStatus;
 
-      const data = await appointmentService.getDoctorAppointments(filters);
+      // Utiliser l'API appropriée selon le rôle
+      let data;
+      if (user?.role === 'assistant') {
+        console.log('Loading appointments for assistant');
+        data = await appointmentService.getAllAppointmentsForAssistant(filters);
+      } else {
+        console.log('Loading appointments for doctor');
+        data = await appointmentService.getDoctorAppointments(filters);
+      }
+
       setAppointments(data.appointments || []);
     } catch (error) {
+      console.error('Error loading appointments:', error);
       toast.error('Erreur lors du chargement des rendez-vous');
     } finally {
       setLoading(false);

@@ -46,6 +46,8 @@ module.exports = (io) => {
       socket.join('pharmacists');
     } else if (socket.userRole === 'patient') {
       socket.join('patients');
+    } else if (socket.userRole === 'assistant') {
+      socket.join('assistants');
     }
 
     // Handle notification acknowledgment
@@ -123,6 +125,15 @@ module.exports = (io) => {
   io.notifyPatients = (notification) => {
     console.log(`🤒 Broadcasting to all patients:`, notification.type);
     io.to('patients').emit('notification', {
+      ...notification,
+      timestamp: new Date(),
+      id: generateNotificationId()
+    });
+  };
+
+  io.notifyAssistants = (notification) => {
+    console.log(`👔 Broadcasting to all assistants:`, notification.type);
+    io.to('assistants').emit('notification', {
       ...notification,
       timestamp: new Date(),
       id: generateNotificationId()

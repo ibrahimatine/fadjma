@@ -433,6 +433,34 @@ exports.createAppointment = async (req, res) => {
       ]
     });
 
+    // Envoyer des notifications via WebSocket
+    const io = req.app.get('io');
+    if (io) {
+      // Notifier le médecin
+      io.notifyUser(doctorId, {
+        type: 'new_appointment',
+        appointmentId: appointment.id,
+        message: `Nouvelle demande de rendez-vous de ${fullAppointment.patient.firstName} ${fullAppointment.patient.lastName}`,
+        specialty: fullAppointment.specialty.name,
+        appointmentDate: appointmentDate,
+        appointmentTime: appointmentTime
+      });
+
+      // Notifier tous les assistants
+      if (io.notifyAssistants) {
+        io.notifyAssistants({
+          type: 'new_appointment',
+          appointmentId: appointment.id,
+          message: `Nouveau rendez-vous à confirmer pour Dr. ${fullAppointment.doctor.firstName} ${fullAppointment.doctor.lastName}`,
+          doctorName: `${fullAppointment.doctor.firstName} ${fullAppointment.doctor.lastName}`,
+          patientName: `${fullAppointment.patient.firstName} ${fullAppointment.patient.lastName}`,
+          specialty: fullAppointment.specialty.name,
+          appointmentDate: appointmentDate,
+          appointmentTime: appointmentTime
+        });
+      }
+    }
+
     res.status(201).json({
       success: true,
       appointment: fullAppointment
@@ -550,6 +578,27 @@ exports.confirmAppointment = async (req, res) => {
 
     logger.info(`Appointment ${id} confirmed by ${req.user.id}`);
 
+    // Récupérer les infos complètes pour la notification
+    const fullAppointment = await Appointment.findByPk(id, {
+      include: [
+        { model: BaseUser, as: 'patient', attributes: ['firstName', 'lastName'] },
+        { model: BaseUser, as: 'doctor', attributes: ['firstName', 'lastName'] },
+        { model: Specialty, as: 'specialty', attributes: ['name'] }
+      ]
+    });
+
+    // Notifier le patient de la confirmation
+    const io = req.app.get('io');
+    if (io && fullAppointment) {
+      io.notifyUser(fullAppointment.patientId, {
+        type: 'appointment_confirmed',
+        appointmentId: id,
+        message: `Votre rendez-vous avec Dr. ${fullAppointment.doctor.firstName} ${fullAppointment.doctor.lastName} a été confirmé`,
+        appointmentDate: fullAppointment.appointmentDate,
+        appointmentTime: fullAppointment.appointmentTime
+      });
+    }
+
     res.json({
       success: true,
       appointment
@@ -594,6 +643,53 @@ exports.cancelAppointment = async (req, res) => {
     });
 
     logger.info(`Appointment ${id} cancelled by ${req.user.id}`);
+
+    // Récupérer les infos complètes pour la notification
+    const fullAppointment = await Appointment.findByPk(id, {
+      include: [
+        { model: BaseUser, as: 'patient', attributes: ['firstName', 'lastName'] },
+        { model: BaseUser, as: 'doctor', attributes: ['firstName', 'lastName'] },
+        { model: Specialty, as: 'specialty', attributes: ['name'] }
+      ]
+    });
+
+    // Notifier les parties concernées
+    const io = req.app.get('io');
+    if (io && fullAppointment) {
+      if (req.user.role === 'patient') {
+        // Si le patient annule, notifier le médecin et les assistants
+        io.notifyUser(fullAppointment.doctorId, {
+          type: 'appointment_cancelled',
+          appointmentId: id,
+          message: `Le rendez-vous avec ${fullAppointment.patient.firstName} ${fullAppointment.patient.lastName} a été annulé`,
+          appointmentDate: fullAppointment.appointmentDate,
+          appointmentTime: fullAppointment.appointmentTime,
+          reason: cancellationReason
+        });
+
+        if (io.notifyAssistants) {
+          io.notifyAssistants({
+            type: 'appointment_cancelled',
+            appointmentId: id,
+            message: `Rendez-vous annulé par le patient`,
+            patientName: `${fullAppointment.patient.firstName} ${fullAppointment.patient.lastName}`,
+            doctorName: `${fullAppointment.doctor.firstName} ${fullAppointment.doctor.lastName}`,
+            appointmentDate: fullAppointment.appointmentDate,
+            appointmentTime: fullAppointment.appointmentTime
+          });
+        }
+      } else {
+        // Si le médecin/assistant annule, notifier le patient
+        io.notifyUser(fullAppointment.patientId, {
+          type: 'appointment_cancelled',
+          appointmentId: id,
+          message: `Votre rendez-vous avec Dr. ${fullAppointment.doctor.firstName} ${fullAppointment.doctor.lastName} a été annulé`,
+          appointmentDate: fullAppointment.appointmentDate,
+          appointmentTime: fullAppointment.appointmentTime,
+          reason: cancellationReason
+        });
+      }
+    }
 
     res.json({
       success: true,
