@@ -13,7 +13,7 @@ const { validationResult } = require('express-validator');
 
 // 📌 Liste tous les patients (pagination + recherche optionnelle)
 exports.getAllPatients = ResponseHelper.asyncHandler(async (req, res) => {
-  if (!['doctor', 'admin'].includes(req.user.role)) {
+  if (!['doctor', 'admin', 'assistant'].includes(req.user.role)) {
     return ResponseHelper.forbidden(res, 'Access denied');
   }
 
@@ -173,19 +173,11 @@ exports.createUnclaimedPatient = async (req, res) => {
       });
     }
 
-    if (req.user.role !== "doctor") {
+    // Seuls les assistants peuvent créer des profils patients
+    if (req.user.role !== "assistant") {
       return res.status(403).json({
         success: false,
-        message: "Seuls les médecins peuvent créer des profils patients"
-      });
-    }
-
-    // Validate doctor permissions
-    const canCreate = await SecurityService.canDoctorCreateUnclaimedPatients(req.user.id);
-    if (!canCreate) {
-      return res.status(403).json({
-        success: false,
-        message: "Permissions insuffisantes pour créer des profils patients"
+        message: "Seuls les assistants peuvent créer des profils patients"
       });
     }
 

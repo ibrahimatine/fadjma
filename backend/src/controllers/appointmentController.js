@@ -587,6 +587,35 @@ exports.confirmAppointment = async (req, res) => {
       ]
     });
 
+    // Créer automatiquement l'autorisation d'accès pour le docteur
+    const { MedicalRecordAccessRequest } = require('../models');
+    try {
+      // Vérifier si une demande d'accès existe déjà
+      const existingAccess = await MedicalRecordAccessRequest.findOne({
+        where: {
+          patientId: fullAppointment.patientId,
+          requesterId: fullAppointment.doctorId,
+          status: 'approved'
+        }
+      });
+
+      if (!existingAccess) {
+        await MedicalRecordAccessRequest.create({
+          patientId: fullAppointment.patientId,
+          requesterId: fullAppointment.doctorId,
+          reason: `Accès autorisé suite à la confirmation du rendez-vous #${id}`,
+          accessLevel: 'write',
+          status: 'approved',
+          reviewedBy: req.user.id, // L'assistant ou le docteur qui a confirmé
+          reviewedAt: new Date()
+        });
+        logger.info(`Access granted to doctor ${fullAppointment.doctorId} for patient ${fullAppointment.patientId}`);
+      }
+    } catch (accessError) {
+      logger.error('Error creating access request:', accessError);
+      // Ne pas bloquer la confirmation même si l'accès échoue
+    }
+
     // Notifier le patient de la confirmation
     const io = req.app.get('io');
     if (io && fullAppointment) {
@@ -743,6 +772,63 @@ exports.completeAppointment = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de la finalisation du rendez-vous'
+    });
+  }
+};
+
+// Obtenir les patients du jour pour un docteur
+exports.getTodayPatients = async (req, res) => {
+  try {
+    const doctorId = req.user.id;
+    const today = new Date().toISOString().split('T')[0];
+
+    const appointments = await Appointment.findAll({
+      where: {
+        doctorId,
+        appointmentDate: today,
+        status: { [Op.in]: ['pending', 'confirmed'] }
+      },
+      include: [
+        {
+          model: BaseUser,
+          as: 'patient',
+          attributes: ['id', 'firstName', 'lastName', 'phoneNumber', 'email']
+        },
+        {
+          model: Specialty,
+          as: 'specialty',
+          attributes: ['name', 'code']
+        }
+      ],
+      order: [['appointmentTime', 'ASC']]
+    });
+
+    // Formater les données pour le dashboard
+    const patients = appointments.map(apt => ({
+      id: apt.patient.id,
+      firstName: apt.patient.firstName,
+      lastName: apt.patient.lastName,
+      phoneNumber: apt.patient.phoneNumber,
+      email: apt.patient.email,
+      appointmentId: apt.id,
+      appointmentTime: apt.appointmentTime,
+      reason: apt.reason,
+      specialty: apt.specialty.name,
+      status: apt.status
+    }));
+
+    res.json({
+      success: true,
+      patients,
+      total: patients.length,
+      date: today
+    });
+
+  } catch (error) {
+    logger.error('Error fetching today patients:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des patients du jour'
     });
   }
 };

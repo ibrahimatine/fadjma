@@ -13,6 +13,7 @@ import { userService } from "../services/userService";
 const Dashboard = () => {
   const { user } = useAuth();
   const [patients, setPatients] = useState([]);
+  const [todayPatients, setTodayPatients] = useState([]); // Patients avec RDV aujourd'hui
   const [prescriptions, setPrescriptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -42,6 +43,32 @@ const Dashboard = () => {
       toast.error("Impossible de récupérer les statistiques du médecin.");
     }
   }, [user?.role, user?.id]);
+
+  // Récupérer les patients avec RDV aujourd'hui (pour docteurs)
+  const fetchTodayPatients = useCallback(async () => {
+    if (user?.role !== "doctor") {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/appointments/doctor/today-patients', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setTodayPatients(data.patients || []);
+      } else {
+        setTodayPatients([]);
+      }
+    } catch (error) {
+      console.error("Error fetching today's patients:", error);
+      setTodayPatients([]);
+    }
+  }, [user?.role]);
 
   // fetch accessible patients only - ONLY for doctors
   const fetchRecords = useCallback(async (p = 1, append = false) => {
@@ -80,12 +107,11 @@ const Dashboard = () => {
 
         // Stats basées sur les patients accessibles
         const total = fetched.length;
-        const verified = fetched.filter((p) => p.isVerified || p.verified || p.hederaTimestamp).length;
         const unclaimed = doctorStats.pendingRecords || 0; // patients non réclamés
 
         setStats({
           total,
-          verified,
+          verified: 0, // Removed Hedera verification
           pending: unclaimed, // Les patients non réclamés sont "en attente"
         });
       } else {
@@ -109,14 +135,19 @@ const Dashboard = () => {
       navigate('/admin/registry');
       return;
     }
+    if (user?.role === "assistant" && user?.role !== "doctor" && user?.role !== "pharmacy" && user?.role !== "patient") {
+      navigate('/assistant/dashboard');
+      return;
+    }
     fetchUserStats();
     if (user?.role === "doctor") {
       setPage(1);
       fetchRecords(1, false);
+      fetchTodayPatients(); // Charger aussi les patients du jour
     } else {
       setLoading(false);
     }
-  }, [fetchRecords, user?.role]);
+  }, [fetchRecords, fetchTodayPatients, user?.role]);
 
   // fetchNextPage pour infinite scroll - ONLY for doctors
   const fetchNextPage = async () => {
@@ -182,6 +213,7 @@ const Dashboard = () => {
       ) : (
         <DoctorDashboard
           patients={patients}
+          todayPatients={todayPatients}
           loading={loading}
           setShowForm={setShowForm}
           onLoadMore={fetchNextPage}

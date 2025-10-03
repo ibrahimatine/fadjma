@@ -20,6 +20,7 @@ import websocketService from "../../services/websocketService";
 /**
  * Props:
  * - patients: Array([{ id, firstName, lastName, phoneNumber, email, ... }])
+ * - todayPatients: Array([{ id, firstName, lastName, appointmentTime, reason, ... }])
  * - loading: boolean
  * - setShowForm: function(boolean)
  * - onRequestAccess: function(patientId) => Promise
@@ -29,6 +30,7 @@ import websocketService from "../../services/websocketService";
  */
 const DoctorDashboard = ({
   patients = [],
+  todayPatients = [],
   loading = false,
   setShowForm = () => {},
   onLoadMore,
@@ -188,6 +190,55 @@ const DoctorDashboard = ({
 
   return (
     <div className="w-full max-w-5xl mx-auto">
+      {/* Section Patients du jour */}
+      {todayPatients && todayPatients.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-blue-600" />
+              Patients du jour ({todayPatients.length})
+            </h2>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 space-y-2">
+            {todayPatients.map((patient) => (
+              <div
+                key={patient.id}
+                className="p-3 flex items-center justify-between gap-4 rounded-lg border border-blue-50 bg-blue-50/30 hover:bg-blue-50/50 transition"
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <User className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-gray-900 truncate">
+                        {patient.firstName} {patient.lastName}
+                      </h3>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">
+                        {patient.appointmentTime?.slice(0, 5)}
+                      </span>
+                    </div>
+                    {patient.reason && (
+                      <p className="text-xs text-gray-600 truncate">{patient.reason}</p>
+                    )}
+                    {patient.phoneNumber && (
+                      <p className="text-xs text-gray-400 truncate">{patient.phoneNumber}</p>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleViewPatient(patients.find(p => p.id === patient.id) || patient)}
+                  className="flex-shrink-0 inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors"
+                >
+                  <User className="h-4 w-4" />
+                  Voir dossier
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Filter bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
         <div className="flex items-center gap-3 w-full sm:w-auto">

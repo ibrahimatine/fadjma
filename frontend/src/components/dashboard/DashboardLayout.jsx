@@ -66,23 +66,7 @@ const DashboardLayout = ({
                             </button>
                         )}
 
-                        {_isDoctor && (
-                            <div className="relative">
-                                <button
-                                    onClick={() => {
-                                        setShowCreatePatientModal(true);
-                                        setShowDropdown(false);
-                                    }}
-                                    className="w-full px-4 py-3 text-left text-sm hover:bg-gray-50 flex items-center gap-3"
-                                >
-                                    <UserPlus className="h-5 w-5 text-blue-600" />
-                                    <div>
-                                        <div className="font-medium text-gray-900">Créer un profil patient</div>
-                                        <div className="text-xs text-gray-500">Le patient créera son compte plus tard</div>
-                                    </div>
-                                </button>
-                            </div>
-                        )}
+                        {/* Removed: Only assistants can create patient profiles */}
                     </div>
                 </div>
 
@@ -99,15 +83,7 @@ const DashboardLayout = ({
                             </div>
                         </div>
 
-                        <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-100">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-gray-600">Vérifiés sur Hedera</p>
-                                    <p className="text-2xl font-bold text-green-600">{stats.verified}</p>
-                                </div>
-                                <CheckCircle className="h-8 w-8 text-green-500" />
-                            </div>
-                        </div>
+                        {/* Removed Hedera verification card */}
 
                         <div className="p-4 bg-white rounded-lg shadow-sm border border-gray-100">
                             <div className="flex items-center justify-between">

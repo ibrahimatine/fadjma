@@ -75,7 +75,18 @@ class WebSocketService {
         console.log(`⏱️ Notification delay: ${delay}ms`);
       }
 
-      this.handleNotification(notification);
+      // Router les notifications d'appointments vers leurs handlers spécifiques
+      if (notification.type === 'new_appointment') {
+        // Émettre un événement personnalisé pour déclencher le handler spécifique
+        this.handleNewAppointmentNotification(notification);
+      } else if (notification.type === 'appointment_confirmed') {
+        this.handleAppointmentConfirmedNotification(notification);
+      } else if (notification.type === 'appointment_cancelled') {
+        this.handleAppointmentCancelledNotification(notification);
+      } else {
+        // Pour les autres types, utiliser le handler général
+        this.handleNotification(notification);
+      }
     });
 
     // New access request handling (for patients)
@@ -199,144 +210,118 @@ class WebSocketService {
       console.log('👁️ Medical record activity:', data);
       this.notifyListeners('medical_record_activity', data);
     });
+  }
 
-    // Appointment notifications
-    this.socket.on('new_appointment', (notification) => {
-      console.log('📅 New appointment notification:', notification);
+  handleNewAppointmentNotification(notification) {
+    console.log('📅 Handling new appointment notification with action buttons');
 
-      toast((t) => (
-        <div className="p-3">
-          <div className="font-bold text-gray-900 mb-2 flex items-center gap-2">
-            <span className="text-2xl">📅</span>
-            Nouveau rendez-vous
-          </div>
-          <p className="text-sm text-gray-700 mb-2">
-            {notification.message}
-          </p>
-          <div className="text-xs text-gray-600 mb-3 space-y-1">
-            {notification.patientName && (
-              <div>Patient: <span className="font-medium">{notification.patientName}</span></div>
-            )}
-            {notification.appointmentDate && notification.appointmentTime && (
-              <div>Date: <span className="font-medium">
-                {new Date(notification.appointmentDate).toLocaleDateString('fr-FR')} à {notification.appointmentTime.slice(0, 5)}
-              </span></div>
-            )}
-            {notification.specialty && (
-              <div>Spécialité: <span className="font-medium">{notification.specialty}</span></div>
-            )}
-          </div>
-          <div className="flex gap-2">
-            {notification.appointmentId && (
-              <>
-                <button
-                  onClick={async () => {
-                    try {
-                      const api = (await import('./api')).default;
-                      await api.put(`/appointments/${notification.appointmentId}/confirm`);
-                      toast.success('✅ Rendez-vous confirmé', { id: t.id });
-                      window.dispatchEvent(new CustomEvent('refreshAppointments'));
-                    } catch (error) {
-                      toast.error('Erreur lors de la confirmation', { id: t.id });
-                    }
-                  }}
-                  className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                >
-                  ✓ Confirmer
-                </button>
-                <button
-                  onClick={async () => {
-                    const reason = prompt('Raison du rejet (optionnel):');
-                    if (reason === null) return; // User cancelled
-                    try {
-                      const api = (await import('./api')).default;
-                      await api.put(`/appointments/${notification.appointmentId}/cancel`, {
-                        cancellationReason: reason || 'Rejeté par le secrétariat'
-                      });
-                      toast.success('Rendez-vous annulé', { id: t.id });
-                      window.dispatchEvent(new CustomEvent('refreshAppointments'));
-                    } catch (error) {
-                      toast.error('Erreur lors de l\'annulation', { id: t.id });
-                    }
-                  }}
-                  className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                >
-                  ✗ Rejeter
-                </button>
-              </>
-            )}
-          </div>
-          <button
-            onClick={() => toast.dismiss(t.id)}
-            className="w-full mt-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-          >
-            Fermer
-          </button>
+    toast((t) => (
+      <div className="p-3">
+        <div className="font-bold text-gray-900 mb-2 flex items-center gap-2">
+          <span className="text-2xl">📅</span>
+          Nouveau rendez-vous
         </div>
-      ), {
-        duration: 20000, // 20 seconds pour laisser le temps de répondre
-        style: {
-          maxWidth: '450px',
-          padding: 0
-        }
-      });
-
-      this.notifyListeners('new_appointment', notification);
+        <p className="text-sm text-gray-700 mb-2">
+          {notification.message}
+        </p>
+        <div className="text-xs text-gray-600 mb-3 space-y-1">
+          {notification.patientName && (
+            <div>Patient: <span className="font-medium">{notification.patientName}</span></div>
+          )}
+          {notification.appointmentDate && notification.appointmentTime && (
+            <div>Date: <span className="font-medium">
+              {new Date(notification.appointmentDate).toLocaleDateString('fr-FR')} à {notification.appointmentTime.slice(0, 5)}
+            </span></div>
+          )}
+          {notification.specialty && (
+            <div>Spécialité: <span className="font-medium">{notification.specialty}</span></div>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {notification.appointmentId && (
+            <>
+              <button
+                onClick={async () => {
+                  try {
+                    const api = (await import('./api')).default;
+                    await api.put(`/appointments/${notification.appointmentId}/confirm`);
+                    toast.success('✅ Rendez-vous confirmé', { id: t.id });
+                    window.dispatchEvent(new CustomEvent('refreshAppointments'));
+                  } catch (error) {
+                    toast.error('Erreur lors de la confirmation', { id: t.id });
+                  }
+                }}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                ✓ Confirmer
+              </button>
+              <button
+                onClick={async () => {
+                  const reason = prompt('Raison du rejet (optionnel):');
+                  if (reason === null) return;
+                  try {
+                    const api = (await import('./api')).default;
+                    await api.put(`/appointments/${notification.appointmentId}/cancel`, {
+                      cancellationReason: reason || 'Rejeté par le secrétariat'
+                    });
+                    toast.success('Rendez-vous annulé', { id: t.id });
+                    window.dispatchEvent(new CustomEvent('refreshAppointments'));
+                  } catch (error) {
+                    toast.error('Erreur lors de l\'annulation', { id: t.id });
+                  }
+                }}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                ✗ Rejeter
+              </button>
+            </>
+          )}
+        </div>
+        <button
+          onClick={() => toast.dismiss(t.id)}
+          className="w-full mt-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+        >
+          Fermer
+        </button>
+      </div>
+    ), {
+      duration: 20000,
+      style: {
+        maxWidth: '450px',
+        padding: 0
+      }
     });
 
-    this.socket.on('appointment_confirmed', (notification) => {
-      console.log('✅ Appointment confirmed:', notification);
+    this.notifyListeners('new_appointment', notification);
+  }
 
-      toast.success(notification.message, {
-        duration: 5000,
-        icon: '✅'
-      });
-
-      window.dispatchEvent(new CustomEvent('refreshAppointments'));
-      this.notifyListeners('appointment_confirmed', notification);
+  handleAppointmentConfirmedNotification(notification) {
+    toast.success(notification.message, {
+      duration: 5000,
+      icon: '✅'
     });
+    window.dispatchEvent(new CustomEvent('refreshAppointments'));
+    this.notifyListeners('appointment_confirmed', notification);
+  }
 
-    this.socket.on('appointment_cancelled', (notification) => {
-      console.log('❌ Appointment cancelled:', notification);
-
-      toast.error(notification.message, {
-        duration: 5000,
-        icon: '❌'
-      });
-
-      window.dispatchEvent(new CustomEvent('refreshAppointments'));
-      this.notifyListeners('appointment_cancelled', notification);
+  handleAppointmentCancelledNotification(notification) {
+    toast.error(notification.message, {
+      duration: 5000,
+      icon: '❌'
     });
+    window.dispatchEvent(new CustomEvent('refreshAppointments'));
+    this.notifyListeners('appointment_cancelled', notification);
   }
 
   handleNotification(notification) {
     // Show toast notification based on type
+    // Note: Les notifications d'appointments sont gérées par leurs méthodes spécifiques
     switch (notification.type) {
       case 'new_appointment':
-        toast(notification.message, {
-          duration: 6000,
-          position: 'top-right',
-          icon: '📅'
-        });
-        window.dispatchEvent(new CustomEvent('refreshAppointments'));
-        break;
-
       case 'appointment_confirmed':
-        toast.success(notification.message, {
-          duration: 5000,
-          position: 'top-right',
-          icon: '✅'
-        });
-        window.dispatchEvent(new CustomEvent('refreshAppointments'));
-        break;
-
       case 'appointment_cancelled':
-        toast.error(notification.message, {
-          duration: 5000,
-          position: 'top-right',
-          icon: '❌'
-        });
-        window.dispatchEvent(new CustomEvent('refreshAppointments'));
+        // Ces notifications sont déjà gérées par les méthodes spécifiques
+        // Ne rien faire ici pour éviter les doublons
         break;
 
       case 'new_medical_record':

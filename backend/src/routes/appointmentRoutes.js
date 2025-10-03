@@ -13,7 +13,7 @@ router.get('/doctors/:doctorId/slots', appointmentController.getAvailableSlots);
 // Routes authentifiées
 router.use(authMiddleware);
 
-// Routes Patients
+// Routes Patients (seuls les patients peuvent créer leurs propres RDV)
 router.post('/',
   authorize(['patient']),
   appointmentController.createAppointment
@@ -38,6 +38,11 @@ router.put('/:id/reschedule',
 router.get('/doctor/appointments',
   authorize(['doctor']),
   appointmentController.getDoctorAppointments
+);
+
+router.get('/doctor/today-patients',
+  authorize(['doctor']),
+  appointmentController.getTodayPatients
 );
 
 router.put('/:id/confirm',
