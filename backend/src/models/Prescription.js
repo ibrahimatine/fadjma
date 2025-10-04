@@ -105,25 +105,12 @@ const Prescription = sequelize.define('Prescription', {
   timestamps: true,
 });
 
-// Hook pour générer automatiquement un matricule unique
+// Hook pour générer automatiquement un matricule unique (UUID-based, no race condition)
 Prescription.beforeCreate(async (prescription) => {
-  const crypto = require('crypto');
-  let matricule;
-  let exists = true;
+  const matriculeGenerator = require('../utils/matriculeGenerator');
 
-  // Générer un matricule unique
-  while (exists) {
-    // Format: PRX-YYYYMMDD-XXXX (année-mois-jour + 4 caractères aléatoires)
-    const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const random = crypto.randomBytes(2).toString('hex').toUpperCase();
-    matricule = `PRX-${date}-${random}`;
-
-    // Vérifier l'unicité
-    const existing = await Prescription.findOne({ where: { matricule } });
-    exists = !!existing;
-  }
-
-  prescription.matricule = matricule;
+  // Générer matricule unique basé sur UUID (pas de race condition possible)
+  prescription.matricule = matriculeGenerator.generatePrescription(prescription.issueDate);
 });
 
 Prescription.belongsTo(BaseUser, { as: 'patient', foreignKey: 'patientId' });

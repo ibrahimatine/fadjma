@@ -50,14 +50,13 @@ module.exports = (io) => {
       socket.join('assistants');
     }
 
-    // Handle notification acknowledgment
-    socket.on('notification_read', (notificationId) => {
+    // Define handlers with references for cleanup
+    const notificationReadHandler = (notificationId) => {
       console.log(`📖 Notification ${notificationId} marked as read by user ${socket.userId}`);
       // Here you could update the notification status in database if needed
-    });
+    };
 
-    // Handle medical record events
-    socket.on('medical_record_viewed', (data) => {
+    const medicalRecordViewedHandler = (data) => {
       console.log(`👁️ Medical record ${data.recordId} viewed by user ${socket.userId}`);
 
       // Notify other relevant parties (like the patient or record creator)
@@ -68,23 +67,37 @@ module.exports = (io) => {
         doctorId: socket.userId,
         timestamp: new Date()
       });
-    });
+    };
 
-    // Handle ping test for latency measurement
-    socket.on('ping_test', (data) => {
+    const pingTestHandler = (data) => {
       console.log(`🏓 Ping test from user ${socket.userId}:`, data);
       // Immediately respond with pong
       socket.emit('pong_test', {
         ...data,
         serverTimestamp: new Date().getTime()
       });
-    });
+    };
 
-    // Handle disconnect
-    socket.on('disconnect', () => {
-      console.log(`👋 User ${socket.userId} disconnected from WebSocket`);
+    const disconnectHandler = (reason) => {
+      console.log(`👋 User ${socket.userId} disconnected from WebSocket. Reason: ${reason}`);
+
+      // Cleanup: Remove all event listeners
+      socket.removeListener('notification_read', notificationReadHandler);
+      socket.removeListener('medical_record_viewed', medicalRecordViewedHandler);
+      socket.removeListener('ping_test', pingTestHandler);
+
+      // Remove from connected users
       connectedUsers.delete(socket.userId);
-    });
+
+      // Leave all rooms
+      socket.leaveAll();
+    };
+
+    // Register event handlers
+    socket.on('notification_read', notificationReadHandler);
+    socket.on('medical_record_viewed', medicalRecordViewedHandler);
+    socket.on('ping_test', pingTestHandler);
+    socket.on('disconnect', disconnectHandler);
 
     // Send connection confirmation
     socket.emit('connected', {

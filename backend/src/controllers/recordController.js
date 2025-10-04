@@ -355,73 +355,122 @@ exports.create = async (req, res) => {
       doctorId
     });
 
-    // Si c'est une prescription, créer des enregistrements séparés dans la table Prescription
+    // Si c'est une prescription, créer des enregistrements avec transaction Sequelize
     if (type === 'prescription' && prescription && Array.isArray(prescription)) {
       console.log(`📋 Création de ${prescription.length} prescription(s) pour le patient ${patientId}`);
 
-      for (const med of prescription) {
-        const prescStartTime = Date.now();
-        const prescriptionRecord = await Prescription.create({
-          patientId,
-          doctorId,
-          medicalRecordId: record.id,
-          medication: med.name,
-          dosage: med.dosage,
-          instructions: med.frequency || '',
-          quantity: parseInt(med.duration) || 1,
-          issueDate: new Date(),
-          deliveryStatus: 'pending'
-        });
+      const { sequelize } = require('../models');
+      const transaction = await sequelize.transaction();
 
-        console.log(`💊 Prescription créée: ${prescriptionRecord.medication} - Matricule: ${prescriptionRecord.matricule} - Statut: ${prescriptionRecord.deliveryStatus}`);
+      try {
+        const createdPrescriptions = [];
 
-        // Record prescription database operation
-        const prescQueryTime = Date.now() - prescStartTime;
-        monitoringService.recordDatabaseOperation('prescription', prescQueryTime, {
-          matricule: prescriptionRecord.matricule,
-          medication: med.name,
-          patientId,
-          doctorId
-        });
+        // Créer toutes les prescriptions dans une transaction
+        for (const med of prescription) {
+          const prescStartTime = Date.now();
+          const prescriptionRecord = await Prescription.create({
+            patientId,
+            doctorId,
+            medicalRecordId: record.id,
+            medication: med.name,
+            dosage: med.dosage,
+            instructions: med.frequency || '',
+            quantity: parseInt(med.duration) || 1,
+            issueDate: new Date(),
+            deliveryStatus: 'pending'
+          }, { transaction });
 
-        // Ancrer chaque prescription individuellement sur Hedera
-        try {
-          console.log(`🔗 Ancrage prescription ${prescriptionRecord.matricule} sur Hedera...`);
-          const prescriptionHederaResult = await hederaService.anchorRecord({
-            id: prescriptionRecord.id,
-            patientId: prescriptionRecord.patientId,
-            doctorId: prescriptionRecord.doctorId,
-            type: 'prescription',
-            medication: prescriptionRecord.medication,
-            dosage: prescriptionRecord.dosage,
+          createdPrescriptions.push(prescriptionRecord);
+
+          console.log(`💊 Prescription créée: ${prescriptionRecord.medication} - Matricule: ${prescriptionRecord.matricule}`);
+
+          const prescQueryTime = Date.now() - prescStartTime;
+          monitoringService.recordDatabaseOperation('prescription', prescQueryTime, {
             matricule: prescriptionRecord.matricule,
-            issueDate: prescriptionRecord.issueDate
+            medication: med.name,
+            patientId,
+            doctorId
           });
-
-          // Mettre à jour avec les infos Hedera
-          await prescriptionRecord.update({
-            deliveryConfirmationHash: prescriptionHederaResult.hash,
-            hederaTransactionId: prescriptionHederaResult.transactionId,
-            hederaSequenceNumber: prescriptionHederaResult.sequenceNumber,
-            hederaTopicId: prescriptionHederaResult.topicId,
-            isVerified: true,
-            verifiedAt: new Date()
-          });
-
-          console.log(`✅ Prescription ${prescriptionRecord.matricule} ancrée avec succès - Statut: ${prescriptionRecord.deliveryStatus}`);
-        } catch (hederaError) {
-          console.error(`❌ Échec ancrage prescription ${prescriptionRecord.matricule}:`, hederaError);
         }
-      }
 
-      console.log(`✅ Processus de prescription terminé: ${prescription.length} matricule(s) généré(s) et ancré(s) en mode pending`);
+        // Ancrer toutes les prescriptions en parallèle
+        const hederaQueueService = require('../services/hederaQueueService');
+        const anchorPromises = createdPrescriptions.map(async (prescriptionRecord) => {
+          try {
+            console.log(`🔗 Ancrage prescription ${prescriptionRecord.matricule} sur Hedera...`);
+            const prescriptionHederaResult = await hederaService.anchorRecord({
+              id: prescriptionRecord.id,
+              patientId: prescriptionRecord.patientId,
+              doctorId: prescriptionRecord.doctorId,
+              type: 'prescription',
+              medication: prescriptionRecord.medication,
+              dosage: prescriptionRecord.dosage,
+              matricule: prescriptionRecord.matricule,
+              issueDate: prescriptionRecord.issueDate
+            });
+
+            // Mettre à jour avec les infos Hedera
+            await prescriptionRecord.update({
+              deliveryConfirmationHash: prescriptionHederaResult.hash,
+              hederaTransactionId: prescriptionHederaResult.transactionId,
+              hederaSequenceNumber: prescriptionHederaResult.sequenceNumber,
+              hederaTopicId: prescriptionHederaResult.topicId,
+              isVerified: true,
+              verifiedAt: new Date()
+            }, { transaction });
+
+            console.log(`✅ Prescription ${prescriptionRecord.matricule} ancrée avec succès`);
+          } catch (hederaError) {
+            console.error(`❌ Échec ancrage prescription ${prescriptionRecord.matricule}, ajout à la queue:`, hederaError);
+
+            // Ajouter à la queue en cas d'échec
+            await hederaQueueService.enqueue(
+              {
+                id: prescriptionRecord.id,
+                patientId: prescriptionRecord.patientId,
+                doctorId: prescriptionRecord.doctorId,
+                medication: prescriptionRecord.medication,
+                dosage: prescriptionRecord.dosage,
+                matricule: prescriptionRecord.matricule,
+                issueDate: prescriptionRecord.issueDate
+              },
+              'PRESCRIPTION',
+              {
+                onSuccess: async (result) => {
+                  await prescriptionRecord.update({
+                    deliveryConfirmationHash: result.hash,
+                    hederaTransactionId: result.transactionId,
+                    hederaSequenceNumber: result.sequenceNumber,
+                    hederaTopicId: result.topicId,
+                    isVerified: true,
+                    verifiedAt: new Date()
+                  });
+                }
+              }
+            );
+          }
+        });
+
+        // Attendre tous les ancrages (mais ne pas bloquer la transaction)
+        await Promise.allSettled(anchorPromises);
+
+        // Commit la transaction DB
+        await transaction.commit();
+        console.log(`✅ Transaction committée: ${prescription.length} prescription(s) créée(s)`);
+
+      } catch (error) {
+        // Rollback en cas d'erreur
+        await transaction.rollback();
+        console.error(`❌ Erreur lors de la création des prescriptions, rollback:`, error);
+        throw error;
+      }
     }
     
-    // Anchor to Hedera
+    // Anchor to Hedera with queue fallback
     try {
       console.log('Anchoring record to Hedera...');
       const hederaResult = await hederaService.anchorRecord(record);
-      
+
       // Update record with Hedera info
       await record.update({
         hash: hederaResult.hash,
@@ -431,11 +480,36 @@ exports.create = async (req, res) => {
         hederaTimestamp: new Date(),
         isVerified: true
       });
-      
+
       console.log('Record anchored successfully:', hederaResult);
     } catch (hederaError) {
-      console.error('Hedera anchoring failed:', hederaError);
-      // Continue without Hedera for now
+      console.error('Hedera anchoring failed, adding to queue:', hederaError);
+
+      // Add to queue for retry instead of failing silently
+      const hederaQueueService = require('../services/hederaQueueService');
+      await hederaQueueService.enqueue(
+        record,
+        'MEDICAL_RECORD',
+        {
+          onSuccess: async (result) => {
+            await record.update({
+              hash: result.hash,
+              hederaTransactionId: result.transactionId,
+              hederaSequenceNumber: result.sequenceNumber,
+              hederaTopicId: result.topicId,
+              hederaTimestamp: new Date(),
+              isVerified: true
+            });
+          },
+          onFailure: async (error) => {
+            // Mark record as unverified after all retries failed
+            await record.update({ isVerified: false });
+            console.error(`❌ Final failure for record ${record.id}:`, error.message);
+          }
+        }
+      );
+
+      console.log(`📥 Record ${record.id} queued for Hedera anchoring`);
     }
     
     // Reload with associations

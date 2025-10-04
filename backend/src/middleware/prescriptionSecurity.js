@@ -1,19 +1,45 @@
 const logger = require('../utils/logger');
 const rateLimit = require('express-rate-limit');
 
-// Rate limiter pour les recherches de matricules
+// Rate limiter pour les recherches de matricules (par userId + IP combinés)
 const matriculeSearchLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // Maximum 50 tentatives par IP toutes les 15 minutes
+  max: (req) => {
+    // Limite variable selon rôle
+    const role = req.user?.role;
+    if (role === 'admin') return 200;
+    if (role === 'pharmacy') return 100;
+    return 50; // Default pour autres rôles
+  },
   message: {
     error: 'Trop de tentatives de recherche. Réessayez dans 15 minutes.',
     code: 'RATE_LIMIT_EXCEEDED'
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: (req) => {
-    // Ne pas appliquer la limite pour les environnements de développement
-    return process.env.NODE_ENV === 'development';
+  // Clé combinée: userId + IP pour éviter contournement
+  keyGenerator: (req) => {
+    const userId = req.user?.id || 'anonymous';
+    const ip = req.ip || req.connection.remoteAddress;
+    return `${userId}:${ip}`;
+  },
+  // Plus de skip en développement - sécurité même en dev
+  skip: () => false,
+  // Handler personnalisé pour logging
+  handler: (req, res) => {
+    const userId = req.user?.id || 'anonymous';
+    logger.warn(`Rate limit exceeded for user ${userId} from IP ${req.ip}`, {
+      userId,
+      ip: req.ip,
+      path: req.path,
+      timestamp: new Date().toISOString()
+    });
+
+    res.status(429).json({
+      error: 'Trop de tentatives de recherche. Réessayez dans 15 minutes.',
+      code: 'RATE_LIMIT_EXCEEDED',
+      retryAfter: 900 // 15 minutes en secondes
+    });
   }
 });
 

@@ -122,30 +122,10 @@ const BaseUser = sequelize.define('BaseUser', {
         user.password = await bcrypt.hash(user.password, 10);
       }
 
-      // Générer un matricule unique pour TOUS les patients
+      // Générer un matricule unique pour TOUS les patients (UUID-based, no race condition)
       if (user.role === 'patient' && !user.patientIdentifier) {
-        const crypto = require('crypto');
-        let newMatricule;
-        let exists = true;
-        let attempts = 0;
-        const maxAttempts = 10;
-
-        while (exists && attempts < maxAttempts) {
-          const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-          const random = crypto.randomBytes(2).toString('hex').toUpperCase();
-          newMatricule = `PAT-${date}-${random}`;
-
-          // Vérifier l'unicité
-          const existing = await BaseUser.findOne({ where: { patientIdentifier: newMatricule } });
-          exists = !!existing;
-          attempts++;
-        }
-
-        if (!exists) {
-          user.patientIdentifier = newMatricule;
-        } else {
-          throw new Error('Impossible de générer un matricule unique après plusieurs tentatives');
-        }
+        const matriculeGenerator = require('../utils/matriculeGenerator');
+        user.patientIdentifier = matriculeGenerator.generatePatient();
       }
     },
     beforeUpdate: async (user) => {

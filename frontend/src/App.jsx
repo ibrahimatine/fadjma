@@ -1,31 +1,38 @@
-import React, { useEffect } from "react";
+import React, { useEffect, lazy, Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "./hooks/useAuth";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
-import Records from "./pages/Records";
-import RecordDetails from "./pages/RecordDetails";
-import CreateMedicalRecord from "./pages/CreateMedicalRecord";
-import PatientMedicalRecordsView from "./components/patient/PatientMedicalRecordsView";
-import AdminRegistry from "./pages/AdminRegistry";
-import AdminMonitoring from "./pages/AdminMonitoring";
-import HistoryView from "./pages/HistoryView";
-import PatientLinkForm from "./components/auth/PatientLinkForm";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-import PatientRecordGuard from "./components/auth/PatientRecordGuard";
 import Header from "./components/common/Header";
 import Footer from "./components/common/Footer";
 import websocketService from "./services/websocketService";
 
-// Appointment pages
-import PatientAppointments from "./pages/PatientAppointments";
-import DoctorAppointments from "./pages/DoctorAppointments";
-import AssistantDashboardV2 from "./pages/AssistantDashboardV2";
+// Eager loaded components (critical for initial render)
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import PatientLinkForm from "./components/auth/PatientLinkForm";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+import PatientRecordGuard from "./components/auth/PatientRecordGuard";
 
-// Admin pages
-import AdminSpecialtyManagement from "./pages/AdminSpecialtyManagement";
-import AdminUserManagement from "./pages/AdminUserManagement";
+// Loading component
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+  </div>
+);
+
+// Lazy loaded pages (code splitting)
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Records = lazy(() => import("./pages/Records"));
+const RecordDetails = lazy(() => import("./pages/RecordDetails"));
+const CreateMedicalRecord = lazy(() => import("./pages/CreateMedicalRecord"));
+const PatientMedicalRecordsView = lazy(() => import("./components/patient/PatientMedicalRecordsView"));
+const AdminRegistry = lazy(() => import("./pages/AdminRegistry"));
+const AdminMonitoring = lazy(() => import("./pages/AdminMonitoring"));
+const HistoryView = lazy(() => import("./pages/HistoryView"));
+const PatientAppointments = lazy(() => import("./pages/PatientAppointments"));
+const DoctorAppointments = lazy(() => import("./pages/DoctorAppointments"));
+const AssistantDashboardV2 = lazy(() => import("./pages/AssistantDashboardV2"));
+const AdminSpecialtyManagement = lazy(() => import("./pages/AdminSpecialtyManagement"));
+const AdminUserManagement = lazy(() => import("./pages/AdminUserManagement"));
 
 function App() {
   const { user, token } = useAuth();
@@ -68,7 +75,8 @@ function App() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {user && <Header />}
       <main className="flex-1">
-        <Routes>
+        <Suspense fallback={<PageLoader />}>
+          <Routes>
           <Route
             path="/login"
             element={user ? <Navigate to="/dashboard" /> : <Login />}
@@ -146,7 +154,8 @@ function App() {
             path="/"
             element={<Navigate to={user ? "/dashboard" : "/login"} />}
           />
-        </Routes>
+          </Routes>
+        </Suspense>
       </main>
       <Footer />
     </div>

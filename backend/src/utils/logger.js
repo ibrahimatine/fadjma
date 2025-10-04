@@ -1,6 +1,7 @@
 const winston = require('winston');
 const path = require('path');
 const fs = require('fs');
+const logSanitizer = require('./logSanitizer');
 
 // Créer le dossier logs s'il n'existe pas
 const logsDir = path.join(__dirname, '../../logs');
@@ -405,6 +406,63 @@ class FadjmaLogger {
       // Si c'est un message string
       this.mainLogger.error(message, meta);
     }
+  }
+
+  // === LOGGING SÉCURISÉ RGPD/HIPAA ===
+
+  /**
+   * Log sécurisé avec sanitization automatique des données sensibles
+   * @param {string} level - info, warn, error
+   * @param {string} message - Message principal
+   * @param {object} data - Données à logger (seront sanitizées)
+   */
+  safeLog(level, message, data = {}) {
+    const sanitizedData = logSanitizer.sanitize(data);
+    this.mainLogger[level](message, {
+      ...sanitizedData,
+      _sanitized: true // Flag pour indiquer que les données sont sanitizées
+    });
+  }
+
+  /**
+   * Shortcuts pour logging sécurisé
+   */
+  safeInfo(message, data) {
+    this.safeLog('info', message, data);
+  }
+
+  safeWarn(message, data) {
+    this.safeLog('warn', message, data);
+  }
+
+  safeError(message, data) {
+    this.safeLog('error', message, data);
+  }
+
+  /**
+   * Log action médicale (toujours sanitizé)
+   */
+  logMedicalAction(action, userId, patientId, data = {}) {
+    this.safeInfo(`Medical action: ${action}`, {
+      action,
+      userId,
+      patientId,
+      ...data,
+      _category: 'medical'
+    });
+  }
+
+  /**
+   * Log accès dossier médical (toujours sanitizé)
+   */
+  logMedicalRecordAccess(userId, recordId, action, data = {}) {
+    this.safeInfo(`Medical record ${action}`, {
+      userId,
+      recordId,
+      action,
+      ...data,
+      _category: 'medical_access'
+    });
   }
 }
 

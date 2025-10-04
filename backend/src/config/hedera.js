@@ -12,14 +12,33 @@ class HederaClient {
     // Topic ID fixe pour le testnet FADJMA
     this.topicId = process.env.HEDERA_TOPIC_ID || process.env.HEDERA_ECDSA_TOPIC_ID || "0.0.6854064";
     this.accountId = process.env.HEDERA_ACCOUNT_ID || process.env.HEDERA_ECDSA_ACCOUNT_ID || "0.0.6089195";
-    this.privateKey = process.env.HEDERA_PRIVATE_KEY || process.env.HEDERA_ECDSA_PRIVATE_KEY || null;
-    this.init();
+    this.privateKey = null; // Sera chargé via KMS
+    this.kmsInitialized = false;
   }
 
-  init() {
-    // Utiliser les credentials ECDSA qui correspondent au topic créé
+  async init() {
+    // Charger la clé privée via KMS si configuré
+    const kmsConfig = require('./kmsConfig');
+
+    try {
+      if (!this.kmsInitialized) {
+        await kmsConfig.initialize();
+        this.privateKey = kmsConfig.getHederaPrivateKey();
+        this.kmsInitialized = true;
+
+        kmsConfig.logKeyUsage('hedera_client_init', {
+          accountId: this.accountId,
+          topicId: this.topicId
+        });
+      }
+    } catch (error) {
+      console.error("❌ KMS initialization failed, falling back to env vars:", error.message);
+      // Fallback aux variables d'environnement (développement uniquement)
+      this.privateKey = process.env.HEDERA_PRIVATE_KEY || process.env.HEDERA_ECDSA_PRIVATE_KEY;
+    }
+
     const accountId = process.env.HEDERA_ECDSA_ACCOUNT_ID || this.accountId;
-    const privateKey = process.env.HEDERA_ECDSA_PRIVATE_KEY || this.privateKey;
+    const privateKey = this.privateKey;
 
     if (!privateKey) {
       throw new Error("❌ Hedera private key is required - no simulation mode allowed");
@@ -28,11 +47,11 @@ class HederaClient {
     try {
       this.client = Client.forTestnet().setOperator(accountId, privateKey);
       this.accountId = accountId;
-      this.privateKey = privateKey;
-      console.log("✅ Hedera client initialized for Testnet (Production Mode)");
+      console.log("✅ Hedera client initialized for Testnet");
       console.log("   Account ID:", this.accountId);
       console.log("   Topic ID:", this.topicId);
       console.log("   Network: Hedera Testnet");
+      console.log("   Key Source:", this.kmsInitialized ? 'KMS' : 'Environment');
     } catch (error) {
       console.error("❌ Hedera client initialization error:", error.message);
       throw new Error(`Failed to initialize Hedera client: ${error.message}`);

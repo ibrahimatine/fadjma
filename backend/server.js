@@ -8,6 +8,11 @@ const PORT = process.env.PORT || 5000;
 
 async function startServer() {
   try {
+    // Initialize Hedera client with KMS
+    const hederaClient = require('./src/config/hedera');
+    await hederaClient.init();
+    console.log('✅ Hedera client initialized');
+
     // Test database connection
     await sequelize.authenticate();
     console.log('✅ Database connected successfully');

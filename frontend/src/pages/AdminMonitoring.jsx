@@ -59,7 +59,7 @@ const AdminMonitoring = () => {
         adminService.getActiveAlerts(),
         adminService.getSystemLogs(100, selectedLogType === 'all' ? null : selectedLogType)
       ]);
-
+console.log(metricsRes, healthRes, alertsRes, logsRes);
       if (metricsRes.status === 'fulfilled') {
         setMetrics(metricsRes.value);
       }
