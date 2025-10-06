@@ -1,7 +1,7 @@
 const logger = require('../utils/logger');
 const rateLimit = require('express-rate-limit');
 
-// Rate limiter pour les recherches de matricules (par userId + IP combinés)
+// Rate limiter pour les recherches de matricules (par userId uniquement)
 const matriculeSearchLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: (req) => {
@@ -17,20 +17,18 @@ const matriculeSearchLimit = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  // Clé combinée: userId + IP pour éviter contournement
+  // Clé simple: userId pour éviter problème IPv6
   keyGenerator: (req) => {
     const userId = req.user?.id || 'anonymous';
-    const ip = req.ip || req.connection.remoteAddress;
-    return `${userId}:${ip}`;
+    return `user:${userId}`;
   },
-  // Plus de skip en développement - sécurité même en dev
-  skip: () => false,
+  // Skip en développement pour faciliter les tests
+  skip: (req) => process.env.NODE_ENV === 'development',
   // Handler personnalisé pour logging
   handler: (req, res) => {
     const userId = req.user?.id || 'anonymous';
-    logger.warn(`Rate limit exceeded for user ${userId} from IP ${req.ip}`, {
+    logger.warn(`Rate limit exceeded for user ${userId}`, {
       userId,
-      ip: req.ip,
       path: req.path,
       timestamp: new Date().toISOString()
     });
