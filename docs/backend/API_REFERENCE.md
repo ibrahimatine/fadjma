@@ -9,8 +9,10 @@ L'API FADJMA est une API REST révolutionnaire qui fournit des endpoints sécuri
 - 📊 **Monitoring** logs centralisés et métriques temps réel
 - ⛓️ **Vérification blockchain** via HCS et Mirror Node
 
-**Base URL :** `http://localhost:3001/api`
-**Production Hedera :** Compte 0.0.6089195, Topic 0.0.6854064
+**Base URL :** `http://localhost:5000/api`
+**Hedera Testnet :**
+- EC25519 (Primary): Compte 0.0.6164695, Topic 0.0.6854064
+- ECDSA (Secondary): Compte 0.0.6089195, Topics 0.0.7070750-0.0.7070754
 
 ## Authentification
 

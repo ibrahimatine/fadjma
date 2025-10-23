@@ -299,9 +299,9 @@ FRONTEND_URL=http://localhost:3000
 ### Test Accounts
 ```
 Médecin:     dr.martin@fadjma.com              / Demo2024!
-Patient:     jean.dupont@demo.com             / Demo2024!
-Pharmacien:  pharmacie.centrale@fadjma.com    / Demo2024!
-Admin:       admin@fadjma.com                 / Admin2024!
+Patient:     jean.dupont@demo.com              / Demo2024!
+Pharmacien:  pharmacie.centrale@fadjma.com     / Demo2024!
+Admin:       admin@fadjma.com                  / Admin2024!
 ```
 
 ---

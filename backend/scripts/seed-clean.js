@@ -251,8 +251,8 @@ async function seedCleanDatabase() {
     console.log('  📧 dr.diop@fadjma.com       🔑 Demo2024!  (Cardiologie)');
 
     console.log('\n👤 PATIENTS:');
-    console.log('  📧 patient1@demo.com        🔑 Demo2024!  (Jean Dupont)');
-    console.log('  📧 patient2@demo.com        🔑 Demo2024!  (Fatou Sall)');
+    console.log('  📧 jean.dupont@demo.com     🔑 Demo2024!  (Jean Dupont)');
+    console.log('  📧 fatou.sall@demo.com      🔑 Demo2024!  (Fatou Sall)');
 
     console.log('\n🏥 PHARMACIE:');
     console.log('  📧 pharmacie@fadjma.com     🔑 Demo2024!');

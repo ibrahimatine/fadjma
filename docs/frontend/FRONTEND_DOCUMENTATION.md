@@ -1745,7 +1745,7 @@ class ErrorBoundary extends React.Component {
 
 ---
 
-**Documentation Frontend v1.0** - Mise à jour : 28 septembre 2025
+**Documentation Frontend v2.0** - Mise à jour : 23 octobre 2025
 **Contact** : équipe UX/UI FADJMA
 **Prochaine révision** : Décembre 2025
 
