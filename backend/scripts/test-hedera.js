@@ -6,8 +6,8 @@ async function testHedera() {
   
   // Vérifier les variables d'environnement
   console.log('📋 Configuration:');
-  console.log('   HEDERA_ACCOUNT_ID:', process.env.HEDERA_ACCOUNT_ID ? '✅ Configuré' : '❌ Manquant');
-  console.log('   HEDERA_PRIVATE_KEY:', process.env.HEDERA_PRIVATE_KEY ? '✅ Configuré' : '❌ Manquant');
+  console.log('   HEDERA_ECDSA_ACCOUNT_ID:', process.env.HEDERA_ECDSA_ACCOUNT_ID ? '✅ Configuré' : '❌ Manquant');
+  console.log('   HEDERA_ECDSA_PRIVATE_KEY:', process.env.HEDERA_ECDSA_PRIVATE_KEY ? '✅ Configuré' : '❌ Manquant');
   console.log('   HEDERA_TOPIC_ID:', process.env.HEDERA_TOPIC_ID || '⚠️ À créer');
   console.log('');
   

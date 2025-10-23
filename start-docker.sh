@@ -64,8 +64,8 @@ if [ ! -f .env ]; then
         echo -e "${RED}❌ Fichier .env.docker non trouvé!${NC}"
         echo ""
         echo -e "${YELLOW}Veuillez créer un fichier .env avec les variables suivantes:${NC}"
-        echo "  HEDERA_ACCOUNT_ID=0.0.XXXXXXX"
-        echo "  HEDERA_PRIVATE_KEY=302e020100..."
+        echo "  HEDERA_ECDSA_ACCOUNT_ID=0.0.XXXXXXX"
+        echo "  HEDERA_ECDSA_PRIVATE_KEY=302e020100..."
         echo "  HEDERA_TOPIC_ID=0.0.6854064"
         echo "  HEDERA_NETWORK=testnet"
         exit 1
@@ -82,18 +82,18 @@ fi
 echo -e "${BLUE}🔍 Vérification de la configuration...${NC}"
 source .env
 
-if [ -z "$HEDERA_ACCOUNT_ID" ] || [ "$HEDERA_ACCOUNT_ID" == "0.0.XXXXXXX" ]; then
-    echo -e "${RED}❌ HEDERA_ACCOUNT_ID non configuré dans .env${NC}"
+if [ -z "$HEDERA_ECDSA_ACCOUNT_ID" ] || [ "$HEDERA_ECDSA_ACCOUNT_ID" == "0.0.XXXXXXX" ]; then
+    echo -e "${RED}❌ HEDERA_ECDSA_ACCOUNT_ID non configuré dans .env${NC}"
     exit 1
 fi
 
-if [ -z "$HEDERA_PRIVATE_KEY" ] || [ "$HEDERA_PRIVATE_KEY" == "YOUR_PRIVATE_KEY_HERE" ]; then
-    echo -e "${RED}❌ HEDERA_PRIVATE_KEY non configuré dans .env${NC}"
+if [ -z "$HEDERA_ECDSA_PRIVATE_KEY" ] || [ "$HEDERA_ECDSA_PRIVATE_KEY" == "YOUR_PRIVATE_KEY_HERE" ]; then
+    echo -e "${RED}❌ HEDERA_ECDSA_PRIVATE_KEY non configuré dans .env${NC}"
     exit 1
 fi
 
 echo -e "${GREEN}✅ Configuration validée${NC}"
-echo -e "${CYAN}   - Account ID: ${HEDERA_ACCOUNT_ID}${NC}"
+echo -e "${CYAN}   - Account ID: ${HEDERA_ECDSA_ACCOUNT_ID}${NC}"
 echo -e "${CYAN}   - Topic ID:   ${HEDERA_TOPIC_ID}${NC}"
 echo -e "${CYAN}   - Network:    ${HEDERA_NETWORK}${NC}"
 echo ""
@@ -251,7 +251,7 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo -e "  ${GREEN}HashScan:${NC}    https://hashscan.io/testnet/topic/${HEDERA_TOPIC_ID}"
 echo -e "  ${GREEN}Network:${NC}     ${HEDERA_NETWORK}"
-echo -e "  ${GREEN}Account:${NC}     ${HEDERA_ACCOUNT_ID}"
+echo -e "  ${GREEN}Account:${NC}     ${HEDERA_ECDSA_ACCOUNT_ID}"
 echo ""
 
 # Offer to open browser

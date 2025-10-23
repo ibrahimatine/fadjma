@@ -51,8 +51,8 @@ JWT_SECRET=votre-secret-jwt-super-securise-changez-moi
 JWT_EXPIRE=7d
 
 # Hedera EC25519 (Primary Account)
-HEDERA_ACCOUNT_ID=0.0.XXXXXXX
-HEDERA_PRIVATE_KEY=302e020100300506032b657004220420XXXXXX
+HEDERA_ECDSA_ACCOUNT_ID=0.0.XXXXXXX
+HEDERA_ECDSA_PRIVATE_KEY=302e020100300506032b657004220420XXXXXX
 HEDERA_TOPIC_ID=0.0.XXXXXXX
 HEDERA_NETWORK=testnet
 
@@ -419,7 +419,7 @@ docker-compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
 ## Checklist de Déploiement
 
 - [ ] Variables d'environnement configurées (.env)
-- [ ] Credentials Hedera valides (HEDERA_ACCOUNT_ID, HEDERA_PRIVATE_KEY)
+- [ ] Credentials Hedera valides (HEDERA_ECDSA_ACCOUNT_ID, HEDERA_ECDSA_PRIVATE_KEY)
 - [ ] JWT_SECRET généré (64 caractères min)
 - [ ] Docker et Docker Compose installés
 - [ ] Services démarrés et healthy (docker-compose ps)

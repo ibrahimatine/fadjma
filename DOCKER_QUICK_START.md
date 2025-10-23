@@ -70,8 +70,8 @@ code .env
 
 **Variables à modifier dans `.env`:**
 ```bash
-HEDERA_ACCOUNT_ID=0.0.XXXXXXX     # Fourni dans DoraHacks submission
-HEDERA_PRIVATE_KEY=302e020100...  # Fourni dans DoraHacks submission
+HEDERA_ECDSA_ACCOUNT_ID=0.0.XXXXXXX     # Fourni dans DoraHacks submission
+HEDERA_ECDSA_PRIVATE_KEY=302e020100...  # Fourni dans DoraHacks submission
 HEDERA_TOPIC_ID=0.0.6854064       # Déjà configuré
 ```
 
@@ -292,7 +292,7 @@ docker compose up -d --build --force-recreate
 
 ---
 
-### Problème: "HEDERA_PRIVATE_KEY" not found
+### Problème: "HEDERA_ECDSA_PRIVATE_KEY" not found
 
 **Solution:**
 ```bash

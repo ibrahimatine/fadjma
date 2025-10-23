@@ -23,7 +23,7 @@ class HederaClient {
     // Topic ID par défaut (backward compatibility)
     this.topicId = this.topics.DEFAULT;
 
-    this.accountId = process.env.HEDERA_ACCOUNT_ID || process.env.HEDERA_ECDSA_ACCOUNT_ID || "0.0.6089195";
+    this.accountId = process.env.HEDERA_ECDSA_ACCOUNT_ID || process.env.HEDERA_ECDSA_ACCOUNT_ID || "0.0.6089195";
     this.privateKey = null; // Sera chargé via KMS
     this.kmsInitialized = false;
   }
@@ -46,7 +46,7 @@ class HederaClient {
     } catch (error) {
       console.error("❌ KMS initialization failed, falling back to env vars:", error.message);
       // Fallback aux variables d'environnement (développement uniquement)
-      this.privateKey = process.env.HEDERA_PRIVATE_KEY || process.env.HEDERA_ECDSA_PRIVATE_KEY;
+      this.privateKey = process.env.HEDERA_ECDSA_PRIVATE_KEY || process.env.HEDERA_ECDSA_PRIVATE_KEY;
     }
 
     // Utiliser la bonne paire compte/clé ensemble
@@ -55,8 +55,8 @@ class HederaClient {
     if (process.env.HEDERA_ECDSA_ACCOUNT_ID && process.env.HEDERA_ECDSA_PRIVATE_KEY) {
       accountId = process.env.HEDERA_ECDSA_ACCOUNT_ID;
       privateKey = process.env.HEDERA_ECDSA_PRIVATE_KEY;
-    } else if (process.env.HEDERA_ACCOUNT_ID && this.privateKey) {
-      accountId = process.env.HEDERA_ACCOUNT_ID;
+    } else if (process.env.HEDERA_ECDSA_ACCOUNT_ID && this.privateKey) {
+      accountId = process.env.HEDERA_ECDSA_ACCOUNT_ID;
       privateKey = this.privateKey;
     } else {
       accountId = this.accountId;

@@ -36,7 +36,7 @@ fadjma/
 ```bash
 # 1. Configurer les credentials Hedera
 cp .env.docker .env
-nano .env  # Ajouter HEDERA_PRIVATE_KEY
+nano .env  # Ajouter HEDERA_ECDSA_PRIVATE_KEY
 
 # 2. Lancer le script
 ./start-docker.sh
@@ -51,7 +51,7 @@ nano .env  # Ajouter HEDERA_PRIVATE_KEY
 ```bash
 # 1. Configuration
 cp .env.docker .env
-nano .env  # Ajouter HEDERA_PRIVATE_KEY
+nano .env  # Ajouter HEDERA_ECDSA_PRIVATE_KEY
 
 # 2. Build et démarrage
 docker compose up -d --build
@@ -163,8 +163,8 @@ docker compose ps
 
 ```bash
 # Hedera (à configurer par les juges)
-HEDERA_ACCOUNT_ID=0.0.6089195
-HEDERA_PRIVATE_KEY=YOUR_PRIVATE_KEY_HERE  # À REMPLIR
+HEDERA_ECDSA_ACCOUNT_ID=0.0.6089195
+HEDERA_ECDSA_PRIVATE_KEY=YOUR_PRIVATE_KEY_HERE  # À REMPLIR
 HEDERA_TOPIC_ID=0.0.6854064
 HEDERA_NETWORK=testnet
 

@@ -198,8 +198,8 @@ JWT_SECRET=<64+ random chars>
 DATABASE_URL=postgresql://user:pass@host:5432/db
 
 # Hedera
-HEDERA_ACCOUNT_ID=0.0.xxxxx
-HEDERA_PRIVATE_KEY=302e020100...
+HEDERA_ECDSA_ACCOUNT_ID=0.0.xxxxx
+HEDERA_ECDSA_PRIVATE_KEY=302e020100...
 HEDERA_TOPIC_ID=0.0.xxxxx
 
 # Optimizations

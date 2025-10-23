@@ -107,8 +107,8 @@ Fichier : `backend/.env`
 
 ```env
 # Hedera Configuration
-HEDERA_ACCOUNT_ID=0.0.6089195
-HEDERA_PRIVATE_KEY=your_private_key
+HEDERA_ECDSA_ACCOUNT_ID=0.0.6089195
+HEDERA_ECDSA_PRIVATE_KEY=your_private_key
 HEDERA_TOPIC_ID=0.0.6854064
 HEDERA_NETWORK=testnet
 

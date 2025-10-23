@@ -392,7 +392,7 @@ services:
   fadjma-api:
     build: ./backend
     environment:
-      - HEDERA_ACCOUNT_ID=${HEDERA_ACCOUNT_ID}
+      - HEDERA_ECDSA_ACCOUNT_ID=${HEDERA_ECDSA_ACCOUNT_ID}
       - DATABASE_URL=${DATABASE_URL}
     ports:
       - "5000:5000"

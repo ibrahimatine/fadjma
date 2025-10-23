@@ -70,7 +70,7 @@ Adapter toute la documentation FADJMA pour refléter l'état actuel du projet, i
 - ✅ 50+ variables d'environnement documentées :
   - USE_MIRROR_NODE
   - DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD
-  - HEDERA_ACCOUNT_ID (EC25519)
+  - HEDERA_ECDSA_ACCOUNT_ID (EC25519)
   - HEDERA_ECDSA_ACCOUNT_ID, HEDERA_ECDSA_PRIVATE_KEY
   - HEDERA_ECDSA_TOPIC_ID
   - KMS_PROVIDER

@@ -46,7 +46,7 @@ FADJMA fonctionne déjà sur **Hedera Testnet en production** avec :
 ```bash
 # Hedera Network Configuration - PRODUCTION TESTNET
 HEDERA_NETWORK=testnet                    # Testnet actif
-HEDERA_ACCOUNT_ID=0.0.6089195            # Compte réel production ✅
+HEDERA_ECDSA_ACCOUNT_ID=0.0.6089195            # Compte réel production ✅
 HEDERA_ECDSA_ACCOUNT_ID=0.0.6089195      # Compte ECDSA fonctionnel ✅
 HEDERA_ECDSA_PRIVATE_KEY=...             # Clé privée ECDSA réelle
 

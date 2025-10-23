@@ -105,8 +105,8 @@ JWT_SECRET=fadjma-hackathon-secret-key-2024-change-this
 JWT_EXPIRE=7d
 
 # Hedera - COPIER VOS VRAIES VALEURS ICI
-HEDERA_ACCOUNT_ID=0.0.XXXXXXX  # ⚠️ REMPLACER
-HEDERA_PRIVATE_KEY=302e020100300506032b657004220420...  # ⚠️ REMPLACER
+HEDERA_ECDSA_ACCOUNT_ID=0.0.XXXXXXX  # ⚠️ REMPLACER
+HEDERA_ECDSA_PRIVATE_KEY=302e020100300506032b657004220420...  # ⚠️ REMPLACER
 HEDERA_TOPIC_ID=  # Laisser vide pour l'instant
 HEDERA_NETWORK=testnet
 
@@ -131,11 +131,11 @@ const { Client, TopicCreateTransaction } = require("@hashgraph/sdk");
 async function createTopic() {
   console.log("🔄 Configuration Hedera...");
   
-  const accountId = process.env.HEDERA_ACCOUNT_ID;
-  const privateKey = process.env.HEDERA_PRIVATE_KEY;
+  const accountId = process.env.HEDERA_ECDSA_ACCOUNT_ID;
+  const privateKey = process.env.HEDERA_ECDSA_PRIVATE_KEY;
 
   if (!accountId || !privateKey) {
-    console.error("❌ Erreur: HEDERA_ACCOUNT_ID et HEDERA_PRIVATE_KEY requis dans .env");
+    console.error("❌ Erreur: HEDERA_ECDSA_ACCOUNT_ID et HEDERA_ECDSA_PRIVATE_KEY requis dans .env");
     process.exit(1);
   }
 

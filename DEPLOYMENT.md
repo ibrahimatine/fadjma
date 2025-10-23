@@ -91,8 +91,8 @@ JWT_SECRET=votre_jwt_secret_super_securise_production
 
 # Hedera Configuration
 HEDERA_NETWORK=testnet
-HEDERA_ACCOUNT_ID=0.0.votre_account_id
-HEDERA_PRIVATE_KEY=votre_private_key
+HEDERA_ECDSA_ACCOUNT_ID=0.0.votre_account_id
+HEDERA_ECDSA_PRIVATE_KEY=votre_private_key
 HEDERA_TOPIC_ID=0.0.votre_topic_id
 
 # CORS

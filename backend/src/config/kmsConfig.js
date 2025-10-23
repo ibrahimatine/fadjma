@@ -63,10 +63,10 @@ class KMSConfig {
       });
 
       // Clé Hedera chiffrée stockée en base64
-      const encryptedKey = process.env.HEDERA_PRIVATE_KEY_ENCRYPTED;
+      const encryptedKey = process.env.HEDERA_ECDSA_PRIVATE_KEY_ENCRYPTED;
 
       if (!encryptedKey) {
-        throw new Error('HEDERA_PRIVATE_KEY_ENCRYPTED not found in environment');
+        throw new Error('HEDERA_ECDSA_PRIVATE_KEY_ENCRYPTED not found in environment');
       }
 
       const command = new DecryptCommand({
@@ -98,10 +98,10 @@ class KMSConfig {
         keyFilename: process.env.GCP_KEY_FILE
       });
 
-      const encryptedKey = process.env.HEDERA_PRIVATE_KEY_ENCRYPTED;
+      const encryptedKey = process.env.HEDERA_ECDSA_PRIVATE_KEY_ENCRYPTED;
 
       if (!encryptedKey) {
-        throw new Error('HEDERA_PRIVATE_KEY_ENCRYPTED not found in environment');
+        throw new Error('HEDERA_ECDSA_PRIVATE_KEY_ENCRYPTED not found in environment');
       }
 
       const name = `projects/${process.env.GCP_PROJECT_ID}/locations/${process.env.GCP_LOCATION}/keyRings/${process.env.GCP_KEY_RING}/cryptoKeys/${process.env.GCP_CRYPTO_KEY}`;
@@ -157,10 +157,10 @@ class KMSConfig {
    * Fallback: utilise les variables d'environnement (NON recommandé en production)
    */
   initializeEnvVars() {
-    this.hederaPrivateKey = process.env.HEDERA_PRIVATE_KEY || process.env.HEDERA_ECDSA_PRIVATE_KEY;
+    this.hederaPrivateKey = process.env.HEDERA_ECDSA_PRIVATE_KEY || process.env.HEDERA_ECDSA_PRIVATE_KEY;
 
     if (!this.hederaPrivateKey) {
-      throw new Error('HEDERA_PRIVATE_KEY not found in environment variables');
+      throw new Error('HEDERA_ECDSA_PRIVATE_KEY not found in environment variables');
     }
 
     if (process.env.NODE_ENV === 'production') {

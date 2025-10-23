@@ -102,8 +102,8 @@ JWT_EXPIRE=7d
 USE_MIRROR_NODE=false
 
 # Hedera EC25519 (Primary Account)
-HEDERA_ACCOUNT_ID=0.0.xxxxxx
-HEDERA_PRIVATE_KEY=302e020100300506032b657004220420xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+HEDERA_ECDSA_ACCOUNT_ID=0.0.xxxxxx
+HEDERA_ECDSA_PRIVATE_KEY=302e020100300506032b657004220420xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 HEDERA_TOPIC_ID=0.0.xxxxxx
 HEDERA_NETWORK=testnet
 
@@ -410,8 +410,8 @@ POST   /api/monitoring/reset   // Reset métriques
 const { Client, PrivateKey, AccountId } = require('@hashgraph/sdk');
 
 const client = Client.forTestnet().setOperator(
-  AccountId.fromString(process.env.HEDERA_ACCOUNT_ID),
-  PrivateKey.fromString(process.env.HEDERA_PRIVATE_KEY)
+  AccountId.fromString(process.env.HEDERA_ECDSA_ACCOUNT_ID),
+  PrivateKey.fromString(process.env.HEDERA_ECDSA_PRIVATE_KEY)
 );
 
 const TOPIC_ID = process.env.HEDERA_TOPIC_ID || '0.0.6854064';

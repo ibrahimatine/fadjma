@@ -28,10 +28,10 @@ services:
       - key: HEDERA_NETWORK
         value: testnet
 
-      - key: HEDERA_ACCOUNT_ID
+      - key: HEDERA_ECDSA_ACCOUNT_ID
         sync: false  # Set manually in Render dashboard
 
-      - key: HEDERA_PRIVATE_KEY
+      - key: HEDERA_ECDSA_PRIVATE_KEY
         sync: false  # Set manually in Render dashboard
 
       - key: HEDERA_TOPIC_ID

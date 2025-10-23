@@ -76,8 +76,8 @@ async function deploy() {
     console.log('🏥 Running health checks...');
     const healthChecks = [
       'JWT_SECRET',
-      'HEDERA_ACCOUNT_ID',
-      'HEDERA_PRIVATE_KEY'
+      'HEDERA_ECDSA_ACCOUNT_ID',
+      'HEDERA_ECDSA_PRIVATE_KEY'
     ];
 
     for (const envVar of healthChecks) {

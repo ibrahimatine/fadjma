@@ -54,8 +54,8 @@ JWT_SECRET = { required = true, description = "Secret for JWT token signing" }
 
 # Hedera Blockchain Configuration
 HEDERA_NETWORK = { default = "testnet", description = "Hedera network (testnet/mainnet)" }
-HEDERA_ACCOUNT_ID = { required = true, description = "Your Hedera account ID" }
-HEDERA_PRIVATE_KEY = { required = true, description = "Your Hedera private key" }
+HEDERA_ECDSA_ACCOUNT_ID = { required = true, description = "Your Hedera account ID" }
+HEDERA_ECDSA_PRIVATE_KEY = { required = true, description = "Your Hedera private key" }
 HEDERA_TOPIC_ID = { required = true, description = "Topic ID for medical records" }
 
 # CORS Configuration

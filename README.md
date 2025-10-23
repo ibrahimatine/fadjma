@@ -143,7 +143,7 @@ In Senegal and across Sub-Saharan Africa:
 ### ⚡ Hedera Integration (Production)
 ```bash
 # Primary Account (EC25519)
-HEDERA_ACCOUNT_ID=0.0.6164695          # ✅ LIVE
+HEDERA_ECDSA_ACCOUNT_ID=0.0.6164695          # ✅ LIVE
 HEDERA_TOPIC_ID=0.0.6854064            # ✅ ACTIVE
 
 # Secondary Account (ECDSA)
@@ -273,8 +273,8 @@ JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRE=7d
 
 # Hedera EC25519 (Primary Account)
-HEDERA_ACCOUNT_ID=0.0.6164695
-HEDERA_PRIVATE_KEY=302e020100300506032b657004220420...
+HEDERA_ECDSA_ACCOUNT_ID=0.0.6164695
+HEDERA_ECDSA_PRIVATE_KEY=302e020100300506032b657004220420...
 HEDERA_TOPIC_ID=0.0.6854064
 HEDERA_NETWORK=testnet
 
