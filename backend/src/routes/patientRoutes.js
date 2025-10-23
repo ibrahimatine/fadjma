@@ -25,10 +25,4 @@ router.post('/create-unclaimed', [
   body('emergencyContactPhone').optional().matches(/^[+]?[0-9\s\-()]{0,20}$/).withMessage('Format de téléphone d\'urgence invalide')
 ], patienController.createUnclaimedPatient);
 
-// router.post('/', patienController.createPatient);
-// router.put('/:id', patienController.updatePatient);
-// router.delete('/:id', patienController.deletePatient);
-
 module.exports = router;
-
-

@@ -15,25 +15,58 @@ services:
     environment:
       # Server Configuration
       NODE_ENV: ${NODE_ENV:-production}
-      PORT: 5000
+      PORT: ${PORT:-5000}
 
-      # Database
-      USE_SQLITE: ${USE_SQLITE:-true}
-      DATABASE_URL: ${DATABASE_URL:-}
+      # Verification Mode
+      USE_MIRROR_NODE: ${USE_MIRROR_NODE:-false}
 
-      # JWT Secret
+      # Database - SQLite (file stored in /app/data volume)
+      # No additional database config needed for SQLite
+
+      # JWT
       JWT_SECRET: ${JWT_SECRET:-fadjma_hackathon_secret_2025_change_in_production}
+      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
 
-      # Hedera Configuration
+      # Hedera EC25519 (Primary Account)
       HEDERA_ACCOUNT_ID: ${HEDERA_ACCOUNT_ID}
       HEDERA_PRIVATE_KEY: ${HEDERA_PRIVATE_KEY}
-      HEDERA_TOPIC_ID: ${HEDERA_TOPIC_ID:-0.0.6854064}
+      HEDERA_TOPIC_ID: ${HEDERA_TOPIC_ID}
       HEDERA_NETWORK: ${HEDERA_NETWORK:-testnet}
 
+      # Hedera ECDSA (Secondary Account)
+      HEDERA_ECDSA_ACCOUNT_ID: ${HEDERA_ECDSA_ACCOUNT_ID}
+      HEDERA_ECDSA_PRIVATE_KEY: ${HEDERA_ECDSA_PRIVATE_KEY}
+      HEDERA_ECDSA_TOPIC_ID: ${HEDERA_ECDSA_TOPIC_ID}
+
       # CORS
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+
+      # KMS Configuration
+      KMS_PROVIDER: ${KMS_PROVIDER:-env}
+
+      # Batching Configuration
+      HEDERA_USE_BATCHING: ${HEDERA_USE_BATCHING:-false}
+      HEDERA_MAX_BATCH_SIZE: ${HEDERA_MAX_BATCH_SIZE:-50}
+      HEDERA_MIN_BATCH_SIZE: ${HEDERA_MIN_BATCH_SIZE:-10}
+      HEDERA_BATCH_TIMEOUT_MS: ${HEDERA_BATCH_TIMEOUT_MS:-300000}
+
+      # Compression Configuration
+      HEDERA_USE_COMPRESSION: ${HEDERA_USE_COMPRESSION:-true}
+      HEDERA_COMPRESSION_ENABLED: ${HEDERA_COMPRESSION_ENABLED:-true}
+      HEDERA_MIN_COMPRESSION_SIZE: ${HEDERA_MIN_COMPRESSION_SIZE:-100}
+
+      # Rate Limiter Configuration
+      HEDERA_MAX_TPS: ${HEDERA_MAX_TPS:-8}
+      HEDERA_RATE_LIMITER_ENABLED: ${HEDERA_RATE_LIMITER_ENABLED:-true}
+
+      # Multi-Topics Configuration
+      HEDERA_TOPIC_PRESCRIPTIONS: ${HEDERA_TOPIC_PRESCRIPTIONS}
+      HEDERA_TOPIC_RECORDS: ${HEDERA_TOPIC_RECORDS}
+      HEDERA_TOPIC_DELIVERIES: ${HEDERA_TOPIC_DELIVERIES}
+      HEDERA_TOPIC_ACCESS: ${HEDERA_TOPIC_ACCESS}
+      HEDERA_TOPIC_BATCH: ${HEDERA_TOPIC_BATCH}
     volumes:
-      # Persist database
+      # Persist SQLite database file
       - backend-data:/app/data
       # Persist logs
       - backend-logs:/app/logs
@@ -49,7 +82,7 @@ services:
       start_period: 40s
 
   # ============================================
-  # FRONTEND SERVICE (React + Nginx)
+  # FRONTEND SERVICE (React)
   # ============================================
   frontend:
     build:
@@ -77,10 +110,13 @@ services:
 volumes:
   backend-data:
     name: fadjma-backend-data
+    driver: local
   backend-logs:
     name: fadjma-backend-logs
+    driver: local
   backend-uploads:
     name: fadjma-backend-uploads
+    driver: local
 
 # ============================================
 # NETWORKS

@@ -9,31 +9,49 @@ FADJMA utilise une architecture moderne en 3 couches avec intégration blockchai
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    FADJMA Platform                          │
+│              (Docker Compose Architecture)                  │
 ├─────────────────────────────────────────────────────────────┤
 │  Frontend (React)          │  Backend (Node.js)            │
+│  Port: 3000                │  Port: 5000                   │
 │  ┌─────────────────────┐   │  ┌─────────────────────────┐   │
 │  │ Components          │   │  │ API Endpoints           │   │
 │  │ ├─ Auth             │   │  │ ├─ /auth                │   │
 │  │ ├─ Dashboard        │   │  │ ├─ /patients            │   │
 │  │ ├─ Patients         │   │  │ ├─ /records             │   │
-│  │ ├─ Records          │   │  │ └─ /admin               │   │
-│  │ └─ Admin            │   │  │                         │   │
-│  │                     │   │  │ Services                │   │
-│  │ State Management    │   │  │ ├─ AuthService          │   │
-│  │ ├─ Auth Context     │◄──┼──┤ ├─ PatientService       │   │
-│  │ ├─ WebSocket        │   │  │ ├─ SecurityService      │   │
-│  │ └─ API Calls        │   │  │ └─ HederaService        │   │
+│  │ ├─ Records          │   │  │ ├─ /pharmacy            │   │
+│  │ └─ Admin            │   │  │ └─ /admin               │   │
+│  │                     │   │  │                         │   │
+│  │ State Management    │   │  │ Services (22)           │   │
+│  │ ├─ Auth Context     │◄──┼──┤ ├─ AuthService          │   │
+│  │ ├─ WebSocket        │   │  │ ├─ PatientService       │   │
+│  │ └─ API Calls        │   │  │ ├─ HederaService        │   │
+│  │                     │   │  │ ├─ HashService          │   │
+│  │                     │   │  │ └─ MonitoringService    │   │
 │  └─────────────────────┘   │  └─────────────────────────┘   │
 ├─────────────────────────────────────────────────────────────┤
 │                    Data Layer                               │
 │  ┌─────────────────────────────────────────────────────────┤
-│  │ SQLite              │  Hedera Blockchain              │  │
-│  │ ├─ Users            │  ├─ Medical Records Hash        │  │
-│  │ ├─ Medical Records  │  ├─ Prescriptions Hash         │  │
-│  │ ├─ Access Requests  │  └─ Audit Trail                │  │
-│  │ └─ Audit Logs       │                                │  │
+│  │ SQLite              │  Hedera Hashgraph               │  │
+│  │ File: database.sqlite│  Testnet                       │  │
+│  │ ├─ BaseUsers        │  ├─ Account EC25519: 0.0.6164695│  │
+│  │ ├─ Patients         │  ├─ Account ECDSA: 0.0.6089195  │  │
+│  │ ├─ Doctors          │  ├─ Topic: 0.0.6854064          │  │
+│  │ ├─ Pharmacies       │  ├─ Topics ECDSA: 0.0.7070750   │  │
+│  │ ├─ MedicalRecords   │  ├─ Enriched Anchoring          │  │
+│  │ ├─ Prescriptions    │  └─ Compression + Batching      │  │
+│  │ └─ AccessRequests   │                                │  │
 │  └─────────────────────────────────────────────────────────┘
 └─────────────────────────────────────────────────────────────┘
+
+Docker Services:
+├─ fadjma-backend (Node.js 18-alpine + SQLite)
+├─ fadjma-frontend (Node.js 18-alpine)
+└─ fadjma-network (Bridge network)
+
+Docker Volumes:
+├─ fadjma-backend-data (SQLite database file)
+├─ fadjma-backend-logs (Application logs)
+└─ fadjma-backend-uploads (Uploaded files)
 ```
 
 ## Architecture Frontend
@@ -204,12 +222,13 @@ Response ← JSON ← Controller ← Service ← Model ← Database
 - **Node.js 18+** : Runtime
 - **Express.js** : Framework web
 - **Sequelize** : ORM
-- **SQLite** : Base de données
-- **JWT** : Authentification
-- **bcrypt** : Hachage mots de passe
-- **Hedera SDK** : Blockchain
-- **Socket.io** : WebSocket
-- **Jest** : Tests
+- **SQLite** : Base de données (fichier local, zero config)
+- **JWT** : Authentification (expiration 7 jours)
+- **bcryptjs** : Hachage mots de passe
+- **Hedera SDK 2.45** : Blockchain (EC25519 + ECDSA)
+- **Socket.io 4.8.1** : WebSocket temps réel
+- **Winston 3.17** : Logging centralisé
+- **Jest 29.7** : Tests (85% couverture)
 
 ## Base de Données
 
@@ -475,26 +494,90 @@ Error Format:
 
 ## Déploiement
 
+### Méthodes de Déploiement
+
+#### Docker Compose (Recommandé)
+```bash
+# Démarrage complet
+docker-compose up -d
+
+# Services:
+├─ fadjma-backend:5000
+├─ fadjma-frontend:3000
+└─ fadjma-postgres:5432
+
+# Volumes persistants:
+├─ fadjma-backend-data
+├─ fadjma-backend-logs
+├─ fadjma-backend-uploads
+└─ fadjma-postgres-data
+```
+
+#### Installation Locale
+```bash
+# Backend
+cd backend && npm install && npm run dev
+
+# Frontend
+cd frontend && npm install && npm start
+```
+
 ### Environnements
 
 ```
-Development → Staging → Production
+Development (SQLite local) → Production (SQLite + Docker)
 
-Environment Variables:
+Environment Variables (40+):
+- PORT=5000
 - NODE_ENV
-- DATABASE_URL
-- JWT_SECRET
-- HEDERA_CONFIG
+- USE_MIRROR_NODE
+- JWT_SECRET, JWT_EXPIRE
+- HEDERA_ACCOUNT_ID, HEDERA_PRIVATE_KEY, HEDERA_TOPIC_ID
+- HEDERA_ECDSA_ACCOUNT_ID, HEDERA_ECDSA_PRIVATE_KEY
+- HEDERA_ECDSA_TOPIC_ID
+- KMS_PROVIDER
+- HEDERA_USE_BATCHING, HEDERA_MAX_BATCH_SIZE
+- HEDERA_USE_COMPRESSION
+- HEDERA_MAX_TPS, HEDERA_RATE_LIMITER_ENABLED
+- HEDERA_TOPIC_PRESCRIPTIONS, HEDERA_TOPIC_RECORDS, etc.
 - FRONTEND_URL
 ```
 
 ### Infrastructure
 
 ```
-Frontend: Static hosting (Netlify, Vercel)
-Backend: Node.js server (PM2, Docker)
-Database: SQLite (managed service)
-Blockchain: Hedera Mainnet/Testnet
+Frontend:
+  - Development: React Dev Server (port 3000)
+  - Production: Docker (nginx) or Static hosting (Netlify, Vercel)
+
+Backend:
+  - Development: nodemon (port 5000)
+  - Production: Docker + Node.js or PM2
+
+Database:
+  - Development: SQLite (backend/data/database.sqlite)
+  - Production: SQLite (Docker volume /app/data/database.sqlite)
+
+Blockchain:
+  - Hedera Testnet (current)
+  - Hedera Mainnet (future)
+  - 2 accounts: EC25519 (0.0.6164695) + ECDSA (0.0.6089195)
+  - 6 topics configurés
+```
+
+### Health Checks
+
+```yaml
+Backend:
+  endpoint: /api/health
+  interval: 30s
+  timeout: 10s
+  start_period: 40s
+
+Frontend:
+  check: wget http://localhost:3000
+  interval: 30s
+  start_period: 10s
 ```
 
 ## Tests

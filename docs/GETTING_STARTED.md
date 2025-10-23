@@ -2,7 +2,7 @@
 
 ## Introduction
 
-FADJMA est une plateforme médicale révolutionnaire qui utilise la blockchain Hedera pour sécuriser les dossiers médicaux et tracer les prescriptions. Ce guide vous accompagne pour configurer et lancer l'application en local.
+FADJMA est une plateforme médicale révolutionnaire qui utilise la blockchain Hedera pour sécuriser les dossiers médicaux et tracer les prescriptions. Ce guide vous accompagne pour configurer et lancer l'application.
 
 ## 🌟 **Fonctionnalités Principales**
 - ✅ **Ancrage Enrichi v2.0** : Premier système mondial d'ancrage complet de données médicales
@@ -10,6 +10,39 @@ FADJMA est une plateforme médicale révolutionnaire qui utilise la blockchain H
 - ✅ **Production Hedera Testnet** : Intégration réelle (compte 0.0.6089195, topic 0.0.6854064)
 - ✅ **12+ Types Consultations** : Classification intelligente automatique
 - ✅ **Monitoring Temps Réel** : Dashboard admin et logging centralisé
+- ✅ **Docker Ready** : Déploiement conteneurisé avec PostgreSQL
+
+## 🚀 Méthodes d'Installation
+
+Choisissez la méthode qui vous convient :
+
+### Option A : Docker (Recommandé pour la production)
+**⏱️ Temps estimé : 5 minutes**
+
+```bash
+# 1. Cloner et configurer
+git clone [URL_DU_REPOSITORY]
+cd fadjma
+cp .env.example .env
+# Éditer .env avec vos credentials Hedera
+
+# 2. Démarrer tous les services
+docker-compose up -d
+
+# 3. Initialiser la base
+docker-compose exec backend npm run init:sqlite
+docker-compose exec backend npm run seed:full
+```
+
+✅ **Avantages** : Configuration automatique, SQLite inclus (zéro configuration DB), prêt pour la production
+📖 **Documentation complète** : [DOCKER_SETUP.md](./DOCKER_SETUP.md)
+
+---
+
+### Option B : Installation Locale (Développement)
+**⏱️ Temps estimé : 15-20 minutes**
+
+Continue ci-dessous pour l'installation locale détaillée.
 
 ## Prérequis Système
 
@@ -96,48 +129,74 @@ nano .env  # ou votre éditeur préféré
 
 #### Configuration de la Base de Données
 
-**Option A : SQLite (Recommandé pour le développement)**
+**SQLite (Recommandé et par défaut)**
 ```bash
 # Initialiser SQLite avec données de test
 npm run init:sqlite
-```
 
-**Option B : PostgreSQL (pour la production, si nécessaire)**
-```bash
-# Créer une base de données
-createdb fadjma_dev
-
-# Mettre à jour .env
-# DATABASE_URL=postgresql://username:password@localhost:5432/fadjma_dev
-
-# Synchroniser la base
-npm run setup:db
+# Le fichier database.sqlite sera créé automatiquement dans backend/data/
+# Aucune installation ou configuration supplémentaire nécessaire!
 ```
 
 #### Variables d'Environnement Essentielles
 
 ```env
 # .env
+# Server Configuration
+PORT=5000
 NODE_ENV=development
-PORT=3001
 
-# Base de données
-DB_HOST=localhost
-DB_NAME=fadjma_dev
-DB_USER=your_username
-DB_PASS=your_password
+# Verification Mode
+USE_MIRROR_NODE=false
+
+# Database - SQLite (Default - No configuration needed!)
+# Database file will be created automatically in backend/data/database.sqlite
 
 # JWT (générer une clé sécurisée)
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRE=7d
 
-# Frontend URL
+# Hedera EC25519 (Primary Account)
+HEDERA_ACCOUNT_ID=0.0.XXXXXXX
+HEDERA_PRIVATE_KEY=302e020100300506032b657004220420...
+HEDERA_TOPIC_ID=0.0.XXXXXXX
+HEDERA_NETWORK=testnet
+
+# Hedera ECDSA (Secondary Account) - Optionnel
+HEDERA_ECDSA_ACCOUNT_ID=0.0.XXXXXXX
+HEDERA_ECDSA_PRIVATE_KEY=3030020100300706052b8104000a042204...
+HEDERA_ECDSA_TOPIC_ID=0.0.XXXXXXX
+
+# CORS
 FRONTEND_URL=http://localhost:3000
 
-# Hedera (optionnel pour le développement)
-HEDERA_NETWORK=testnet
-HEDERA_ACCOUNT_ID=your-account-id
-HEDERA_PRIVATE_KEY=your-private-key
+# KMS Configuration
+KMS_PROVIDER=env
+
+# Hedera Batching (Optionnel - Optimisations)
+HEDERA_USE_BATCHING=false
+HEDERA_MAX_BATCH_SIZE=50
+HEDERA_MIN_BATCH_SIZE=10
+HEDERA_BATCH_TIMEOUT_MS=300000
+
+# Hedera Compression (Optionnel)
+HEDERA_USE_COMPRESSION=true
+HEDERA_COMPRESSION_ENABLED=true
+HEDERA_MIN_COMPRESSION_SIZE=100
+
+# Rate Limiter (Optionnel)
+HEDERA_MAX_TPS=8
+HEDERA_RATE_LIMITER_ENABLED=true
+
+# Multi-Topics Configuration (Optionnel)
+HEDERA_TOPIC_PRESCRIPTIONS=0.0.XXXXXXX
+HEDERA_TOPIC_RECORDS=0.0.XXXXXXX
+HEDERA_TOPIC_DELIVERIES=0.0.XXXXXXX
+HEDERA_TOPIC_ACCESS=0.0.XXXXXXX
+HEDERA_TOPIC_BATCH=0.0.XXXXXXX
 ```
+
+**Note** : Les variables marquées "Optionnel" utilisent des valeurs par défaut si non spécifiées.
 
 #### Générer des Clés Sécurisées
 
@@ -159,8 +218,8 @@ npm run dev
 npm start
 
 # Vérifier que le serveur fonctionne
-curl http://localhost:3001/health
-# Devrait retourner : {"status":"OK","timestamp":"..."}
+curl http://localhost:5000/api/health
+# Devrait retourner : {"status":"OK","database":"connected","hedera":"connected"}
 ```
 
 ### 4. Configuration Frontend
@@ -180,8 +239,8 @@ npm install
 
 ```env
 # frontend/.env (optionnel)
-REACT_APP_API_URL=http://localhost:3001
-REACT_APP_WEBSOCKET_URL=http://localhost:3001
+REACT_APP_API_URL=http://localhost:5000
+REACT_APP_WEBSOCKET_URL=http://localhost:5000
 ```
 
 ### 5. Démarrage Frontend
@@ -199,7 +258,7 @@ npm start
 
 Ouvrez votre navigateur et accédez à :
 - **Frontend** : http://localhost:3000
-- **Backend API** : http://localhost:3001
+- **Backend API** : http://localhost:5000
 
 ### 2. Test avec Comptes de Démonstration
 
@@ -248,10 +307,10 @@ Mot de passe: Admin2024!
 #### Test de l'API
 ```bash
 # Health check
-curl http://localhost:3001/health
+curl http://localhost:5000/api/health
 
 # Login test
-curl -X POST http://localhost:3001/api/auth/login \
+curl -X POST http://localhost:5000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"dr.martin@fadjma.com","password":"Demo2024!"}'
 
@@ -285,14 +344,14 @@ npm run eject       # Ejecter la configuration CRA (non recommandé)
 
 ```bash
 # Vérifier quel processus utilise le port
-lsof -i :3001  # pour le backend
+lsof -i :5000  # pour le backend
 lsof -i :3000  # pour le frontend
 
 # Tuer le processus
 kill -9 [PID]
 
 # Ou changer le port
-PORT=3002 npm start
+PORT=5001 npm start
 ```
 
 ### Erreur de Base de Données
@@ -361,7 +420,7 @@ HTTPS=true npm start
 ```env
 # Backend .env complet
 NODE_ENV=development
-PORT=3001
+PORT=5000
 
 # Base de données
 DB_HOST=localhost

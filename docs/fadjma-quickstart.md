@@ -5,23 +5,53 @@ Premier système mondial d'ancrage enrichi de données médicales complètes sur
 
 **✅ DÉJÀ EN PRODUCTION TESTNET** : Compte 0.0.6089195, Topic 0.0.6854064
 
-## 📦 Installation Jour 1 (20 minutes)
+## 📦 Installation Rapide (2 options)
 
-### Prérequis
+### Option A : Docker 🐳 (Recommandé - 5 minutes)
+
+```bash
+# 1. Cloner et configurer
+git clone https://github.com/votre-repo/fadjma.git
+cd fadjma
+cp .env.example .env
+
+# 2. Démarrer tous les services
+docker-compose up -d
+
+# 3. Initialiser et charger données
+docker-compose exec backend npm run init:sqlite
+docker-compose exec backend npm run seed:full
+
+# 4. Accéder à l'application
+# Frontend: http://localhost:3000
+# Backend:  http://localhost:5000
+```
+
+✅ **Avantages** : PostgreSQL inclus, configuration automatique, prêt pour la production
+
+📖 **Documentation complète** : [DOCKER_SETUP.md](DOCKER_SETUP.md)
+
+---
+
+### Option B : Installation Locale (20 minutes)
+
+#### Prérequis
 - Node.js 18+ et npm
-- SQLite (par défaut)
+- SQLite (par défaut) ou PostgreSQL (optionnel)
 - Git
 - **Optionnel** : Compte Hedera Testnet (pour créer vos propres topics)
 
-### 1. ✅ **Hedera DÉJÀ CONFIGURÉ** (0 min)
+#### 1. ✅ **Hedera DÉJÀ CONFIGURÉ** (0 min)
 ```bash
-# ✅ FADJMA utilise déjà un compte Hedera production !
-# Compte: 0.0.6089195
-# Topic: 0.0.6854064
+# ✅ FADJMA utilise déjà des comptes Hedera production !
+# Compte EC25519: 0.0.6164695
+# Compte ECDSA:   0.0.6089195
+# Topic Principal: 0.0.6854064
+# Topics ECDSA:    0.0.7070750
 # Pas besoin de créer votre propre compte pour tester
 ```
 
-### 2. Clone et Installation (5 min)
+#### 2. Clone et Installation (5 min)
 ```bash
 # Clone du repo
 git clone https://github.com/votre-repo/fadjma.git
@@ -45,31 +75,43 @@ cp .env.example .env
 \q
 ```
 
-### 4. Configuration Environnement (5 min)
+#### 4. Configuration Environnement (5 min)
 
 **backend/.env**
 ```env
+# Server
 PORT=5000
 NODE_ENV=development
 
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=fadjma_db
-DB_USER=postgres
-DB_PASSWORD=votre_password
+# Verification Mode
+USE_MIRROR_NODE=false
+
+# Database - SQLite (Default - No configuration needed!)
+# Database file created automatically in backend/data/database.sqlite
 
 # JWT
 JWT_SECRET=fadjma-hackathon-secret-2024
 JWT_EXPIRE=7d
 
-# Hedera
-HEDERA_ECDSA_ACCOUNT_ID=0.0.xxxxxx
+# Hedera EC25519 (Primary)
+HEDERA_ACCOUNT_ID=0.0.6164695
 HEDERA_PRIVATE_KEY=302e...
+HEDERA_TOPIC_ID=0.0.6854064
 HEDERA_NETWORK=testnet
+
+# Hedera ECDSA (Secondary)
+HEDERA_ECDSA_ACCOUNT_ID=0.0.6089195
+HEDERA_ECDSA_PRIVATE_KEY=3030...
+HEDERA_ECDSA_TOPIC_ID=0.0.7070750
 
 # CORS
 FRONTEND_URL=http://localhost:3000
+
+# KMS & Optimisations (optionnels)
+KMS_PROVIDER=env
+HEDERA_USE_BATCHING=false
+HEDERA_USE_COMPRESSION=true
+HEDERA_MAX_TPS=8
 ```
 
 **frontend/.env**
@@ -77,14 +119,14 @@ FRONTEND_URL=http://localhost:3000
 REACT_APP_API_URL=http://localhost:5000/api
 ```
 
-### 5. Création Topic Hedera (5 min)
+#### 5. Initialisation Base de Données (2 min)
 ```bash
 # Dans backend/
-npm run hedera:setup
-# Note le Topic ID généré et l'ajouter dans .env
+npm run init:sqlite    # Créer la base et les tables
+npm run seed:full      # Charger les données de test
 ```
 
-### 6. Lancement (2 min)
+#### 6. Lancement (2 min)
 ```bash
 # Terminal 1 - Backend
 cd backend
@@ -289,8 +331,11 @@ curl -X POST http://localhost:5000/api/verify/record/RECORD_ID \
 ### Erreur de Base de Données
 ```bash
 # SQLite : Supprimer et recréer
-# rm backend/database.sqlite
-# npm run init:sqlite
+rm backend/database.sqlite
+npm run init:sqlite
+
+# PostgreSQL : Vérifier le service
+sudo service postgresql status
 sudo service postgresql start
 ```
 

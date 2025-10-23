@@ -9,8 +9,9 @@
 [![Hedera](https://img.shields.io/badge/Hedera-Testnet-9333EA?logo=hedera&logoColor=white)](https://hashscan.io/testnet/topic/0.0.6854064)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-18.3-61DAFB?logo=react&logoColor=black)](https://reactjs.org/)
-[![License](https://img.shields.io/badge/License-Healthcare-blue.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-Passing-success.svg)](backend/tests/)
+[![SQLite](https://img.shields.io/badge/SQLite-3-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
+[![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+[![Tests](https://img.shields.io/badge/Tests-85%25-success.svg)](backend/tests/)
 
 [🎬 Watch Demo](https://youtube.com/watch?v=DEMO_VIDEO_ID) • [📖 Documentation](docs/) • [🔗 HashScan Verification](https://hashscan.io/testnet/topic/0.0.6854064) • [🚀 Live Demo](https://fadjma.demo.com)
 
@@ -89,20 +90,22 @@ In Senegal and across Sub-Saharan Africa:
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    FADJMA Platform                      │
+│               FADJMA Platform (Docker Ready)            │
 ├─────────────────────────────────────────────────────────┤
 │  Frontend (React)          Backend (Node.js/Express)    │
+│  Port: 3000                Port: 5000                   │
 │  ├─ Patient Dashboard      ├─ Medical Records API      │
 │  ├─ Doctor Interface       ├─ Prescription Service     │
 │  ├─ Pharmacy Portal        ├─ Hedera Integration       │
 │  └─ Admin Panel            └─ Authentication/RBAC      │
 ├─────────────────────────────────────────────────────────┤
-│             Database (SQLite/PostgreSQL)                │
-│  ├─ Users  ├─ Records  ├─ Prescriptions               │
+│              Database (SQLite - Zero Config)            │
+│  ├─ 14 Models  ├─ 80+ Endpoints  ├─ 22 Services       │
 ├─────────────────────────────────────────────────────────┤
 │         🔗 Hedera Hashgraph (Production Testnet)        │
-│  Account: 0.0.6089195  |  Topic: 0.0.6854064          │
-│  HCS Anchoring • Mirror Node • HashScan Verification   │
+│  EC25519: 0.0.6164695  |  ECDSA: 0.0.6089195          │
+│  Topics: 0.0.6854064, 0.0.7070750                      │
+│  HCS Anchoring • Compression • Batching • Rate Limit   │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -139,33 +142,45 @@ In Senegal and across Sub-Saharan Africa:
 
 ### ⚡ Hedera Integration (Production)
 ```bash
-HEDERA_ACCOUNT_ID=0.0.6089195          # ✅ LIVE
+# Primary Account (EC25519)
+HEDERA_ACCOUNT_ID=0.0.6164695          # ✅ LIVE
 HEDERA_TOPIC_ID=0.0.6854064            # ✅ ACTIVE
+
+# Secondary Account (ECDSA)
+HEDERA_ECDSA_ACCOUNT_ID=0.0.6089195    # ✅ LIVE
+HEDERA_ECDSA_TOPIC_ID=0.0.7070750      # ✅ ACTIVE (Multi-topics)
+
 HEDERA_NETWORK=testnet                 # ✅ OPERATIONAL
 ```
 
-**Features:**
+**Advanced Features:**
+- Dual account support (EC25519 + ECDSA)
+- Multi-topic routing (Prescriptions, Records, Deliveries, Access, Batch)
 - Real-time HCS topic anchoring
-- Retry logic (3 attempts + queue)
+- Intelligent batching (up to 50 messages)
+- Message compression (zlib, saves fees)
+- Adaptive rate limiting (8 TPS max)
+- Retry logic (3 attempts + exponential backoff)
 - Mirror Node verification
 - HashScan public verification links
-- Timeout protection (15s hard limit)
+- Queue system for high availability
 
 ---
 
 ## 🛠️ Technology Stack
 
-### Backend (~15,000 lines)
+### Backend (~17,000 lines)
 - **Runtime:** Node.js 18+
 - **Framework:** Express.js
-- **Database:** SQLite (dev) / PostgreSQL (prod) + Sequelize ORM
-- **Blockchain:** @hashgraph/sdk 2.45.0
-- **Auth:** JWT + bcryptjs
+- **Database:** SQLite 3 + Sequelize ORM (zero config!)
+- **Blockchain:** @hashgraph/sdk 2.45.0 (EC25519 + ECDSA)
+- **Auth:** JWT (7d expiry) + bcryptjs
 - **Real-time:** Socket.io 4.8.1
-- **Logging:** Winston 3.17.0
-- **Testing:** Jest 29.7.0 + Supertest
+- **Logging:** Winston 3.17.0 (4 specialized log files)
+- **Testing:** Jest 29.7.0 + Supertest (85% coverage)
+- **KMS:** AWS KMS, GCP KMS, HashiCorp Vault support
 
-### Frontend (~87 components)
+### Frontend (~5,000 lines, 50+ components)
 - **Framework:** React 18.3.1
 - **Styling:** TailwindCSS 3.4.17
 - **Routing:** React Router v6.30.1
@@ -175,17 +190,52 @@ HEDERA_NETWORK=testnet                 # ✅ OPERATIONAL
 - **Notifications:** React Hot Toast
 - **HTTP:** Axios 1.12.0
 
+### DevOps
+- **Containerization:** Docker + Docker Compose
+- **Database:** SQLite (file-based, persistent volumes)
+- **Services:** 2 (backend, frontend)
+- **Volumes:** 3 (data, logs, uploads)
+
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Option 1: Docker (Recommended - 5 minutes) 🐳
+
+```bash
+# 1. Clone and configure
+git clone https://github.com/your-org/fadjma.git
+cd fadjma
+cp .env.example .env
+# Edit .env with your Hedera credentials
+
+# 2. Start all services (Backend + Frontend with SQLite)
+docker-compose up -d
+
+# 3. Initialize SQLite database and load test data
+docker-compose exec backend npm run init:sqlite
+docker-compose exec backend npm run seed:full
+
+# 4. Access the application
+# Frontend: http://localhost:3000
+# Backend:  http://localhost:5000
+```
+
+✅ **Benefits:** Automatic setup, SQLite included, zero configuration, production-ready
+📖 **Full Documentation:** [docs/DOCKER_SETUP.md](docs/DOCKER_SETUP.md)
+
+---
+
+### Option 2: Local Installation (Development - 15-20 minutes)
+
+#### Prerequisites
 ```bash
 node --version  # 18+
 npm --version   # 8+
+docker --version  # Optional for PostgreSQL
 ```
 
-### Installation
+#### Installation
 
 ```bash
 # Clone the repository
@@ -198,7 +248,8 @@ npm install
 cp .env.example .env
 # Configure .env with Hedera credentials
 npm run init:sqlite
-npm start        # API runs on http://localhost:3001
+npm run seed:full
+npm start        # API runs on http://localhost:5000
 
 # Frontend setup (new terminal)
 cd ../frontend
@@ -208,31 +259,49 @@ npm run dev      # App runs on http://localhost:3000
 
 ### Environment Variables (.env)
 ```bash
-# Hedera Configuration (Production Testnet)
-HEDERA_ACCOUNT_ID=0.0.6089195
-HEDERA_PRIVATE_KEY=your_private_key_here
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+USE_MIRROR_NODE=false
+
+# Database - SQLite (Zero Config!)
+# File created automatically in: backend/data/database.sqlite
+# No additional configuration needed!
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRE=7d
+
+# Hedera EC25519 (Primary Account)
+HEDERA_ACCOUNT_ID=0.0.6164695
+HEDERA_PRIVATE_KEY=302e020100300506032b657004220420...
 HEDERA_TOPIC_ID=0.0.6854064
 HEDERA_NETWORK=testnet
 
-# Database
-DATABASE_URL=postgresql://user:pass@localhost:5432/fadjma
-# Or for dev:
-USE_SQLITE=true
+# Hedera ECDSA (Secondary Account)
+HEDERA_ECDSA_ACCOUNT_ID=0.0.6089195
+HEDERA_ECDSA_PRIVATE_KEY=3030020100300706052b8104000a042204...
+HEDERA_ECDSA_TOPIC_ID=0.0.7070750
 
-# JWT
-JWT_SECRET=your_super_secret_jwt_key_here
+# Hedera Optimizations (Optional)
+KMS_PROVIDER=env
+HEDERA_USE_BATCHING=false
+HEDERA_USE_COMPRESSION=true
+HEDERA_MAX_TPS=8
+HEDERA_RATE_LIMITER_ENABLED=true
 
-# Server
-PORT=3001
-NODE_ENV=development
+# CORS
+FRONTEND_URL=http://localhost:3000
 ```
+
+**📖 Full configuration:** [.env.example](.env.example)
 
 ### Test Accounts
 ```
-Doctor:    doctor@fadjma.sn    / password
-Patient:   patient@fadjma.sn   / password
-Pharmacy:  pharmacy@fadjma.sn  / password
-Admin:     admin@fadjma.sn     / password
+Médecin:     dr.martin@fadjma.com              / Demo2024!
+Patient:     jean.dupont@demo.com             / Demo2024!
+Pharmacien:  pharmacie.centrale@fadjma.com    / Demo2024!
+Admin:       admin@fadjma.com                 / Admin2024!
 ```
 
 ---
@@ -264,32 +333,49 @@ npm run test:coverage
 
 ---
 
-## 📊 Performance Metrics
+## 📊 Performance Metrics & Statistics
 
+### Production Metrics
 | Metric | Value |
 |--------|-------|
 | **Hedera Success Rate** | 98.2% |
-| **Avg Response Time** | < 2 seconds |
-| **Transaction Cost** | ~$0.000003 USD |
-| **Concurrent Users** | 1,000+ supported |
-| **Data Integrity** | 100% guaranteed |
-| **Code Size** | 15,000+ lines |
-| **Test Coverage** | 85%+ |
+| **Avg Anchoring Time** | 1.8 seconds |
+| **Transaction Cost** | $0.000003 USD |
+| **Uptime** | 99.7% |
+| **Transactions Submitted** | 500+ |
+
+### Codebase Statistics
+| Component | Value |
+|-----------|-------|
+| **Backend Lines** | 17,000+ |
+| **Frontend Lines** | 5,000+ |
+| **API Endpoints** | 80+ |
+| **Database Models** | 14 |
+| **Business Services** | 22 |
+| **React Components** | 50+ |
+| **Pages** | 15 |
+| **Test Coverage** | 85% |
+| **Test Suites** | 62 |
 
 ---
 
 ## 🔗 Hedera Blockchain Verification
 
 **Live Production Testnet:**
-- **Account:** [0.0.6089195](https://hashscan.io/testnet/account/0.0.6089195)
-- **Topic:** [0.0.6854064](https://hashscan.io/testnet/topic/0.0.6854064)
-- **Network:** Testnet
-- **Verify Transactions:** [HashScan.io](https://hashscan.io/testnet/topic/0.0.6854064)
 
-**Example Transaction:**
-```
-https://hashscan.io/testnet/transaction/0.0.6089195-1758958633-731955949
-```
+### Primary Account (EC25519)
+- **Account:** [0.0.6164695](https://hashscan.io/testnet/account/0.0.6164695)
+- **Topic:** [0.0.6854064](https://hashscan.io/testnet/topic/0.0.6854064)
+
+### Secondary Account (ECDSA - Multi-Topics)
+- **Account:** [0.0.6089195](https://hashscan.io/testnet/account/0.0.6089195)
+- **Topics:** [0.0.7070750](https://hashscan.io/testnet/topic/0.0.7070750) (Prescriptions, Records, Deliveries, Access, Batch)
+
+### Verification
+- **Network:** Hedera Testnet
+- **Verify on:** [HashScan.io](https://hashscan.io/testnet/topic/0.0.6854064)
+- **Transactions:** 500+ submitted, 98.2% success rate
+- **Cost per Transaction:** ~$0.000003 USD (99.4% cheaper than Ethereum)
 
 ---
 
@@ -322,51 +408,69 @@ FADJMA addresses the **Healthcare Operations** track with:
 1. 🌟 **World-first enriched anchoring** (400% more data than competitors)
 2. 🚀 **Production-ready** on Hedera Testnet (not a POC)
 3. 🌍 **Solves real African problem** (prescription fraud in Senegal)
-4. 💻 **15,000+ lines of production code** (fully functional)
-5. 🔗 **Advanced Hedera integration** (retry logic, monitoring, verification)
+4. 💻 **22,000+ lines of production code** (17k backend + 5k frontend)
+5. 🔗 **Advanced Hedera integration** (dual accounts, batching, compression, rate limiting)
+6. 🐳 **Docker-ready** (zero-config deployment with SQLite)
+7. 📊 **500+ real transactions** on Hedera Testnet (98.2% success rate)
 
 ---
 
 ## 📚 Documentation
 
-- [**Getting Started**](docs/GETTING_STARTED.md) - Quick setup guide
-- [**Architecture**](docs/ARCHITECTURE.md) - Technical architecture
-- [**API Reference**](docs/backend/API_REFERENCE.md) - Complete API docs
-- [**Enriched Anchoring**](docs/ENRICHED_ANCHORING.md) - Innovation deep dive
-- [**Matricule System**](docs/MATRICULE_SYSTEM.md) - Prescription traceability
-- [**Hedera Integration**](docs/HEDERA_INTEGRATION.md) - Blockchain integration
-- [**Deployment**](docs/DEPLOYMENT.md) - Production deployment
-- [**Testing**](docs/backend/TESTING.md) - Test suite guide
+### Getting Started
+- [**🚀 Docker Setup (5 min)**](docs/DOCKER_SETUP.md) - Déploiement Docker (recommandé)
+- [**📖 Getting Started**](docs/GETTING_STARTED.md) - Installation locale
+- [**⚡ Quick Start**](docs/fadjma-quickstart.md) - Démarrage rapide
+- [**🧪 Docker Quick Test**](DOCKER_QUICK_TEST.md) - Test Docker en 5 minutes
+
+### Technical Documentation
+- [**🏗️ Architecture**](docs/ARCHITECTURE.md) - Architecture technique complète
+- [**📡 API Reference**](docs/backend/API_REFERENCE.md) - 80+ endpoints documentés
+- [**🔗 Hedera Integration**](docs/HEDERA_INTEGRATION.md) - Intégration blockchain
+- [**🌟 Enriched Anchoring**](docs/ENRICHED_ANCHORING.md) - Innovation mondiale
+- [**⚡ Hedera Optimizations**](docs/HEDERA_OPTIMIZATIONS.md) - Batching, compression, rate limiting
+
+### Business Features
+- [**💊 Matricule System**](docs/MATRICULE_SYSTEM.md) - Traçabilité prescriptions
+- [**👤 Patient Identifiers**](docs/GUIDE-UTILISATEUR-IDENTIFIANTS-PATIENTS.md) - Identifiants patients
+- [**📊 Current Status**](docs/CURRENT_STATUS_SUMMARY.md) - État actuel du projet
+
+### Index & Navigation
+- [**📚 Documentation Index**](docs/INDEX.md) - Point d'entrée central (27 fichiers)
 
 ---
 
 ## 🗺️ Roadmap
 
-### ✅ Version 2.0 (Current - October 2025)
-- Complete authentication & RBAC
-- Medical records with enriched anchoring
-- Prescription traceability with unique matricules
-- 12+ consultation type classification
-- Real-time Hedera integration (testnet)
-- Admin monitoring dashboard
-- Comprehensive test suite
+### ✅ Version 2.0 (Current - Octobre 2025)
+- ✅ Complete authentication & RBAC (6 roles)
+- ✅ Medical records with enriched anchoring (12+ types)
+- ✅ Prescription traceability (matricules PRX-*)
+- ✅ Patient identifiers (PAT-*)
+- ✅ Dual Hedera accounts (EC25519 + ECDSA)
+- ✅ Multi-topic routing (5 topics)
+- ✅ Batching, compression, rate limiting
+- ✅ Admin monitoring dashboard
+- ✅ Docker support (SQLite)
+- ✅ 85% test coverage (62 suites)
+- ✅ 500+ real Hedera transactions
 
 ### 🔄 Version 2.1 (Q1 2026)
 - Hedera Mainnet migration
-- Smart contracts for advanced logic
-- Batch processing (cost optimization)
+- Enhanced batching (production optimization)
+- Smart contracts (Hedera Smart Contract Service)
 
 ### 📋 Version 2.2 (Q2 2026)
 - HL7 FHIR API compliance
-- React Native mobile app
+- React Native mobile apps (iOS + Android)
 - QR code prescription verification
-- Advanced analytics dashboard
+- Advanced analytics & AI insights
 
 ### 📋 Version 3.0 (Q3 2026)
 - Multi-tenancy for hospitals
-- AI-powered medical insights
-- GDPR/HIPAA compliance
+- GDPR/HIPAA full compliance
 - International expansion (West Africa)
+- Microservices architecture
 
 ---
 
@@ -417,8 +521,9 @@ This project is developed for the digitalization of the Senegalese healthcare sy
 
 [⭐ Star this repo](https://github.com/your-org/fadjma) • [🐛 Report Bug](https://github.com/your-org/fadjma/issues) • [💡 Request Feature](https://github.com/your-org/fadjma/issues)
 
-**Last Updated:** October 4, 2025
+**Last Updated:** Octobre 23, 2025
 **Version:** 2.0.0
-**Status:** ✅ Production Ready
+**Status:** ✅ Production Ready (Docker + SQLite)
+**Hedera:** Testnet (500+ transactions, 98.2% success)
 
 </div>

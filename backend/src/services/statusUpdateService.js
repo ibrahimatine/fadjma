@@ -1,7 +1,6 @@
 const { MedicalRecord, Prescription } = require('../models');
 const { Op } = require('sequelize');
 const hederaService = require('./hederaService');
-// const mirrorNodeService = require('./mirrorNodeService'); // Temporairement désactivé
 
 class StatusUpdateService {
   constructor() {
