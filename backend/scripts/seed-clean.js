@@ -35,7 +35,7 @@ async function seedCleanDatabase() {
 
       // Patients
       {
-        email: 'patient1@demo.com',
+        email: 'jean.dupont@demo.com',
         password: 'Demo2024!',
         firstName: 'Jean',
         lastName: 'Dupont',
@@ -44,7 +44,7 @@ async function seedCleanDatabase() {
         address: '123 Rue de la Paix, Dakar'
       },
       {
-        email: 'patient2@demo.com',
+        email: 'fatou.sall@demo.com',
         password: 'Demo2024!',
         firstName: 'Fatou',
         lastName: 'Sall',
