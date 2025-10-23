@@ -122,7 +122,7 @@ echo ""
 
 # Stop any running containers
 echo -e "${YELLOW}🛑 Arrêt des conteneurs existants...${NC}"
-docker compose down 2>/dev/null || true
+docker-compose down 2>/dev/null || true
 echo -e "${GREEN}✅ Conteneurs arrêtés${NC}"
 echo ""
 
@@ -131,7 +131,7 @@ echo -e "${BLUE}🔨 Build des images Docker...${NC}"
 echo -e "${CYAN}   (Cela peut prendre 2-5 minutes la première fois)${NC}"
 echo ""
 
-if docker compose build --no-cache; then
+if docker-compose build --no-cache; then
     echo ""
     echo -e "${GREEN}✅ Build réussi${NC}"
 else
@@ -144,7 +144,7 @@ echo ""
 
 # Start services
 echo -e "${BLUE}🚀 Démarrage des services...${NC}"
-if docker compose up -d; then
+if docker-compose --env-file .env.docker up -d; then
     echo -e "${GREEN}✅ Services démarrés${NC}"
 else
     echo -e "${RED}❌ Erreur lors du démarrage${NC}"

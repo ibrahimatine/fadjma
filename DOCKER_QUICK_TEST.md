@@ -4,6 +4,7 @@
 ```bash
 docker --version  # >= 20.10
 docker-compose --version  # >= 1.29
+sudo docker info  # Vérifier que Docker daemon est actif
 ```
 
 ## 📦 Installation et Test (5 minutes)
@@ -16,7 +17,7 @@ cp .env.example .env
 
 ### 2. Démarrer les Services (30 secondes)
 ```bash
-docker-compose up -d
+sudo docker-compose up -d
 ```
 
 **Résultat attendu** :
@@ -28,7 +29,7 @@ docker-compose up -d
 
 ### 3. Vérifier les Services (10 secondes)
 ```bash
-docker-compose ps
+sudo docker-compose ps
 ```
 
 **Résultat attendu** :
@@ -41,7 +42,7 @@ fadjma-frontend     Up (healthy)
 ### 4. Initialiser la Base SQLite (1 minute)
 ```bash
 # Entrer dans le conteneur backend
-docker-compose exec backend sh
+sudo docker-compose exec backend sh
 
 # Initialiser SQLite
 npm run init:sqlite
@@ -100,37 +101,37 @@ Mot de passe: Demo2024!
 ### Vérifier SQLite
 ```bash
 # Voir le fichier database
-docker-compose exec backend ls -lh /app/data/
+sudo docker-compose exec backend ls -lh /app/data/
 
 # Lister les tables
-docker-compose exec backend sqlite3 /app/data/database.sqlite ".tables"
+sudo docker-compose exec backend sqlite3 /app/data/database.sqlite ".tables"
 
 # Compter les utilisateurs
-docker-compose exec backend sqlite3 /app/data/database.sqlite "SELECT COUNT(*) FROM BaseUsers;"
+sudo docker-compose exec backend sqlite3 /app/data/database.sqlite "SELECT COUNT(*) FROM BaseUsers;"
 
 # Voir les utilisateurs
-docker-compose exec backend sqlite3 /app/data/database.sqlite "SELECT email, role FROM BaseUsers LIMIT 5;"
+sudo docker-compose exec backend sqlite3 /app/data/database.sqlite "SELECT email, role FROM BaseUsers LIMIT 5;"
 ```
 
 ### Vérifier les Logs
 ```bash
 # Logs backend
-docker-compose logs backend | tail -50
+sudo docker-compose logs backend | tail -50
 
 # Logs frontend
-docker-compose logs frontend | tail -50
+sudo docker-compose logs frontend | tail -50
 
 # Logs en temps réel
-docker-compose logs -f
+sudo docker-compose logs -f
 ```
 
 ### Vérifier les Volumes
 ```bash
 # Lister les volumes
-docker volume ls | grep fadjma
+sudo docker volume ls | grep fadjma
 
 # Inspecter le volume data (SQLite)
-docker volume inspect fadjma-backend-data
+sudo docker volume inspect fadjma-backend-data
 ```
 
 ## 🧪 Tests Fonctionnels
@@ -157,25 +158,25 @@ docker volume inspect fadjma-backend-data
 ### Problème : Services ne démarrent pas
 ```bash
 # Voir les logs
-docker-compose logs
+sudo docker-compose logs
 
 # Redémarrer
-docker-compose down
-docker-compose up -d
+sudo docker-compose down
+sudo docker-compose up -d
 ```
 
 ### Problème : Backend unhealthy
 ```bash
 # Vérifier les logs backend
-docker-compose logs backend
+sudo docker-compose logs backend
 
 # Vérifier le fichier SQLite
-docker-compose exec backend ls -la /app/data/
+sudo docker-compose exec backend ls -la /app/data/
 
 # Réinitialiser
-docker-compose exec backend rm -f /app/data/database.sqlite
-docker-compose exec backend npm run init:sqlite
-docker-compose restart backend
+sudo docker-compose exec backend rm -f /app/data/database.sqlite
+sudo docker-compose exec backend npm run init:sqlite
+sudo docker-compose restart backend
 ```
 
 ### Problème : Frontend ne se connecte pas
@@ -184,46 +185,46 @@ docker-compose restart backend
 curl http://localhost:5000/api/health
 
 # Vérifier les logs frontend
-docker-compose logs frontend
+sudo docker-compose logs frontend
 
 # Redémarrer le frontend
-docker-compose restart frontend
+sudo docker-compose restart frontend
 ```
 
 ## 🧹 Nettoyage
 
 ### Arrêter les Services
 ```bash
-docker-compose down
+sudo docker-compose down
 ```
 
 ### Tout Supprimer (DB incluse)
 ```bash
 # Attention : supprime les données !
-docker-compose down -v
+sudo docker-compose down -v
 
 # Supprimer aussi les images
-docker-compose down -v --rmi all
+sudo docker-compose down -v --rmi all
 ```
 
 ### Redémarrer Proprement
 ```bash
 # Supprimer tout
-docker-compose down -v
+sudo docker-compose down -v
 
 # Reconstruire et démarrer
-docker-compose up -d --build
+sudo docker-compose up -d --build
 
 # Réinitialiser
-docker-compose exec backend npm run init:sqlite
-docker-compose exec backend npm run seed:full
+sudo docker-compose exec backend npm run init:sqlite
+sudo docker-compose exec backend npm run seed:full
 ```
 
 ## 📊 Checklist Complète
 
 - [ ] Docker et Docker Compose installés
 - [ ] .env configuré
-- [ ] `docker-compose up -d` réussi
+- [ ] `sudo docker-compose up -d` réussi
 - [ ] 2 services healthy (ps)
 - [ ] SQLite initialisé (init:sqlite)
 - [ ] Données chargées (seed:full)

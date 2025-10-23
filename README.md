@@ -210,11 +210,11 @@ cp .env.example .env
 # Edit .env with your Hedera credentials
 
 # 2. Start all services (Backend + Frontend with SQLite)
-docker-compose up -d
+sudo docker-compose up -d
 
 # 3. Initialize SQLite database and load test data
-docker-compose exec backend npm run init:sqlite
-docker-compose exec backend npm run seed:full
+sudo docker-compose exec backend npm run init:sqlite
+sudo docker-compose exec backend npm run seed:full
 
 # 4. Access the application
 # Frontend: http://localhost:3000
