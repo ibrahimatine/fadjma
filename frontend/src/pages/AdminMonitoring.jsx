@@ -31,10 +31,12 @@ const AdminMonitoring = () => {
   const [systemHealth, setSystemHealth] = useState(null);
   const [alerts, setAlerts] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [failedAnchors, setFailedAnchors] = useState([]);
   const [loading, setLoading] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [selectedLogType, setSelectedLogType] = useState('all');
   const [expandedAlert, setExpandedAlert] = useState(null);
+  const [retryingAnchor, setRetryingAnchor] = useState(null);
 
   useEffect(() => {
     loadMonitoringData();
@@ -53,13 +55,14 @@ const AdminMonitoring = () => {
     if (!autoRefresh) setLoading(true);
 
     try {
-      const [metricsRes, healthRes, alertsRes, logsRes] = await Promise.allSettled([
+      const [metricsRes, healthRes, alertsRes, logsRes, failedAnchorsRes] = await Promise.allSettled([
         adminService.getMonitoringMetrics(),
         adminService.getSystemHealth(),
         adminService.getActiveAlerts(),
-        adminService.getSystemLogs(100, selectedLogType === 'all' ? null : selectedLogType)
+        adminService.getSystemLogs(100, selectedLogType === 'all' ? null : selectedLogType),
+        adminService.getFailedAnchors(20)
       ]);
-console.log(metricsRes, healthRes, alertsRes, logsRes);
+console.log(metricsRes, healthRes, alertsRes, logsRes, failedAnchorsRes);
       if (metricsRes.status === 'fulfilled') {
         setMetrics(metricsRes.value);
       }
@@ -76,14 +79,18 @@ console.log(metricsRes, healthRes, alertsRes, logsRes);
         setLogs(logsRes.value.logs);
       }
 
+      if (failedAnchorsRes.status === 'fulfilled') {
+        setFailedAnchors(failedAnchorsRes.value.failedAnchors || []);
+      }
+
       if (!autoRefresh) {
-        toast.success('Données de monitoring mises à jour');
+        toast.success('Monitoring data updated');
       }
 
     } catch (error) {
       console.error('Monitoring data error:', error);
       if (!autoRefresh) {
-        toast.error('Erreur lors du chargement des données de monitoring');
+        toast.error('Error loading monitoring data');
       }
     } finally {
       if (!autoRefresh) setLoading(false);
@@ -94,10 +101,33 @@ console.log(metricsRes, healthRes, alertsRes, logsRes);
     try {
       await adminService.resetMonitoringMetrics();
       await loadMonitoringData();
-      toast.success('Métriques réinitialisées avec succès');
+      toast.success('Metrics reset successfully');
     } catch (error) {
       console.error('Reset metrics error:', error);
-      toast.error('Erreur lors de la réinitialisation des métriques');
+      toast.error('Error resetting metrics');
+    }
+  };
+
+  const handleRetryAnchor = async (anchor) => {
+    try {
+      setRetryingAnchor(anchor.id);
+      toast.loading(`Re-anchoring ${anchor.type}...`, { id: `retry-${anchor.id}` });
+
+      const result = await adminService.retryAnchor(anchor.id, anchor.type);
+
+      if (result.success) {
+        toast.success(result.message, { id: `retry-${anchor.id}` });
+        // Recharger les ancrages échoués
+        const failedAnchorsRes = await adminService.getFailedAnchors(20);
+        setFailedAnchors(failedAnchorsRes.failedAnchors || []);
+      } else {
+        toast.error('Re-anchor failed', { id: `retry-${anchor.id}` });
+      }
+    } catch (error) {
+      console.error('Retry anchor error:', error);
+      toast.error(error.response?.data?.message || 'Error re-anchoring', { id: `retry-${anchor.id}` });
+    } finally {
+      setRetryingAnchor(null);
     }
   };
 
@@ -166,8 +196,8 @@ console.log(metricsRes, healthRes, alertsRes, logsRes);
                 <BarChart3 className="h-8 w-8 text-blue-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Monitoring Système</h1>
-                <p className="text-gray-600">Surveillance en temps réel de FADJMA</p>
+                <h1 className="text-2xl font-bold text-gray-900">System Monitoring</h1>
+                <p className="text-gray-600">Real-time monitoring of FADJMA platform</p>
               </div>
             </div>
 
@@ -263,7 +293,7 @@ console.log(metricsRes, healthRes, alertsRes, logsRes);
           <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
             <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-red-600" />
-              Alertes Actives ({alerts.length})
+              Active Alerts ({alerts.length})
             </h2>
             <div className="space-y-3">
               {alerts.map((alert, index) => (
@@ -278,8 +308,68 @@ console.log(metricsRes, healthRes, alertsRes, logsRes);
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                     alert.type === 'error' ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'
                   }`}>
-                    {alert.type === 'error' ? 'Erreur' : 'Avertissement'}
+                    {alert.type === 'error' ? 'Error' : 'Warning'}
                   </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Failed Anchors */}
+        {failedAnchors.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              Failed Hedera Anchors ({failedAnchors.length})
+            </h2>
+            <div className="space-y-3">
+              {failedAnchors.map((anchor) => (
+                <div key={`${anchor.type}-${anchor.id}`} className="flex items-center justify-between p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <Server className="h-5 w-5 text-orange-600" />
+                      <div className="flex-1">
+                        <p className="font-medium text-orange-900">{anchor.title}</p>
+                        <div className="flex items-center gap-3 text-sm text-orange-700 mt-1">
+                          <span className="flex items-center gap-1">
+                            <span className="font-medium">Type:</span> {anchor.type === 'medical_record' ? 'Medical Record' : 'Prescription'}
+                          </span>
+                          {anchor.medication && (
+                            <span className="flex items-center gap-1">
+                              <span className="font-medium">Medication:</span> {anchor.medication}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 ml-8">
+                      <div>
+                        <span className="font-medium">Patient:</span> {anchor.patientName}
+                      </div>
+                      <div>
+                        <span className="font-medium">Doctor:</span> {anchor.doctorName}
+                      </div>
+                      <div>
+                        <span className="font-medium">Created:</span> {formatTimestamp(anchor.createdAt)}
+                      </div>
+                      <div>
+                        <span className="font-medium">Last Attempt:</span> {formatTimestamp(anchor.lastAttempt)}
+                      </div>
+                      <div className="col-span-2">
+                        <span className="font-medium">Error:</span>{' '}
+                        <span className="text-red-600">{anchor.error}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleRetryAnchor(anchor)}
+                    disabled={retryingAnchor === anchor.id}
+                    className="flex items-center gap-2 bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ml-4"
+                  >
+                    <RotateCcw className={`h-4 w-4 ${retryingAnchor === anchor.id ? 'animate-spin' : ''}`} />
+                    {retryingAnchor === anchor.id ? 'Re-anchoring...' : 'Re-anchor'}
+                  </button>
                 </div>
               ))}
             </div>

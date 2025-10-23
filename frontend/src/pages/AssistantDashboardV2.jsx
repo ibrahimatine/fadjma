@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { appointmentService } from '../services/appointmentService';
 import CreateUnclaimedPatientModal from '../components/patient/CreateUnclaimedPatientModal';
+import websocketService from '../services/websocketService';
 import toast from 'react-hot-toast';
 
 const AssistantDashboardV2 = () => {
@@ -47,8 +48,13 @@ const AssistantDashboardV2 = () => {
     doctor: 'all',
     specialty: 'all',
     search: '',
-    dateRange: 'today' // today, week, month, custom
+    dateRange: 'today', // today, week, month, custom, all
+    dateFilter: 'today' // today, all
   });
+
+  // Notifications
+  const [pendingAppointments, setPendingAppointments] = useState([]);
+  const [notificationCount, setNotificationCount] = useState(0);
 
   // Formulaire création RDV
   const [specialties, setSpecialties] = useState([]);
@@ -79,10 +85,31 @@ const AssistantDashboardV2 = () => {
       loadAppointments();
     };
 
+    // Écouter les notifications de nouveaux rendez-vous
+    const handleNewAppointment = (notification) => {
+      console.log('🔔 Nouvelle notification de RDV:', notification);
+      // Jouer un son ou montrer une notification
+      if (Notification.permission === 'granted') {
+        new Notification('Nouveau rendez-vous', {
+          body: notification.message || 'Un nouveau rendez-vous nécessite votre attention',
+          icon: '/logo192.png'
+        });
+      }
+      // Rafraîchir automatiquement la liste
+      loadAppointments();
+    };
+
     window.addEventListener('refreshAppointments', handleRefreshAppointments);
+    websocketService.addEventListener('new_appointment', handleNewAppointment);
+
+    // Demander permission pour les notifications si pas encore fait
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
 
     return () => {
       window.removeEventListener('refreshAppointments', handleRefreshAppointments);
+      websocketService.removeEventListener('new_appointment', handleNewAppointment);
     };
   }, [selectedDate, filters]);
 
@@ -122,12 +149,23 @@ const AssistantDashboardV2 = () => {
   const loadAppointments = async () => {
     try {
       setLoading(true);
-      const data = await appointmentService.getAllAppointmentsForAssistant({
-        date: selectedDate,
+      const params = {
         status: filters.status !== 'all' ? filters.status : undefined,
         doctorId: filters.doctor !== 'all' ? filters.doctor : undefined
-      });
+      };
+
+      // Ajouter la date seulement si le filtre n'est pas "all"
+      if (filters.dateFilter !== 'all') {
+        params.date = selectedDate;
+      }
+
+      const data = await appointmentService.getAllAppointmentsForAssistant(params);
       setAppointments(data.appointments || []);
+
+      // Mettre à jour le compteur de notifications (RDV en attente)
+      const pending = (data.appointments || []).filter(apt => apt.status === 'pending');
+      setPendingAppointments(pending);
+      setNotificationCount(pending.length);
     } catch (error) {
       toast.error('Erreur lors du chargement');
     } finally {
@@ -305,6 +343,25 @@ const AssistantDashboardV2 = () => {
 
             {/* Actions rapides */}
             <div className="flex items-center gap-3">
+              {/* Indicateur de notifications */}
+              {notificationCount > 0 && (
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setFilters({...filters, status: 'pending', dateFilter: 'all'});
+                      setActiveView('appointments');
+                    }}
+                    className="p-3 bg-amber-50 border-2 border-amber-300 rounded-xl hover:shadow-md transition-all group relative animate-pulse"
+                    title={`${notificationCount} rendez-vous en attente`}
+                  >
+                    <Bell className="h-5 w-5 text-amber-600" />
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+                      {notificationCount}
+                    </span>
+                  </button>
+                </div>
+              )}
+
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
@@ -595,21 +652,72 @@ const AssistantDashboardV2 = () => {
                 </div>
               </div>
 
-              {/* Notifications */}
+              {/* Notifications et demandes */}
               <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl shadow-sm border border-amber-100 p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Bell className="h-5 w-5 text-amber-600" />
-                  <h3 className="text-lg font-bold text-gray-900">Notifications</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Bell className="h-5 w-5 text-amber-600" />
+                    <h3 className="text-lg font-bold text-gray-900">Notifications</h3>
+                  </div>
+                  {notificationCount > 0 && (
+                    <span className="px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full animate-pulse">
+                      {notificationCount}
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-3">
-                  {stats.pending > 0 && (
-                    <div className="p-3 bg-white rounded-xl border border-yellow-200">
-                      <p className="text-sm font-medium text-gray-900">{stats.pending} RDV en attente</p>
-                      <p className="text-xs text-gray-600 mt-1">À confirmer aujourd'hui</p>
+                  {notificationCount > 0 ? (
+                    <>
+                      <div className="p-4 bg-white rounded-xl border-2 border-amber-300 hover:shadow-md transition-all cursor-pointer"
+                           onClick={() => {
+                             setFilters({...filters, status: 'pending', dateFilter: 'all'});
+                             setActiveView('appointments');
+                           }}>
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-sm font-bold text-gray-900">
+                            {notificationCount} demande{notificationCount > 1 ? 's' : ''} de RDV
+                          </p>
+                          <ChevronRight className="h-5 w-5 text-amber-600" />
+                        </div>
+                        <p className="text-xs text-gray-600">
+                          Cliquez pour voir et confirmer
+                        </p>
+                      </div>
+                      {/* Afficher les 3 premières demandes en attente */}
+                      {pendingAppointments.slice(0, 3).map((apt) => (
+                        <div key={apt.id} className="p-3 bg-white rounded-xl border border-yellow-200 text-xs">
+                          <div className="font-medium text-gray-900 mb-1">
+                            {apt.patient?.firstName} {apt.patient?.lastName}
+                          </div>
+                          <div className="text-gray-600 flex items-center gap-2">
+                            <Clock className="h-3 w-3" />
+                            {new Date(apt.appointmentDate).toLocaleDateString('fr-FR')} à {apt.appointmentTime?.slice(0,5)}
+                          </div>
+                          {apt.specialty && (
+                            <div className="text-purple-600 mt-1">
+                              {apt.specialty.name}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {pendingAppointments.length > 3 && (
+                        <button
+                          onClick={() => {
+                            setFilters({...filters, status: 'pending', dateFilter: 'all'});
+                            setActiveView('appointments');
+                          }}
+                          className="w-full p-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-medium transition-all"
+                        >
+                          Voir les {pendingAppointments.length - 3} autres demandes
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <div className="text-center py-4">
+                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-gray-900">Tout est à jour !</p>
+                      <p className="text-xs text-gray-600 mt-1">Aucune demande en attente</p>
                     </div>
-                  )}
-                  {stats.pending === 0 && (
-                    <p className="text-sm text-gray-600">Aucune notification</p>
                   )}
                 </div>
               </div>
@@ -622,7 +730,7 @@ const AssistantDashboardV2 = () => {
           <div className="space-y-6">
             {/* Filtres avancés */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="md:col-span-2">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -637,11 +745,24 @@ const AssistantDashboardV2 = () => {
                 </div>
 
                 <div>
+                  <select
+                    value={filters.dateFilter}
+                    onChange={(e) => setFilters({...filters, dateFilter: e.target.value})}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all font-medium"
+                  >
+                    <option value="today">Aujourd'hui</option>
+                    <option value="all">📋 Toutes les dates</option>
+                  </select>
+                </div>
+
+                <div>
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                    disabled={filters.dateFilter === 'all'}
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    title={filters.dateFilter === 'all' ? 'Désactivé en mode "Toutes les dates"' : ''}
                   />
                 </div>
 
@@ -652,13 +773,23 @@ const AssistantDashboardV2 = () => {
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
                   >
                     <option value="all">Tous les statuts</option>
-                    <option value="pending">En attente</option>
-                    <option value="confirmed">Confirmés</option>
-                    <option value="completed">Terminés</option>
-                    <option value="cancelled">Annulés</option>
+                    <option value="pending">⏳ En attente</option>
+                    <option value="confirmed">✅ Confirmés</option>
+                    <option value="completed">🎯 Terminés</option>
+                    <option value="cancelled">❌ Annulés</option>
                   </select>
                 </div>
               </div>
+
+              {/* Indicateur du mode de filtre actif */}
+              {filters.dateFilter === 'all' && (
+                <div className="mt-4 p-3 bg-blue-50 border-2 border-blue-200 rounded-xl flex items-center gap-2">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-900">
+                    Affichage de tous les rendez-vous (toutes dates confondues)
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Liste */}

@@ -1,0 +1,5 @@
+aller lire la varibale .env du backend et adapter la logic de  docker en fonction de lui
+augmenter la taille des page  de notre pitch deck latex
+supprimer tous ce qui est inutile 
+refaire la demo et tester
+effectuer une analyse complete du code pour adapter la doc 

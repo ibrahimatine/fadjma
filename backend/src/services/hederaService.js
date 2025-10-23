@@ -2,145 +2,252 @@ const hederaClient = require('../config/hedera');
 const hashService = require('./hashService');
 const monitoringService = require('./monitoringService');
 const hashscanService = require('./hashscanService');
+const compressionService = require('./compressionService');
+const rateLimiterService = require('./rateLimiterService');
+const batchAggregatorService = require('./batchAggregatorService');
 const logger = require('../utils/logger');
 
 class HederaService {
   constructor() {
     this.retryAttempts = 3;
     this.retryDelay = 2000; // 2 secondes
+    this.useBatching = process.env.HEDERA_USE_BATCHING !== 'false'; // Activé par défaut
+    this.useCompression = process.env.HEDERA_USE_COMPRESSION !== 'false'; // Activé par défaut
+
+    // Écouter les événements de batch
+    this.setupBatchListener();
   }
 
-  // Ancrer une prescription avec toutes ses données médicales
+  /**
+   * Configure l'écoute des batches prêts à être ancrés
+   */
+  setupBatchListener() {
+    batchAggregatorService.on('batch-ready', async (batchData) => {
+      try {
+        await this.anchorBatch(batchData.batch, batchData.type);
+      } catch (error) {
+        logger.error('Error anchoring batch:', error);
+      }
+    });
+  }
+
+  /**
+   * Ancre une prescription sur Hedera (OPTIMISÉ - hash only)
+   * Les données complètes restent en DB, seul le hash est ancré
+   */
   async anchorPrescription(prescription, actionType = 'CREATED') {
     const startTime = Date.now();
-    let attempt = 0;
-    let lastError;
 
     logger.logServerAction('HEDERA', 'PRESCRIPTION_ANCHOR_START', {
       prescriptionId: prescription.id,
       matricule: prescription.matricule,
       actionType: actionType,
+      useBatching: this.useBatching,
       success: true
     });
 
-    while (attempt < this.retryAttempts) {
-      try {
-        attempt++;
+    try {
+      // Generate hash des données complètes (les données restent en DB)
+      const prescriptionData = {
+        matricule: prescription.matricule,
+        medication: prescription.medication,
+        dosage: prescription.dosage,
+        quantity: prescription.quantity,
+        instructions: prescription.instructions,
+        patientId: prescription.patientId,
+        doctorId: prescription.doctorId,
+        deliveryStatus: prescription.deliveryStatus,
+        pharmacyId: prescription.pharmacyId,
+        issueDate: prescription.issueDate,
+        actionType: actionType
+      };
 
-        // Generate hash sur les données complètes de la prescription
-        const prescriptionData = {
+      const hash = hashService.generateDataHash(prescriptionData);
+
+      // Update prescription avec le hash (avant anchoring)
+      await prescription.update({
+        hash: hash,
+        lastVerifiedAt: new Date()
+      });
+
+      // Si batching activé, ajouter au batch
+      if (this.useBatching) {
+        const batchResult = await batchAggregatorService.addToBatch('PRESCRIPTION', {
+          id: prescription.id,
           matricule: prescription.matricule,
-          medication: prescription.medication,
-          dosage: prescription.dosage,
-          quantity: prescription.quantity,
-          instructions: prescription.instructions,
-          patientId: prescription.patientId,
-          doctorId: prescription.doctorId,
-          deliveryStatus: prescription.deliveryStatus,
-          pharmacyId: prescription.pharmacyId,
-          issueDate: prescription.issueDate,
-          actionType: actionType
-        };
-
-        const hash = hashService.generateDataHash(prescriptionData);
-
-        // Prepare enriched message with ALL prescription data
-        const message = JSON.stringify({
-          // Identifiants
-          prescriptionId: prescription.id,
-          matricule: prescription.matricule,
-          hash: hash,
-          timestamp: new Date().toISOString(),
-          type: 'PRESCRIPTION',
-          actionType: actionType, // 'CREATED', 'DISPENSED', 'VERIFIED'
-
-          // Données médicales complètes
-          medication: prescription.medication,
-          dosage: prescription.dosage,
-          quantity: prescription.quantity,
-          instructions: prescription.instructions || null,
-          issueDate: prescription.issueDate,
-
-          // Participants
-          patientId: prescription.patientId,
-          doctorId: prescription.doctorId,
-          pharmacyId: prescription.pharmacyId || null,
-
-          // Statut et traçabilité
-          deliveryStatus: prescription.deliveryStatus,
-          deliveredAt: prescription.deliveredAt || null,
-          createdAt: prescription.createdAt,
-          updatedAt: prescription.updatedAt,
-
-          // Version et métadonnées
-          version: '2.0',
-          dataHash: hash
+          actionType: actionType,
+          ...prescriptionData
         });
 
-        // Submit to Hedera
-        const result = await Promise.race([
-          hederaClient.submitMessage(message),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout Hedera')), 15000)
-          )
-        ]);
-
-        const responseTime = Date.now() - startTime;
-
-        // Update prescription with Hedera info
-        await prescription.update({
-          hash: hash,
-          hederaTransactionId: result.transactionId,
-          hederaSequenceNumber: result.sequenceNumber,
-          hederaTopicId: result.topicId,
-          hederaTimestamp: result.consensusTimestamp,
-          lastVerifiedAt: new Date()
-        });
-
-        logger.logServerAction('HEDERA', 'PRESCRIPTION_ANCHOR_SUCCESS', {
+        logger.logServerAction('HEDERA', 'PRESCRIPTION_BATCHED', {
           prescriptionId: prescription.id,
-          matricule: prescription.matricule,
-          transactionId: result.transactionId,
-          sequenceNumber: result.sequenceNumber,
-          responseTime: responseTime,
-          attempt: attempt,
+          hash: hash.substring(0, 16) + '...',
+          batchSize: batchResult.currentBatchSize,
           success: true
         });
 
         return {
           success: true,
-          transactionId: result.transactionId,
-          sequenceNumber: result.sequenceNumber,
-          topicId: result.topicId,
+          batched: true,
           hash: hash,
-          responseTime: responseTime,
-          message: message
+          batchSize: batchResult.currentBatchSize,
+          responseTime: Date.now() - startTime
+        };
+      }
+
+      // Sinon, ancrer directement (hash only avec compression)
+      const result = await this.anchorHashDirect(hash, 'PRESCRIPTION', {
+        prescriptionId: prescription.id,
+        matricule: prescription.matricule,
+        actionType: actionType,
+        timestamp: new Date().toISOString()
+      });
+
+      // Update prescription avec les infos Hedera
+      await prescription.update({
+        hederaTransactionId: result.transactionId,
+        hederaSequenceNumber: result.sequenceNumber,
+        hederaTopicId: result.topicId,
+        hederaTimestamp: result.consensusTimestamp
+      });
+
+      const responseTime = Date.now() - startTime;
+
+      logger.logServerAction('HEDERA', 'PRESCRIPTION_ANCHOR_SUCCESS', {
+        prescriptionId: prescription.id,
+        transactionId: result.transactionId,
+        sequenceNumber: result.sequenceNumber,
+        responseTime: responseTime,
+        compressed: result.compressed,
+        success: true
+      });
+
+      return {
+        success: true,
+        batched: false,
+        transactionId: result.transactionId,
+        sequenceNumber: result.sequenceNumber,
+        topicId: result.topicId,
+        hash: hash,
+        responseTime: responseTime,
+        compressed: result.compressed
+      };
+
+    } catch (error) {
+      logger.logServerAction('HEDERA', 'PRESCRIPTION_ANCHOR_FAILED', {
+        prescriptionId: prescription.id,
+        error: error.message,
+        success: false
+      });
+
+      throw new Error(`Échec ancrage prescription: ${error.message}`);
+    }
+  }
+
+  /**
+   * Ancre un hash directement sur Hedera avec compression et rate limiting
+   */
+  async anchorHashDirect(hash, messageType, metadata = {}) {
+    let attempt = 0;
+    let lastError;
+
+    while (attempt < this.retryAttempts) {
+      try {
+        attempt++;
+
+        // Créer le message minimal (hash + métadonnées essentielles)
+        const messageData = {
+          hash: hash,
+          type: messageType,
+          ...metadata,
+          version: '3.0' // Version 3.0 = hash only
+        };
+
+        // Compresser si activé
+        let message;
+        let compressed = false;
+
+        if (this.useCompression) {
+          const compressionResult = await compressionService.compressHederaMessage(messageData);
+          message = JSON.stringify(compressionResult);
+          compressed = compressionResult.c;
+        } else {
+          message = JSON.stringify(messageData);
+        }
+
+        // Utiliser le rate limiter
+        const result = await rateLimiterService.execute(async () => {
+          return await Promise.race([
+            hederaClient.submitMessage(message, messageType),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Timeout Hedera')), 15000)
+            )
+          ]);
+        });
+
+        return {
+          ...result,
+          compressed: compressed,
+          attempt: attempt
         };
 
       } catch (error) {
         lastError = error;
-        logger.logServerAction('HEDERA', 'PRESCRIPTION_ANCHOR_RETRY', {
-          prescriptionId: prescription.id,
-          attempt: attempt,
-          error: error.message,
-          success: false
-        });
 
         if (attempt < this.retryAttempts) {
+          logger.logServerAction('HEDERA', 'ANCHOR_RETRY', {
+            attempt: attempt,
+            error: error.message,
+            success: false
+          });
           await new Promise(resolve => setTimeout(resolve, this.retryDelay));
         }
       }
     }
 
-    // Tous les essais ont échoué
-    logger.logServerAction('HEDERA', 'PRESCRIPTION_ANCHOR_FAILED', {
-      prescriptionId: prescription.id,
-      error: lastError.message,
-      attempts: this.retryAttempts,
-      success: false
-    });
+    throw new Error(`Échec après ${this.retryAttempts} tentatives: ${lastError.message}`);
+  }
 
-    throw new Error(`Échec ancrage prescription après ${this.retryAttempts} tentatives: ${lastError.message}`);
+  /**
+   * Ancre un batch Merkle sur Hedera
+   */
+  async anchorBatch(batch, batchType) {
+    try {
+      logger.info('Anchoring batch to Hedera', {
+        batchId: batch.metadata.batchId,
+        type: batchType,
+        itemCount: batch.metadata.itemCount,
+        merkleRoot: batch.merkleRoot.substring(0, 16) + '...'
+      });
+
+      const batchMessage = {
+        batchId: batch.metadata.batchId,
+        merkleRoot: batch.merkleRoot,
+        itemCount: batch.metadata.itemCount,
+        type: 'BATCH',
+        batchType: batchType,
+        timestamp: batch.metadata.timestamp,
+        version: '3.0'
+      };
+
+      // Ancrer le batch
+      const result = await this.anchorHashDirect(batch.merkleRoot, 'BATCH', batchMessage);
+
+      logger.info('Batch anchored successfully', {
+        batchId: batch.metadata.batchId,
+        transactionId: result.transactionId,
+        topicId: result.topicId
+      });
+
+      // TODO: Sauvegarder les preuves Merkle en DB pour chaque item
+      // Pour permettre la vérification individuelle plus tard
+
+      return result;
+
+    } catch (error) {
+      logger.error('Error anchoring batch:', error);
+      throw error;
+    }
   }
 
   // Déterminer le type de consultation pour un ancrage enrichi
@@ -407,168 +514,119 @@ class HederaService {
     return 'REQUIRES_REVIEW';
   }
 
+  /**
+   * Ancre un dossier médical sur Hedera (OPTIMISÉ - hash only)
+   */
   async anchorRecord(record) {
     const startTime = Date.now();
-    let attempt = 0;
-    let lastError;
 
-    // Logger le début de l'ancrage
-    logger.logServerAction('HEDERA', 'ANCHOR_START', {
+    logger.logServerAction('HEDERA', 'RECORD_ANCHOR_START', {
       recordId: record.id,
       recordType: record.type,
       patientId: record.patientId,
       doctorId: record.doctorId,
+      useBatching: this.useBatching,
       success: true
     });
 
-    while (attempt < this.retryAttempts) {
-      try {
-        attempt++;
-        logger.logServerAction('HEDERA', 'ANCHOR_ATTEMPT', {
+    try {
+      // Generate hash (les données complètes restent en DB)
+      const hash = hashService.generateRecordHash(record);
+
+      // Si batching activé, ajouter au batch
+      if (this.useBatching) {
+        const batchResult = await batchAggregatorService.addToBatch('MEDICAL_RECORD', record);
+
+        logger.logServerAction('HEDERA', 'RECORD_BATCHED', {
           recordId: record.id,
-          attempt: attempt,
-          maxAttempts: this.retryAttempts,
+          hash: hash.substring(0, 16) + '...',
+          batchSize: batchResult.currentBatchSize,
           success: true
         });
 
-        // Generate hash
-        const hash = hashService.generateRecordHash(record);
-
-        // Prepare enriched message for Hedera with full medical data
-        const message = JSON.stringify({
-          // Identifiants techniques
-          recordId: record.id,
+        return {
+          success: true,
+          batched: true,
           hash: hash,
-          timestamp: new Date().toISOString(),
-          type: 'MEDICAL_RECORD',
-          actionType: 'CREATED',
-
-          // Données médicales complètes selon le type
-          patientId: record.patientId,
-          doctorId: record.doctorId,
-          recordType: record.type,
-
-          // Contenu médical complet
-          title: record.title,
-          description: record.description,
-          diagnosis: record.diagnosis,
-          prescription: record.prescription,
-          attachments: record.attachments || [],
-
-          // Métadonnées médicales supplémentaires
-          metadata: record.metadata || {},
-
-          // Données spécifiques selon le type de consultation
-          consultationType: this.getConsultationType(record),
-          medicalData: this.extractMedicalData(record),
-
-          // Métadonnées de traçabilité
-          createdAt: record.createdAt,
-          updatedAt: record.updatedAt,
-          isVerified: record.isVerified || false,
-          version: '2.0' // Nouvelle version avec données enrichies
-        });
-
-        // Submit to Hedera with timeout
-        const result = await Promise.race([
-          hederaClient.submitMessage(message),
-          new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Timeout Hedera')), 15000)
-          )
-        ]);
-
-        const responseTime = Date.now() - startTime;
-
-        if (result.status === 'SUCCESS') {
-          // Logger le succès
-          logger.logServerAction('HEDERA', 'ANCHOR_SUCCESS', {
-            recordId: record.id,
-            transactionId: result.transactionId,
-            topicId: result.topicId,
-            sequenceNumber: result.sequenceNumber,
-            duration: responseTime,
-            attempt: attempt,
-            success: true
-          });
-
-          // Enregistrer le succès dans le monitoring
-          monitoringService.recordHederaTransaction('SUCCESS', responseTime, {
-            recordId: record.id,
-            recordType: record.type,
-            sequenceNumber: result.sequenceNumber
-          });
-
-          // Générer les liens de vérification HashScan
-          const verificationLinks = hashscanService.generateVerificationLink(record, {
-            hash: hash,
-            transactionId: result.transactionId,
-            topicId: result.topicId,
-            sequenceNumber: result.sequenceNumber,
-            timestamp: result.timestamp
-          });
-
-          return {
-            hash,
-            ...result,
-            verification: verificationLinks.verification
-          };
-        } else {
-          throw new Error(`Hedera error: ${result.error || result.status}`);
-        }
-
-      } catch (error) {
-        // Logger l'échec de la tentative
-        logger.logHederaError(error, {
-          action: 'ANCHOR_ATTEMPT_FAILED',
-          recordId: record.id,
-          attempt: attempt,
-          maxAttempts: this.retryAttempts
-        });
-
-        lastError = error;
-
-        // Si ce n'est pas le dernier essai, attendre avant de réessayer
-        if (attempt < this.retryAttempts) {
-          logger.logServerAction('HEDERA', 'ANCHOR_RETRY_WAIT', {
-            recordId: record.id,
-            attempt: attempt,
-            retryDelay: this.retryDelay,
-            success: true
-          });
-
-          await new Promise(resolve => setTimeout(resolve, this.retryDelay));
-        }
+          batchSize: batchResult.currentBatchSize,
+          responseTime: Date.now() - startTime
+        };
       }
+
+      // Sinon, ancrer directement (hash only)
+      const result = await this.anchorHashDirect(hash, 'MEDICAL_RECORD', {
+        recordId: record.id,
+        recordType: record.type,
+        patientId: record.patientId,
+        doctorId: record.doctorId,
+        timestamp: new Date().toISOString()
+      });
+
+      const responseTime = Date.now() - startTime;
+
+      // Mettre à jour le record avec les informations Hedera
+      await record.update({
+        hash: hash,
+        hederaTransactionId: result.transactionId,
+        hederaSequenceNumber: result.sequenceNumber,
+        hederaTopicId: result.topicId,
+        hederaTimestamp: result.consensusTimestamp,
+        isVerified: true,
+        lastVerifiedAt: new Date()
+      });
+
+      logger.logServerAction('HEDERA', 'RECORD_ANCHOR_SUCCESS', {
+        recordId: record.id,
+        transactionId: result.transactionId,
+        sequenceNumber: result.sequenceNumber,
+        responseTime: responseTime,
+        compressed: result.compressed,
+        success: true
+      });
+
+      // Monitoring
+      monitoringService.recordHederaTransaction('SUCCESS', responseTime, {
+        recordId: record.id,
+        recordType: record.type,
+        sequenceNumber: result.sequenceNumber
+      });
+
+      // Générer les liens de vérification
+      const verificationLinks = hashscanService.generateVerificationLink(record, {
+        hash: hash,
+        transactionId: result.transactionId,
+        topicId: result.topicId,
+        sequenceNumber: result.sequenceNumber,
+        timestamp: result.timestamp
+      });
+
+      return {
+        success: true,
+        batched: false,
+        hash,
+        ...result,
+        responseTime,
+        verification: verificationLinks.verification
+      };
+
+    } catch (error) {
+      const responseTime = Date.now() - startTime;
+
+      logger.logServerAction('HEDERA', 'RECORD_ANCHOR_FAILED', {
+        recordId: record.id,
+        error: error.message,
+        duration: responseTime,
+        success: false
+      });
+
+      monitoringService.recordHederaTransaction('FAILED', responseTime, {
+        recordId: record.id,
+        recordType: record.type,
+        error: error.message
+      });
+
+      throw new Error(`Échec ancrage record: ${error.message}`);
     }
-
-    // Toutes les tentatives ont échoué - propager l'erreur
-    const responseTime = Date.now() - startTime;
-
-    // Logger l'échec final
-    logger.logServerAction('HEDERA', 'ANCHOR_FAILED', {
-      recordId: record.id,
-      duration: responseTime,
-      attempts: this.retryAttempts,
-      error: lastError?.message,
-      success: false
-    });
-
-    // Enregistrer l'échec dans le monitoring
-    monitoringService.recordHederaTransaction('FAILED', responseTime, {
-      recordId: record.id,
-      recordType: record.type,
-      error: lastError?.message,
-      attempts: this.retryAttempts
-    });
-
-    // Propager l'erreur au lieu de retourner un fallback
-    const finalError = new Error(`Failed to anchor record ${record.id} to Hedera after ${this.retryAttempts} attempts: ${lastError.message}`);
-    logger.logHederaError(finalError, {
-      action: 'ANCHOR_FINAL_FAILURE',
-      recordId: record.id
-    });
-
-    throw finalError;
   }
 
   async verifyRecord(record) {

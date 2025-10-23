@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # BACKEND SERVICE (Node.js + Express + Hedera)
+  # ============================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fadjma-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      # Server Configuration
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 5000
+
+      # Database
+      USE_SQLITE: ${USE_SQLITE:-true}
+      DATABASE_URL: ${DATABASE_URL:-}
+
+      # JWT Secret
+      JWT_SECRET: ${JWT_SECRET:-fadjma_hackathon_secret_2025_change_in_production}
+
+      # Hedera Configuration
+      HEDERA_ACCOUNT_ID: ${HEDERA_ACCOUNT_ID}
+      HEDERA_PRIVATE_KEY: ${HEDERA_PRIVATE_KEY}
+      HEDERA_TOPIC_ID: ${HEDERA_TOPIC_ID:-0.0.6854064}
+      HEDERA_NETWORK: ${HEDERA_NETWORK:-testnet}
+
+      # CORS
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    volumes:
+      # Persist database
+      - backend-data:/app/data
+      # Persist logs
+      - backend-logs:/app/logs
+      # Persist uploads
+      - backend-uploads:/app/uploads
+    networks:
+      - fadjma-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # FRONTEND SERVICE (React + Nginx)
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fadjma-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - fadjma-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  backend-data:
+    name: fadjma-backend-data
+  backend-logs:
+    name: fadjma-backend-logs
+  backend-uploads:
+    name: fadjma-backend-uploads
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  fadjma-network:
+    name: fadjma-network
+    driver: bridge

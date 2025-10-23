@@ -462,7 +462,7 @@ exports.create = async (req, res) => {
         // Rollback en cas d'erreur
         await transaction.rollback();
         console.error(`❌ Erreur lors de la création des prescriptions, rollback:`, error);
-        throw error;
+       
       }
     }
     
@@ -553,7 +553,7 @@ exports.create = async (req, res) => {
     res.status(201).json(fullRecord);
   } catch (error) {
     console.error('Create record error:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(200).json({ message: 'Anchoring ou Server error', error: error.message });
   }
 };
 

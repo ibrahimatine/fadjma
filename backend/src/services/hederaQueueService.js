@@ -1,6 +1,9 @@
 const logger = require('../utils/logger');
 const hederaClient = require('../config/hedera');
 const hashService = require('./hashService');
+const compressionService = require('./compressionService');
+const rateLimiterService = require('./rateLimiterService');
+const HederaTransaction = require('../models/HederaTransaction');
 
 /**
  * Service de queue pour gérer les échecs d'ancrage Hedera
@@ -182,36 +185,59 @@ class HederaQueueService {
   }
 
   /**
-   * Ancre un dossier médical
+   * Ancre un dossier médical (OPTIMISÉ - hash only + compression)
    */
   async anchorMedicalRecord(record) {
     const hash = hashService.generateRecordHash(record);
 
-    const message = JSON.stringify({
-      recordId: record.id,
+    // Message minimal
+    const messageData = {
       hash: hash,
-      timestamp: new Date().toISOString(),
+      recordId: record.id,
       type: 'MEDICAL_RECORD',
+      recordType: record.type,
       patientId: record.patientId,
       doctorId: record.doctorId,
-      recordType: record.type,
-      title: record.title,
-      version: '2.0'
+      timestamp: new Date().toISOString(),
+      version: '3.0'
+    };
+
+    // Compresser le message
+    const compressionResult = await compressionService.compressHederaMessage(messageData);
+    const message = JSON.stringify(compressionResult);
+
+    // Utiliser rate limiter et envoyer au bon topic
+    const result = await rateLimiterService.execute(async () => {
+      return await hederaClient.submitMessage(message, 'MEDICAL_RECORD');
     });
 
-    const result = await hederaClient.submitMessage(message);
+    // Sauvegarder dans l'historique
+    await HederaTransaction.createForAnchor({
+      type: 'MEDICAL_RECORD',
+      entityType: 'MedicalRecord',
+      entityId: record.id,
+      hash: hash,
+      transactionId: result.transactionId,
+      topicId: result.topicId,
+      sequenceNumber: result.sequenceNumber,
+      consensusTimestamp: result.consensusTimestamp,
+      compressed: compressionResult.c,
+      messageSize: Buffer.byteLength(message, 'utf8'),
+      compressionRatio: compressionResult.meta?.ratio
+    });
 
     return {
       hash,
       transactionId: result.transactionId,
       sequenceNumber: result.sequenceNumber,
       topicId: result.topicId,
-      consensusTimestamp: result.consensusTimestamp
+      consensusTimestamp: result.consensusTimestamp,
+      compressed: compressionResult.c
     };
   }
 
   /**
-   * Ancre une prescription
+   * Ancre une prescription (OPTIMISÉ - hash only + compression)
    */
   async anchorPrescription(prescription) {
     const prescriptionData = {
@@ -226,58 +252,101 @@ class HederaQueueService {
 
     const hash = hashService.generateDataHash(prescriptionData);
 
-    const message = JSON.stringify({
+    // Message minimal
+    const messageData = {
+      hash: hash,
       prescriptionId: prescription.id,
       matricule: prescription.matricule,
-      hash: hash,
-      timestamp: new Date().toISOString(),
       type: 'PRESCRIPTION',
       actionType: 'CREATED',
-      medication: prescription.medication,
-      dosage: prescription.dosage,
-      quantity: prescription.quantity,
-      patientId: prescription.patientId,
-      doctorId: prescription.doctorId,
-      version: '2.0'
+      timestamp: new Date().toISOString(),
+      version: '3.0'
+    };
+
+    // Compresser le message
+    const compressionResult = await compressionService.compressHederaMessage(messageData);
+    const message = JSON.stringify(compressionResult);
+
+    // Utiliser rate limiter et envoyer au bon topic
+    const result = await rateLimiterService.execute(async () => {
+      return await hederaClient.submitMessage(message, 'PRESCRIPTION');
     });
 
-    const result = await hederaClient.submitMessage(message);
+    // Sauvegarder dans l'historique
+    await HederaTransaction.createForAnchor({
+      type: 'PRESCRIPTION',
+      entityType: 'Prescription',
+      entityId: prescription.id,
+      hash: hash,
+      transactionId: result.transactionId,
+      topicId: result.topicId,
+      sequenceNumber: result.sequenceNumber,
+      consensusTimestamp: result.consensusTimestamp,
+      compressed: compressionResult.c,
+      messageSize: Buffer.byteLength(message, 'utf8'),
+      compressionRatio: compressionResult.meta?.ratio
+    });
 
     return {
       hash,
       transactionId: result.transactionId,
       sequenceNumber: result.sequenceNumber,
       topicId: result.topicId,
-      consensusTimestamp: result.consensusTimestamp
+      consensusTimestamp: result.consensusTimestamp,
+      compressed: compressionResult.c
     };
   }
 
   /**
-   * Ancre une délivrance de médicament
+   * Ancre une délivrance de médicament (OPTIMISÉ - hash only + compression)
    */
   async anchorDelivery(deliveryData) {
     const hash = hashService.generateDataHash(deliveryData);
 
-    const message = JSON.stringify({
+    // Message minimal
+    const messageData = {
+      hash: hash,
       prescriptionId: deliveryData.id,
       matricule: deliveryData.matricule,
-      hash: hash,
-      timestamp: new Date().toISOString(),
       type: 'PRESCRIPTION_DELIVERY',
       actionType: 'DELIVERED',
       pharmacyId: deliveryData.pharmacyId,
       deliveryDate: deliveryData.deliveryDate,
-      version: '2.0'
+      timestamp: new Date().toISOString(),
+      version: '3.0'
+    };
+
+    // Compresser le message
+    const compressionResult = await compressionService.compressHederaMessage(messageData);
+    const message = JSON.stringify(compressionResult);
+
+    // Utiliser rate limiter et envoyer au bon topic
+    const result = await rateLimiterService.execute(async () => {
+      return await hederaClient.submitMessage(message, 'PRESCRIPTION_DELIVERY');
     });
 
-    const result = await hederaClient.submitMessage(message);
+    // Sauvegarder dans l'historique
+    await HederaTransaction.createForAnchor({
+      type: 'PRESCRIPTION_DELIVERY',
+      entityType: 'Prescription',
+      entityId: deliveryData.id,
+      hash: hash,
+      transactionId: result.transactionId,
+      topicId: result.topicId,
+      sequenceNumber: result.sequenceNumber,
+      consensusTimestamp: result.consensusTimestamp,
+      compressed: compressionResult.c,
+      messageSize: Buffer.byteLength(message, 'utf8'),
+      compressionRatio: compressionResult.meta?.ratio
+    });
 
     return {
       hash,
       transactionId: result.transactionId,
       sequenceNumber: result.sequenceNumber,
       topicId: result.topicId,
-      consensusTimestamp: result.consensusTimestamp
+      consensusTimestamp: result.consensusTimestamp,
+      compressed: compressionResult.c
     };
   }
 

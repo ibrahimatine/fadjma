@@ -956,3 +956,206 @@ exports.deleteUser = async (req, res) => {
     });
   }
 };
+
+// Récupérer les ancrages échoués
+exports.getFailedAnchors = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Accès refusé - Administrateur uniquement' });
+    }
+
+    const { limit = 50 } = req.query;
+
+    const failedAnchors = [];
+
+    // Récupérer les dossiers médicaux sans ancrage Hedera réussi
+    const failedRecords = await MedicalRecord.findAll({
+      where: {
+        [Op.or]: [
+          { hederaTransactionId: null },
+          { hederaTransactionId: 'FALLBACK' },
+          {
+            [Op.and]: [
+              { hederaTransactionId: { [Op.not]: null } },
+              { isVerified: false }
+            ]
+          }
+        ]
+      },
+      include: [
+        { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName'] },
+        { model: BaseUser, as: 'doctor', attributes: ['id', 'firstName', 'lastName'] }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit)
+    });
+
+    failedRecords.forEach(record => {
+      failedAnchors.push({
+        id: record.id,
+        type: 'medical_record',
+        title: record.title || 'Medical Record',
+        patientName: record.patient ? `${record.patient.firstName} ${record.patient.lastName}` : 'N/A',
+        doctorName: record.doctor ? `${record.doctor.firstName} ${record.doctor.lastName}` : 'N/A',
+        createdAt: record.createdAt,
+        lastAttempt: record.updatedAt,
+        hash: record.hash,
+        error: record.hederaTransactionId === null ? 'No anchor attempt' : 'Verification failed'
+      });
+    });
+
+    // Récupérer les prescriptions sans ancrage Hedera réussi
+    const failedPrescriptions = await Prescription.findAll({
+      where: {
+        matricule: { [Op.not]: null },
+        [Op.or]: [
+          { hederaTransactionId: null },
+          { hederaTransactionId: 'FALLBACK' },
+          {
+            [Op.and]: [
+              { hederaTransactionId: { [Op.not]: null } },
+              { isVerified: false }
+            ]
+          }
+        ]
+      },
+      include: [
+        { model: BaseUser, as: 'patient', attributes: ['id', 'firstName', 'lastName'] },
+        { model: BaseUser, as: 'doctor', attributes: ['id', 'firstName', 'lastName'] }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: parseInt(limit)
+    });
+
+    failedPrescriptions.forEach(prescription => {
+      failedAnchors.push({
+        id: prescription.id,
+        type: 'prescription',
+        title: `Prescription ${prescription.matricule}`,
+        medication: prescription.medication,
+        patientName: prescription.patient ? `${prescription.patient.firstName} ${prescription.patient.lastName}` : 'N/A',
+        doctorName: prescription.doctor ? `${prescription.doctor.firstName} ${prescription.doctor.lastName}` : 'N/A',
+        createdAt: prescription.createdAt,
+        lastAttempt: prescription.updatedAt,
+        hash: prescription.hash,
+        error: prescription.hederaTransactionId === null ? 'No anchor attempt' : 'Verification failed'
+      });
+    });
+
+    // Trier par date (plus récent d'abord)
+    failedAnchors.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    res.json({
+      success: true,
+      failedAnchors: failedAnchors.slice(0, parseInt(limit)),
+      total: failedAnchors.length
+    });
+
+  } catch (error) {
+    logger.error('Error fetching failed anchors:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération des ancrages échoués',
+      error: error.message
+    });
+  }
+};
+
+// Ré-ancrer une transaction échouée
+exports.retryAnchor = async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Accès refusé - Administrateur uniquement' });
+    }
+
+    const { id, type } = req.body;
+
+    if (!id || !type) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID et type sont requis'
+      });
+    }
+
+    logger.info(`Admin ${req.user.id} attempting to re-anchor ${type} ${id}`);
+
+    let result;
+
+    if (type === 'medical_record') {
+      const record = await MedicalRecord.findByPk(id);
+
+      if (!record) {
+        return res.status(404).json({
+          success: false,
+          message: 'Dossier médical non trouvé'
+        });
+      }
+
+      // Ré-ancrer le dossier
+      result = await hederaService.anchorRecord(record);
+
+      // Mettre à jour le record avec les nouvelles informations Hedera
+      if (result.success && !result.batched) {
+        await record.update({
+          hederaTransactionId: result.transactionId,
+          hederaSequenceNumber: result.sequenceNumber,
+          hederaTopicId: result.topicId,
+          hederaTimestamp: result.consensusTimestamp,
+          hash: result.hash,
+          isVerified: true,
+          lastVerifiedAt: new Date()
+        });
+      }
+
+    } else if (type === 'prescription') {
+      const prescription = await Prescription.findByPk(id);
+
+      if (!prescription) {
+        return res.status(404).json({
+          success: false,
+          message: 'Prescription non trouvée'
+        });
+      }
+
+      // Ré-ancrer la prescription
+      result = await hederaService.anchorPrescription(prescription, 'RE_ANCHORED');
+
+      // Les informations Hedera sont déjà mises à jour dans anchorPrescription
+      if (result.success && !result.batched) {
+        await prescription.update({
+          isVerified: true,
+          lastVerifiedAt: new Date()
+        });
+      }
+
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Type invalide (medical_record ou prescription)'
+      });
+    }
+
+    logger.info(`Re-anchor successful for ${type} ${id}`, result);
+
+    res.json({
+      success: true,
+      message: result.batched ? 'Ajouté au batch pour ancrage' : 'Ancrage réussi',
+      result: {
+        batched: result.batched,
+        transactionId: result.transactionId,
+        sequenceNumber: result.sequenceNumber,
+        topicId: result.topicId,
+        hash: result.hash,
+        responseTime: result.responseTime
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error retrying anchor:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors du ré-ancrage',
+      error: error.message
+    });
+  }
+};

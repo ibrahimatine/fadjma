@@ -78,7 +78,7 @@
 ### 📊 Impact & Marché (30s)
 
 **Slide 4 - Marché**
-> "Marché de la santé digitale: **660 milliards** d'ici 2025
+> "Marché de la santé digitale: **660 milliards de Dollars** d'ici 2027
 > 
 > Notre cible immédiate:
 > - **500 cliniques** au Sénégal

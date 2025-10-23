@@ -23,18 +23,18 @@ const Footer = () => {
               </div>
             </div>
             <p className="text-gray-300 mb-6 max-w-md">
-              Plateforme m�dicale s�curis�e utilisant la blockchain Hedera pour garantir
-              l'int�grit� et la tra�abilit� des dossiers m�dicaux.
+              Secure medical platform using Hedera blockchain to ensure
+              integrity and traceability of medical records.
             </p>
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <Heart className="h-4 w-4 text-red-500" />
-              <span>D�velopp� avec passion pour la sant� digitale</span>
+              <span>Developed with passion for digital health</span>
             </div>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Liens rapides</h3>
+            <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2">
               <li>
                 <Link to="/dashboard" className="text-gray-300 hover:text-white transition-colors">
@@ -43,17 +43,17 @@ const Footer = () => {
               </li>
               <li>
                 <Link to="/records" className="text-gray-300 hover:text-white transition-colors">
-                  Dossiers m�dicaux
+                  Medical Records
                 </Link>
               </li>
               <li>
                 <a href="#about" className="text-gray-300 hover:text-white transition-colors">
-                  � propos
+                  About
                 </a>
               </li>
               <li>
                 <a href="#security" className="text-gray-300 hover:text-white transition-colors">
-                  S�curit�
+                  Security
                 </a>
               </li>
               <li>
@@ -82,13 +82,13 @@ const Footer = () => {
               </li>
               <li className="flex items-center gap-2 text-gray-300">
                 <MapPin className="h-4 w-4" />
-                <span>Dakar, S�n�gal</span>
+                <span>Dakar, Senegal</span>
               </li>
             </ul>
 
             {/* Social Links */}
             <div className="mt-6">
-              <h4 className="text-sm font-semibold mb-3">Suivez-nous</h4>
+              <h4 className="text-sm font-semibold mb-3">Follow us</h4>
               <div className="flex gap-3">
                 <a
                   href="#github"
@@ -120,15 +120,15 @@ const Footer = () => {
         <div className="border-t border-gray-800 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="text-sm text-gray-400">
-              � {new Date().getFullYear()} FadjMa. Tous droits r�serv�s.
+              &copy; {new Date().getFullYear()} FadjMa. All rights reserved.
             </div>
 
             <div className="flex flex-wrap gap-6 text-sm">
               <a href="#privacy" className="text-gray-400 hover:text-white transition-colors">
-                Politique de confidentialit�
+                Privacy Policy
               </a>
               <a href="#terms" className="text-gray-400 hover:text-white transition-colors">
-                Conditions d'utilisation
+                Terms of Service
               </a>
               <a href="#cookies" className="text-gray-400 hover:text-white transition-colors">
                 Cookies
@@ -137,7 +137,7 @@ const Footer = () => {
 
             <div className="flex items-center gap-2 text-sm text-gray-400">
               <Shield className="h-4 w-4 text-green-500" />
-              <span>S�curis� par Hedera</span>
+              <span>Secured by Hedera</span>
             </div>
           </div>
         </div>

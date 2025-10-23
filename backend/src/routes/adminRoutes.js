@@ -51,6 +51,10 @@ router.get('/registry/topic/:topicId', adminController.getTopicDetails);
 // Route pour exporter les données du registre (avec rate limiting plus strict)
 router.get('/registry/export', exportRateLimit, adminController.exportRegistryData);
 
+// Routes pour les ancrages échoués
+router.get('/anchors/failed', adminController.getFailedAnchors);
+router.post('/anchors/retry', adminController.retryAnchor);
+
 // Route pour mettre à jour le statut système
 router.put('/status/update', adminController.updateSystemStatus);
 

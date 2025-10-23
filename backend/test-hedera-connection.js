@@ -8,7 +8,12 @@ async function testHederaConnection() {
   try {
     // Test 1: Vérifier la balance
     console.log('1. Test de balance du compte...');
+    await hederaClient.init()
     const balance = await hederaClient.getBalance();
+    if (balance === null) {
+      console.log('   ⚠️  Mode simulation activé - credentials manquants');
+      return;
+    }
     console.log(`   Balance: ${balance}\n`);
 
     // Test 2: Envoyer un message test

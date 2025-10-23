@@ -196,5 +196,19 @@ export const adminService = {
       console.error('Error fetching transaction details:', error);
       throw error;
     }
+  },
+
+  // Obtenir les ancrages échoués
+  async getFailedAnchors(limit = 50) {
+    const response = await api.get('/admin/anchors/failed', {
+      params: { limit }
+    });
+    return response.data;
+  },
+
+  // Ré-ancrer une transaction échouée
+  async retryAnchor(id, type) {
+    const response = await api.post('/admin/anchors/retry', { id, type });
+    return response.data;
   }
 };
