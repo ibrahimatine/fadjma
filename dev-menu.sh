@@ -490,196 +490,6 @@ docker_shell() {
     wait_key
 }
 
-# Fonction Quick Start pour les juges
-docker_quick_start() {
-    clear
-    echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║     🎯 QUICK START - Ready in 3 minutes! 🚀         ║${NC}"
-    echo -e "${CYAN}║     Perfect for Hedera Hackathon Judges             ║${NC}"
-    echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-
-    echo -e "${YELLOW}This will automatically:${NC}"
-    echo "  ✓ Check Docker prerequisites"
-    echo "  ✓ Configure environment (.env)"
-    echo "  ✓ Start Docker services"
-    echo "  ✓ Initialize SQLite database"
-    echo "  ✓ Load test data (12 users + medical records)"
-    echo "  ✓ Open application in browser"
-    echo ""
-    echo -e "${GREEN}Total time: ~3 minutes${NC}"
-    echo ""
-    read -p "Press Enter to start, or 'q' to cancel: " confirm
-
-    if [ "$confirm" = "q" ] || [ "$confirm" = "Q" ]; then
-        return
-    fi
-
-    # Étape 1: Vérifications
-    echo ""
-    echo -e "${CYAN}[1/6] Checking Docker prerequisites...${NC}"
-    if ! check_docker; then
-        echo -e "${RED}❌ Docker prerequisites not met. Please install Docker first.${NC}"
-        wait_key
-        return 1
-    fi
-    echo -e "${GREEN}✓ Docker is ready!${NC}"
-    sleep 1
-
-    # Étape 2: Configuration .env
-    echo ""
-    echo -e "${CYAN}[2/6] Configuring environment...${NC}"
-    if [ ! -f ".env" ]; then
-        echo -e "${YELLOW}Creating .env from .env.example...${NC}"
-        cp .env.example .env
-        echo -e "${GREEN}✓ .env created!${NC}"
-        echo ""
-        echo -e "${YELLOW}⚠️  IMPORTANT: Default Hedera Testnet credentials are configured.${NC}"
-        echo -e "${YELLOW}   For production, edit .env with your own credentials.${NC}"
-    else
-        echo -e "${GREEN}✓ .env already exists${NC}"
-    fi
-    sleep 1
-
-    # Étape 3: Démarrage Docker
-    echo ""
-    echo -e "${CYAN}[3/6] Starting Docker services...${NC}"
-    sudo docker-compose up -d
-
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}❌ Failed to start Docker services${NC}"
-        wait_key
-        return 1
-    fi
-
-    echo -e "${GREEN}✓ Docker services started!${NC}"
-    echo ""
-    sudo docker-compose ps
-    echo ""
-    echo -e "${YELLOW}Waiting 45 seconds for backend health check...${NC}"
-
-    # Attente avec progression
-    for i in {45..1}; do
-        echo -ne "\rWaiting... ${i}s  "
-        sleep 1
-    done
-    echo ""
-    echo -e "${GREEN}✓ Services should be healthy now${NC}"
-    sleep 1
-
-    # Étape 4: Vérifier que le backend est up
-    echo ""
-    echo -e "${CYAN}[4/6] Verifying backend is ready...${NC}"
-    if ! sudo docker-compose ps | grep -q "backend.*Up"; then
-        echo -e "${RED}❌ Backend is not running${NC}"
-        echo -e "${YELLOW}Check logs with: sudo docker-compose logs backend${NC}"
-        wait_key
-        return 1
-    fi
-    echo -e "${GREEN}✓ Backend is running!${NC}"
-    sleep 1
-
-    # Étape 5: Initialisation base de données
-    echo ""
-    echo -e "${CYAN}[5/6] Initializing database with test data...${NC}"
-
-    echo -e "${BLUE}  → Creating SQLite tables...${NC}"
-    sudo docker-compose exec -T backend npm run init:sqlite
-
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}❌ Failed to initialize SQLite${NC}"
-        wait_key
-        return 1
-    fi
-
-    echo ""
-    echo -e "${BLUE}  → Loading test data (12 users + medical records)...${NC}"
-    sudo docker-compose exec -T backend npm run seed:full
-
-    if [ $? -ne 0 ]; then
-        echo -e "${RED}❌ Failed to seed database${NC}"
-        wait_key
-        return 1
-    fi
-
-    echo -e "${GREEN}✓ Database ready with test data!${NC}"
-    sleep 1
-
-    # Étape 6: Affichage des informations finales
-    echo ""
-    echo -e "${CYAN}[6/6] All done! 🎉${NC}"
-    echo ""
-    echo -e "${CYAN}╔════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║           ✅ FADJMA IS READY FOR TESTING!             ║${NC}"
-    echo -e "${CYAN}╚════════════════════════════════════════════════════════╝${NC}"
-    echo ""
-
-    echo -e "${GREEN}🌐 Application URLs:${NC}"
-    echo -e "   Frontend:    ${YELLOW}http://localhost:3000${NC}"
-    echo -e "   Backend API: ${YELLOW}http://localhost:5000/api${NC}"
-    echo -e "   Health:      ${YELLOW}http://localhost:5000/api/health${NC}"
-    echo ""
-
-    echo -e "${GREEN}👤 Test Accounts (Password: Demo2024!):${NC}"
-    echo -e "   Doctor:      ${YELLOW}dr.martin@fadjma.com${NC}"
-    echo -e "   Patient:     ${YELLOW}jean.dupont@demo.com${NC}"
-    echo -e "   Pharmacist:  ${YELLOW}pharmacie.centrale@fadjma.com${NC}"
-    echo -e "   Admin:       ${YELLOW}admin@fadjma.com${NC} (Password: Admin2024!)"
-    echo ""
-
-    echo -e "${GREEN}⛓️  Hedera Blockchain Integration:${NC}"
-    echo -e "   Network:     ${YELLOW}Testnet${NC}"
-    echo -e "   Account:     ${YELLOW}0.0.6164695${NC} (EC25519)"
-    echo -e "   Account:     ${YELLOW}0.0.6089195${NC} (ECDSA)"
-    echo -e "   Topic:       ${YELLOW}0.0.6854064${NC}"
-    echo -e "   Verify:      ${YELLOW}https://hashscan.io/testnet/topic/0.0.6854064${NC}"
-    echo ""
-
-    echo -e "${GREEN}📊 What's included:${NC}"
-    echo "   ✓ 12 test users (doctors, patients, pharmacists)"
-    echo "   ✓ 11 medical records with Hedera anchoring"
-    echo "   ✓ 9 prescriptions with unique matricules"
-    echo "   ✓ SQLite database fully configured"
-    echo "   ✓ All Hedera transactions verified on Testnet"
-    echo ""
-
-    echo -e "${CYAN}🎬 Quick Demo Path:${NC}"
-    echo "   1. Open http://localhost:3000"
-    echo "   2. Login as doctor: dr.martin@fadjma.com / Demo2024!"
-    echo "   3. View existing medical records"
-    echo "   4. Create a new medical record → See Hedera anchoring"
-    echo "   5. Verify integrity → Check on HashScan"
-    echo ""
-
-    # Proposer d'ouvrir le navigateur
-    read -p "Open application in browser now? [Y/n]: " open_browser
-
-    if [ "$open_browser" != "n" ] && [ "$open_browser" != "N" ]; then
-        echo ""
-        echo -e "${CYAN}Opening browser...${NC}"
-        sleep 1
-
-        if command -v xdg-open &> /dev/null; then
-            xdg-open http://localhost:3000 2>/dev/null &
-            xdg-open https://hashscan.io/testnet/topic/0.0.6854064 2>/dev/null &
-        elif command -v open &> /dev/null; then
-            open http://localhost:3000 &
-            open https://hashscan.io/testnet/topic/0.0.6854064 &
-        fi
-
-        echo -e "${GREEN}✓ Browser tabs opened!${NC}"
-    fi
-
-    echo ""
-    echo -e "${YELLOW}📋 Useful commands:${NC}"
-    echo "   View logs:     sudo docker-compose logs -f"
-    echo "   Stop services: sudo docker-compose down"
-    echo "   Restart:       sudo docker-compose restart"
-    echo ""
-
-    wait_key
-}
-
 # Menu Docker principal
 docker_menu() {
     while true; do
@@ -694,13 +504,7 @@ docker_menu() {
 
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
-        echo -e "${GREEN}🎯 FOR JUDGES / QUICK START:${NC}"
-        echo ""
-        echo -e "  ${GREEN}★${NC}) ${GREEN}🚀 QUICK START - Deploy Everything in 3 minutes!${NC}"
-        echo ""
-        echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-        echo ""
-        echo -e "${YELLOW}Manual Configuration (Advanced):${NC}"
+        echo -e "${YELLOW}Docker Operations:${NC}"
         echo ""
         echo -e "  ${GREEN}1${NC}) 🚀 Start Docker services"
         echo -e "  ${GREEN}2${NC}) 🛑 Stop Docker services"
@@ -720,12 +524,9 @@ docker_menu() {
         echo ""
         echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
         echo ""
-        read -p "Choose option [0-10, ★ for Quick Start]: " docker_choice
+        read -p "Choose option [0-10]: " docker_choice
 
         case $docker_choice in
-            "★"|"*"|"q"|"Q"|"quick"|"QUICK")
-                docker_quick_start
-                ;;
             1)
                 clear
                 docker_start
@@ -829,16 +630,16 @@ while true; do
     case $choice in
         1)
             clear
-            ./start-dev.sh
+            ./scripts/start-dev.sh
             ;;
         2)
             clear
-            ./stop-dev.sh
+            ./scripts/stop-dev.sh
             wait_key
             ;;
         3)
             clear
-            ./status-dev.sh
+            ./scripts/status-dev.sh
             wait_key
             ;;
         4)
@@ -851,9 +652,9 @@ while true; do
             echo ""
             read -p "Choix [1-3]: " log_choice
             case $log_choice in
-                1) ./logs-dev.sh backend ;;
-                2) ./logs-dev.sh frontend ;;
-                3) ./logs-dev.sh ;;
+                1) ./scripts/logs-dev.sh backend ;;
+                2) ./scripts/logs-dev.sh frontend ;;
+                3) ./scripts/logs-dev.sh ;;
             esac
             ;;
         5)
@@ -867,9 +668,9 @@ while true; do
         7)
             clear
             echo -e "${YELLOW}🔄 Redémarrage...${NC}"
-            ./stop-dev.sh
+            ./scripts/stop-dev.sh
             sleep 2
-            ./start-dev.sh
+            ./scripts/start-dev.sh
             ;;
         8)
             clear

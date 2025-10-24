@@ -351,7 +351,7 @@ Choisir seed:full
 ## 📚 Documentation Complète
 
 ### Fichiers de Référence
-- `DOCKER_QUICK_TEST.md` - Test rapide (5 min)
+- `docs/DOCKER_QUICK_TEST.md` - Test rapide (5 min)
 - `docs/DOCKER_SETUP.md` - Configuration complète
 - `docs/DOCKER_SQLITE_MIGRATION_SUMMARY.md` - Migration PostgreSQL→SQLite
 - `docker-compose.yml` - Configuration services

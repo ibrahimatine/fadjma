@@ -8,7 +8,7 @@ console.log('🚀 FADJMA Backend - Starting deployment script...');
 
 // Function to check if database exists
 function databaseExists() {
-  const dbPath = process.env.DATABASE_URL || './database.sqlite';
+  const dbPath = process.env.DATABASE_URL || './data/database.sqlite';
   const sqlitePath = dbPath.replace('sqlite:', '');
   return fs.existsSync(sqlitePath);
 }
@@ -45,7 +45,7 @@ async function deploy() {
     console.log('🔍 Checking environment...');
     console.log(`NODE_ENV: ${process.env.NODE_ENV}`);
     console.log(`PORT: ${process.env.PORT}`);
-    console.log(`Database URL: ${process.env.DATABASE_URL || 'sqlite:./database.sqlite'}`);
+    console.log(`Database URL: ${process.env.DATABASE_URL || 'sqlite:./data/database.sqlite'}`);
 
     // Check if this is first deployment
     if (!databaseExists()) {

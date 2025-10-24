@@ -7,7 +7,7 @@ const crypto = require('crypto');
 async function initSQLite() {
   try {
     // Supprimer l'ancienne base si elle existe
-    const dbPath = path.join(__dirname, '../database.sqlite');
+    const dbPath = path.join(__dirname, '../data/database.sqlite');
     if (fs.existsSync(dbPath)) {
       console.log('🔄 Suppression de l\'ancienne base...');
       fs.unlinkSync(dbPath);
@@ -337,12 +337,12 @@ async function testPatientIdentifierUniqueness() {
 async function displaySystemInfo() {
   try {
     console.log('\n🔍 Informations système:');
-    console.log(`   📁 Base de données: ${path.join(__dirname, '../database.sqlite')}`);
+    console.log(`   📁 Base de données: ${path.join(__dirname, '../data/database.sqlite')}`);
     console.log(`   🗄️  Dialecte Sequelize: ${sequelize.getDialect()}`);
     console.log(`   📊 Tables: ${(await sequelize.getQueryInterface().showAllTables()).length}`);
 
     // Vérifier la taille de la base
-    const dbPath = path.join(__dirname, '../database.sqlite');
+    const dbPath = path.join(__dirname, '../data/database.sqlite');
     if (fs.existsSync(dbPath)) {
       const stats = fs.statSync(dbPath);
       const sizeKB = Math.round(stats.size / 1024);

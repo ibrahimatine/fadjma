@@ -9,7 +9,7 @@ async function migrateToSQLite() {
     await sequelize.sync({ force: true });
     
     console.log('✅ Base SQLite créée avec succès !');
-    console.log('📁 Fichier créé : backend/database.sqlite');
+    console.log('📁 Fichier créé : backend/data/database.sqlite');
     console.log('');
     console.log('🎯 Prochaines étapes :');
     console.log('1. npm run seed (pour créer les données de test)');

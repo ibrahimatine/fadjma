@@ -421,7 +421,7 @@ FADJMA addresses the **Healthcare Operations** track with:
 - [**🚀 Docker Setup (5 min)**](docs/DOCKER_SETUP.md) - Déploiement Docker (recommandé)
 - [**📖 Getting Started**](docs/GETTING_STARTED.md) - Installation locale
 - [**⚡ Quick Start**](docs/fadjma-quickstart.md) - Démarrage rapide
-- [**🧪 Docker Quick Test**](DOCKER_QUICK_TEST.md) - Test Docker en 5 minutes
+- [**🧪 Docker Quick Test**](docs/DOCKER_QUICK_TEST.md) - Test Docker en 5 minutes
 
 ### Technical Documentation
 - [**🏗️ Architecture**](docs/ARCHITECTURE.md) - Architecture technique complète

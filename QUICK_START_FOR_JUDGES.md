@@ -28,40 +28,35 @@ sudo docker info
 
 Then:
 1. Choose option **12** (Docker Management)
-2. Press **★** or type **q** for Quick Start
-3. Press **Enter** to confirm
-4. Wait ~3 minutes (automatic deployment)
-5. Browser will open automatically
+2. Choose option **1** (Start Docker services)
+3. Wait for services to start (~1 minute)
+4. Choose option **4** (Initialize database + Seed)
+5. Select seed option **1** (Seed complet)
+6. Access http://localhost:3000
 
 **That's it!** ✅
 
 ---
 
-## 🎬 What Happens Automatically
+## 🎬 What Happens in the Deployment
 
-The Quick Start script automatically:
+### Step 1: Check Docker Prerequisites ✓
+- The menu verifies Docker is installed
+- Verifies Docker Compose is available
+- Checks if Docker daemon is running
 
-### [1/6] Check Docker Prerequisites ✓
-- Verifies Docker is installed
-- Verifies Docker Compose is installed
-- Verifies Docker daemon is running
-
-### [2/6] Configure Environment ✓
-- Copies `.env.example` to `.env`
-- Uses default Hedera Testnet credentials
+### Step 2: Configure Environment ✓
+- If `.env` doesn't exist, it will be created from `.env.example`
+- Default Hedera Testnet credentials are configured
 - No manual editing needed for testing
 
-### [3/6] Start Docker Services ✓
+### Step 3: Start Docker Services ✓
 - Runs `sudo docker-compose up -d`
 - Starts backend (Node.js + SQLite)
 - Starts frontend (React)
-- Waits 45 seconds for health check
+- Waits ~40 seconds for backend health check
 
-### [4/6] Verify Backend is Ready ✓
-- Checks backend container status
-- Ensures services are healthy
-
-### [5/6] Initialize Database ✓
+### Step 4: Initialize Database ✓
 - Creates SQLite database (`database.sqlite`)
 - Creates all tables (Sequelize models)
 - Loads test data:
@@ -70,10 +65,10 @@ The Quick Start script automatically:
   - **9 prescriptions** with unique matricules
   - All data verified on Hedera Testnet
 
-### [6/6] Display Information & Open Browser ✓
-- Shows URLs and test accounts
-- Opens application in browser
-- Opens HashScan for verification
+### Step 5: Access Application ✓
+- Frontend: http://localhost:3000
+- Backend: http://localhost:5000
+- Ready to test!
 
 ---
 
@@ -390,7 +385,7 @@ After Quick Start completes, verify:
 ## 📚 Documentation References
 
 ### Quick References
-- **DOCKER_QUICK_TEST.md** - 5-minute test guide
+- **docs/DOCKER_QUICK_TEST.md** - 5-minute test guide
 - **README.md** - Project overview
 - **docs/DOCKER_SETUP.md** - Complete Docker setup
 - **docs/CURRENT_STATUS_SUMMARY.md** - Project status
@@ -490,14 +485,14 @@ After Quick Start completes, verify:
 
 | Activity | Time |
 |----------|------|
-| **Deployment (Quick Start)** | 3 minutes |
+| **Docker Setup & Deployment** | 3-4 minutes |
 | **Login + Explore Dashboard** | 1 minute |
 | **Create Medical Record** | 2 minutes |
 | **Verify on HashScan** | 2 minutes |
 | **Test Prescription Workflow** | 2 minutes |
-| **Total Evaluation Time** | **10 minutes** |
+| **Total Evaluation Time** | **10-11 minutes** |
 
-**Quick Start gets you testing in 3 minutes!** ⚡
+**Simple menu-driven deployment!** ⚡
 
 ---
 
