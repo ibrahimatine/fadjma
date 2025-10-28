@@ -370,7 +370,6 @@ const AdminRegistry = () => {
       if (!item.topicId || !item.transactionId || !item.sequenceNumber) {
         throw new Error('Données Hedera incomplètes pour la vérification HCS');
       }
-
       const hcsResult = await adminService.verifyHCSStatus(
         item.transactionId,
         item.topicId,
@@ -381,6 +380,8 @@ const AdminRegistry = () => {
         ...prev,
         [item.id]: hcsResult.data
       }));
+
+      console.log('HCS verification result:', hcsResult);
 
       if (hcsResult.data.isFullyVerified) {
         toast.success('Vérification HCS réussie');

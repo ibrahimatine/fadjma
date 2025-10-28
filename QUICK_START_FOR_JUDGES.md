@@ -20,13 +20,48 @@ docker-compose --version
 sudo docker info
 ```
 
-### One-Command Deployment
+### Step-by-Step Deployment
+
+You have **two options** for configuration:
+
+---
+
+## 🅰️ Option A: Manual Configuration (Recommended for clarity)
+
+#### 1. Configure Hedera Credentials FIRST
+
+**IMPORTANT:** Configure your Hedera credentials before launching the menu.
+
+Copy the example environment file:
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and set your Hedera Testnet credentials:
+```bash
+nano .env  # or use your preferred editor: vim, code, etc.
+```
+
+**Required values:**
+```env
+HEDERA_ECDSA_ACCOUNT_ID=0.0.xxxxxx
+HEDERA_ECDSA_PRIVATE_KEY=3030020100300706052b8104000a0422042xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+HEDERA_ECDSA_TOPIC_ID=0.0.xxxxxx
+```
+
+Replace `xxxxxx` with your actual:
+- **Account ID** (e.g., `0.0.6089195`)
+- **ECDSA Private Key** (your full DER-encoded key starting with `3030020100...`)
+- **Topic ID** (e.g., `0.0.6854064`)
+
+#### 2. Launch the Menu
 
 ```bash
 ./dev-menu.sh
 ```
 
-Then:
+#### 3. Deploy with Docker
+
 1. Choose option **12** (Docker Management)
 2. Choose option **1** (Start Docker services)
 3. Wait for services to start (~1 minute)
@@ -38,17 +73,86 @@ Then:
 
 ---
 
+## 🅱️ Option B: Automatic Configuration (Guided by menu)
+
+The menu script can automatically create and open the `.env` file for you!
+
+#### 1. Launch the Menu
+
+```bash
+./dev-menu.sh
+```
+
+#### 2. Start Docker Services
+
+1. Choose option **12** (Docker Management)
+2. Choose option **1** (Start Docker services)
+3. The script will detect `.env` is missing and ask:
+   ```
+   ⚠️  Fichier .env non trouvé
+   Copier .env.example vers .env ? [O/n]:
+   ```
+   Press **Enter** (or type `O`)
+
+4. The script will create `.env` and ask:
+   ```
+   ⚠️  IMPORTANT: Éditez .env avec vos credentials Hedera
+   Voulez-vous éditer .env maintenant ? [O/n]:
+   ```
+   Press **Enter** (or type `O`)
+
+5. An editor (nano) will open automatically
+6. Edit these lines with your Hedera credentials:
+   ```env
+   HEDERA_ECDSA_ACCOUNT_ID=0.0.xxxxxx
+   HEDERA_ECDSA_PRIVATE_KEY=3030020100300706052b8104000a0422042xxx...
+   HEDERA_ECDSA_TOPIC_ID=0.0.xxxxxx
+   ```
+7. Save and exit (Ctrl+O, Enter, Ctrl+X in nano)
+
+#### 3. Continue Deployment
+
+The script will continue automatically and start Docker services.
+
+Then:
+1. Wait for services to start (~1 minute)
+2. Return to menu, choose option **4** (Initialize database + Seed)
+3. Select seed option **1** (Seed complet)
+4. Access http://localhost:3000
+
+**Done!** ✅
+
+---
+
+**💡 Which option should I choose?**
+
+| Option | Best for |
+|--------|----------|
+| **A - Manual** | Users who prefer to prepare configuration upfront |
+| **B - Automatic** | Users who want step-by-step guidance from the menu |
+
+Both options achieve the same result. Choose whichever you're more comfortable with!
+
+---
+
 ## 🎬 What Happens in the Deployment
 
-### Step 1: Check Docker Prerequisites ✓
+### Step 1: Configure Environment 📝
+**Manual (Option A):**
+- You manually copy `.env.example` to `.env` and edit it before launching the menu
+
+**Automatic (Option B):**
+- The menu script detects missing `.env` and guides you through creation and editing
+
+**Either way, you MUST provide:**
+- `HEDERA_ECDSA_ACCOUNT_ID=0.0.xxxxxx`
+- `HEDERA_ECDSA_PRIVATE_KEY=3030020100300706052b8104000a0422042xxx...`
+- `HEDERA_ECDSA_TOPIC_ID=0.0.xxxxxx`
+
+### Step 2: Check Docker Prerequisites ✓
 - The menu verifies Docker is installed
 - Verifies Docker Compose is available
 - Checks if Docker daemon is running
-
-### Step 2: Configure Environment ✓
-- If `.env` doesn't exist, it will be created from `.env.example`
-- Default Hedera Testnet credentials are configured
-- No manual editing needed for testing
 
 ### Step 3: Start Docker Services ✓
 - Runs `sudo docker-compose up -d`
@@ -61,24 +165,26 @@ Then:
 - Creates all tables (Sequelize models)
 - Loads test data:
   - **12 users** (doctors, patients, pharmacists, admin)
-  - **11 medical records** with Hedera anchoring
+  - **11 medical records** anchored with YOUR Hedera credentials
   - **9 prescriptions** with unique matricules
-  - All data verified on Hedera Testnet
+  - All transactions sent to YOUR Hedera Topic
 
 ### Step 5: Access Application ✓
 - Frontend: http://localhost:3000
 - Backend: http://localhost:5000
-- Ready to test!
+- Ready to test with your own Hedera blockchain integration!
 
 ---
 
 ## 🌐 Application Access
 
-### URLs (Auto-Opened)
+### URLs
 - **Frontend:** http://localhost:3000
 - **Backend API:** http://localhost:5000/api
 - **Health Check:** http://localhost:5000/api/health
-- **HashScan Verification:** https://hashscan.io/testnet/topic/0.0.6854064
+- **HashScan Verification:** https://hashscan.io/testnet/topic/YOUR_TOPIC_ID
+
+  (Replace `YOUR_TOPIC_ID` with your topic from `.env`)
 
 ### Test Accounts
 
@@ -183,10 +289,10 @@ Password: Demo2024!
 |---------|---------|
 | **Network** | Hedera Testnet |
 | **HCS (Consensus Service)** | Real-time message anchoring |
-| **Primary Account** | 0.0.6164695 (EC25519) |
-| **Secondary Account** | 0.0.6089195 (ECDSA) |
-| **Main Topic** | 0.0.6854064 |
-| **Multi-Topics** | 0.0.7070750 - 0.0.7070754 |
+| **Your ECDSA Account** | The account ID you configured in `.env` |
+| **Your Topic** | The topic ID you configured in `.env` |
+
+**Note:** All transactions will be sent to YOUR Hedera account and topic.
 
 ### What's Anchored on Hedera?
 
@@ -198,8 +304,11 @@ Password: Demo2024!
 - Consultation type (auto-classified)
 - Medications with dosage
 
-**Verify yourself:**
-https://hashscan.io/testnet/topic/0.0.6854064
+**Verify yourself on HashScan:**
+```
+https://hashscan.io/testnet/topic/YOUR_TOPIC_ID
+```
+Replace `YOUR_TOPIC_ID` with the topic ID from your `.env` file.
 
 ### Transaction Proof
 Every action has:
@@ -368,11 +477,11 @@ After Quick Start completes, verify:
 - [ ] Can search prescription as pharmacist
 
 ### Hedera Integration
-- [ ] HashScan shows recent transactions: https://hashscan.io/testnet/topic/0.0.6854064
-- [ ] Transaction IDs are valid format (0.0.XXXXX@TIMESTAMP.NANOS)
+- [ ] HashScan shows recent transactions at: https://hashscan.io/testnet/topic/YOUR_TOPIC_ID
+- [ ] Transaction IDs match your account format (YOUR_ACCOUNT_ID@TIMESTAMP.NANOS)
 - [ ] Complete data visible in HashScan (not just hash)
 - [ ] Mirror Node API verification works
-- [ ] Topic 0.0.6854064 has multiple messages
+- [ ] Your topic shows multiple new messages from the seed data
 
 ### Data
 - [ ] 12 users created (doctors, patients, pharmacists)
@@ -483,16 +592,17 @@ After Quick Start completes, verify:
 
 ## ⏱️ Time Budget for Judges
 
-| Activity | Time |
-|----------|------|
-| **Docker Setup & Deployment** | 3-4 minutes |
-| **Login + Explore Dashboard** | 1 minute |
-| **Create Medical Record** | 2 minutes |
-| **Verify on HashScan** | 2 minutes |
-| **Test Prescription Workflow** | 2 minutes |
-| **Total Evaluation Time** | **10-11 minutes** |
+| Activity | Time | Notes |
+|----------|------|-------|
+| **Configure .env** | 1-2 minutes | Manual or automatic via menu |
+| **Docker Deployment** | 2-3 minutes | Start services + initialize DB |
+| **Login + Explore Dashboard** | 1 minute | Test accounts provided |
+| **Create Medical Record** | 2 minutes | See Hedera anchoring live |
+| **Verify on HashScan** | 2 minutes | Check YOUR topic |
+| **Test Prescription Workflow** | 2 minutes | Doctor → Pharmacist flow |
+| **Total Evaluation Time** | **10-12 minutes** | From zero to fully functional |
 
-**Simple menu-driven deployment!** ⚡
+**Two deployment options available - choose what works best for you!** ⚡
 
 ---
 

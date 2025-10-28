@@ -209,6 +209,7 @@ export const adminService = {
   // Ré-ancrer une transaction échouée
   async retryAnchor(id, type) {
     const response = await api.post('/admin/anchors/retry', { id, type });
+    console.log('Retry anchor response:', response);
     return response.data;
   }
 };

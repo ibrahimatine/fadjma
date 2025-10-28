@@ -12,15 +12,18 @@ class MatriculeGenerator {
    * @returns {string} Matricule unique
    */
   generate(prefix, date = new Date()) {
+    // Forcer la conversion en objet Date
+    const d = date instanceof Date ? date : new Date(date);
+
     // Format date: YYYYMMDD
-    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+    const dateStr = d.toISOString().slice(0, 10).replace(/-/g, '');
 
     // Générer partie unique avec UUID v4 (8 premiers caractères)
     const uuid = crypto.randomUUID().replace(/-/g, '').substring(0, 8).toUpperCase();
 
-    // Format final: PREFIX-YYYYMMDD-XXXXXXXX
     return `${prefix}-${dateStr}-${uuid}`;
-  }
+}
+
 
   /**
    * Génère un matricule patient
