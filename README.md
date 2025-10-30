@@ -422,39 +422,18 @@ The menu script can automatically create and open the `.env` file for you!
 ### Option 1: Docker (Recommandé - 5 Minutes) 🐳
 
 **Avantages:** Configuration automatique, SQLite inclus, zéro configuration manuelle.
+## 🅱️ Option A: Automatic Configuration without Hedera credential(Guided by menu)
+
+The menu script can automatically create and open the `.env` file for you!
+
+#### 1. Launch the Menu
 
 ```bash
 ./dev-menu.sh
 ```
 
-📖 **Quick Start For Judge:** [QUICK_START_FOR_JUDGES.md](QUICK_START_FOR_JUDGES.md)
-# 1. Cloner le repository
-git clone https://github.com/votre-org/fadjma.git
-cd fadjma
+📖 **For judge , Quick start Documentation:** [docs/QUICK_START_FOR_JUDGES.md](docs/QUICK_START_FOR_JUDGES.md)
 
-# 2. Copier et configurer l'environnement
-cp .env.example .env
-# ⚠️ Éditer .env avec vos credentials Hedera Testnet
-nano .env
-
-# 3. Démarrer tous les services (Backend + Frontend + SQLite)
-docker-compose up -d
-
-# 4. Initialiser la base de données SQLite avec données de test
-docker-compose exec backend npm run seed:clean
-
-# 5. Vérifier les logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
-
-# 6. Accéder à l'application
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:5000
-```
-
-✅ **Benefits:** Automatic setup, SQLite included, zero configuration, production-ready
-📖 **Full Documentation:** [docs/DOCKER_SETUP.md](docs/DOCKER_SETUP.md)
-QUICK_START_FOR_JUDGES.md
 **Documentation Complète:** [docs/DOCKER_SETUP.md](docs/DOCKER_SETUP.md)
 
 ---
