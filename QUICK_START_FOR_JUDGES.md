@@ -62,12 +62,10 @@ Replace `xxxxxx` with your actual:
 
 #### 3. Deploy with Docker
 
-1. Choose option **12** (Docker Management)
-2. Choose option **1** (Start Docker services)
-3. Wait for services to start (~1 minute)
-4. Choose option **4** (Initialize database + Seed)
-5. Select seed option **1** (Seed complet)
-6. Access http://localhost:3000
+1. Choose option **1** (Start frontend and backend)
+2.Choose option **4** (Initialize database + Seed)
+3. Select seed option **1** (Seed complet)
+4. Access http://localhost:3000
 
 **That's it!** ✅
 
@@ -116,9 +114,7 @@ The script will continue automatically and start Docker services.
 
 Then:
 1. Wait for services to start (~1 minute)
-2. Return to menu, choose option **4** (Initialize database + Seed)
-3. Select seed option **1** (Seed complet)
-4. Access http://localhost:3000
+2. Access http://localhost:3000
 
 **Done!** ✅
 
