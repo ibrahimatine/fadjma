@@ -1012,15 +1012,16 @@ Email: radio@fadjma.com         | Mot de passe: Demo2024!
 
 **Ibrahima Tine** - Développeur Full-Stack
 - 🎓 Zone01 Dakar (École 01)
-- 🏅 **Hedera Developer Certified**
-- 💻 Expertise: Backend Node.js, Hedera SDK, Architecture Blockchain
-- 📧 Email: [email protected]
-- 🔗 GitHub: [@username]
+- 🏅 **Hedera Developer Certified** - [View Certificate](https://certs.hashgraphdev.com/9a7b1242-9bee-4f92-944a-b97386c9ae90.pdf)
+
+- 💻 Expertise: Backend Node.js, Hedera SDK, Architecture Blockchain, Golang, Javascript, Frontend React
+- 📧 Email: ibrahimatine29@gmail.com
+- 🔗 GitHub: [@itine](https://github.com/ibrahimatine)
 
 **Cheikh Mounirou Diouf** - Développeur Full-Stack
 - 🎓 Zone01 Dakar (École 01)
 - 🏅 **Hedera Developer Certified** - [View Certificate](https://certs.hashgraphdev.com/7136d939-5f09-483f-a93f-19e7d504f314.pdf)
-- 💻 Expertise: Frontend React, UI/UX, Intégration Hedera
+- 💻 Expertise: Frontend React, UI/UX, Intégration Hedera, Architecture Blockchain, Golang, Javascript
 - 📧 Email: dioufmounirou76@gmail.com
 - 🔗 GitHub: [@cheikh-nakamoto](https://github.com/cheikh-nakamoto)
 
