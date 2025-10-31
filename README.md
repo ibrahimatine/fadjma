@@ -464,10 +464,35 @@ nano .env  # or vim, code, etc.
 
 **Required credentials in `.env`:**
 ```env
-HEDERA_ECDSA_ACCOUNT_ID=0.0.xxxxxx          # Your account ID
+HEDERA_ECDSA_ACCOUNT_ID=0.0.6089195          # Your account ID
 HEDERA_ECDSA_PRIVATE_KEY=3030020100...      # Your ECDSA private key
-HEDERA_ECDSA_TOPIC_ID=0.0.xxxxxx            # Your topic ID
+HEDERA_ECDSA_TOPIC_ID=0.0.7070750          # Your topic ID
 ```
+
+**⚠️ For Judges: Using Your Own Hedera Credentials**
+
+If you prefer to use your own Hedera testnet account instead of requesting our credentials:
+
+```bash
+# 1. Add your Account ID and Private Key to .env
+# 2. Create a new topic for testing:
+cd backend
+node scripts/setup-hedera.js
+
+# This will:
+# - Verify your account balance
+# - Create a new HCS topic
+# - Display the Topic ID to add to your .env
+
+# 3. Copy the displayed Topic ID and add it to .env:
+# HEDERA_ECDSA_TOPIC_ID=0.0.YOUR_NEW_TOPIC_ID
+
+# 4. Continue with the deployment
+```
+
+**Note:** Using your own credentials provides full control and ensures the topic is exclusively yours for testing.
+
+---
 
 **Step 2: Launch with Docker**
 
