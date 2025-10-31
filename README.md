@@ -991,7 +991,7 @@ Email: radio@fadjma.com         | Mot de passe: Demo2024!
 
 ### Vidéo de Démonstration (3 Minutes)
 
-**Lien YouTube:** [À AJOUTER - Vidéo en cours d'enregistrement]
+**Lien YouTube:** [[Fadjma Demo](https://www.youtube.com/watch?v=WHbqioyzXzI)]
 
 **Structure de la Vidéo:**
 - **0:00-0:15** - Introduction (Équipe Zone01 Dakar, Problème de santé africain, Track Healthcare)
