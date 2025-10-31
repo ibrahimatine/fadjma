@@ -158,7 +158,7 @@ class MatriculeService {
    * @returns {boolean} True si le format est valide
    */
   static isValidFormat(matricule) {
-    return /^PRX-\d{8}-[A-F0-9]{4}$/.test(matricule);
+    return /^PRX-\d{8}-[A-F0-9]{8}$/.test(matricule);
   }
 
   /**

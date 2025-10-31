@@ -7,7 +7,6 @@ const authorize = (roles = []) => {
     if (!req.user || !req.user.role) {
       return res.status(401).json({ message: 'Unauthorized: User role not found' });
     }
-
     if (roles.length && !roles.includes(req.user.role)) {
       // user's role is not authorized
       return res.status(403).json({ message: 'Forbidden: You do not have access to this resource' });

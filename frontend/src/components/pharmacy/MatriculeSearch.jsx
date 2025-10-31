@@ -10,7 +10,7 @@ const MatriculeSearch = ({ onPrescriptionFound, loading = false }) => {
 
   // Validation du format matricule en temps réel
   const isValidFormat = (value) => {
-    return /^PRX-\d{8}-[A-F0-9]{4}$/.test(value);
+    return /^PRX-\d{8}-[A-F0-9]{8}$/.test(value);
   };
 
   const formatMatricule = (value) => {
@@ -20,10 +20,10 @@ const MatriculeSearch = ({ onPrescriptionFound, loading = false }) => {
     // Ajouter PRX- au début si pas présent
     let formatted = clean.startsWith('PRX') ? clean : 'PRX' + clean;
 
-    // Formater selon le pattern PRX-YYYYMMDD-XXXX
+    // Formater selon le pattern PRX-YYYYMMDD-XXXXXXXX
     if (formatted.length <= 3) return formatted;
     if (formatted.length <= 11) return formatted.slice(0, 3) + '-' + formatted.slice(3);
-    return formatted.slice(0, 3) + '-' + formatted.slice(3, 11) + '-' + formatted.slice(11, 15);
+    return formatted.slice(0, 3) + '-' + formatted.slice(3, 11) + '-' + formatted.slice(11, 19);
   };
 
   const handleInputChange = (e) => {
@@ -40,7 +40,7 @@ const MatriculeSearch = ({ onPrescriptionFound, loading = false }) => {
     }
 
     if (!isValidFormat(matricule)) {
-      setError("Format invalide. Exemple: PRX-20240125-A1B2");
+      setError("Format invalide. Exemple: PRX-20240125-A1B2C3D4");
       return;
     }
 
@@ -165,7 +165,7 @@ const MatriculeSearch = ({ onPrescriptionFound, loading = false }) => {
               value={matricule}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder="PRX-20240125-A1B2"
+              placeholder="PRX-20240125-A1B2C3D4"
               className={`w-full pl-12 pr-12 py-3 text-lg font-mono rounded-lg border-2 transition-colors ${
                 error
                   ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-200"
@@ -173,7 +173,7 @@ const MatriculeSearch = ({ onPrescriptionFound, loading = false }) => {
                   ? "border-green-300 bg-green-50 focus:border-green-500 focus:ring-green-200"
                   : "border-gray-200 bg-white focus:border-green-500 focus:ring-green-200"
               } focus:outline-none focus:ring-2`}
-              maxLength={17} // PRX-YYYYMMDD-XXXX = 17 caractères
+              maxLength={21} // PRX-YYYYMMDD-XXXXXXXX = 21 caractères
               disabled={searching || loading}
             />
 
@@ -201,7 +201,7 @@ const MatriculeSearch = ({ onPrescriptionFound, loading = false }) => {
                   ) : (
                     <>
                       <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                      <span className="text-yellow-600">Format: PRX-YYYYMMDD-XXXX</span>
+                      <span className="text-yellow-600">Format: PRX-YYYYMMDD-XXXXXXXX</span>
                     </>
                   )}
                 </>
@@ -209,7 +209,7 @@ const MatriculeSearch = ({ onPrescriptionFound, loading = false }) => {
             </div>
 
             <div className="text-sm text-gray-500">
-              {matricule.length}/17
+              {matricule.length}/21
             </div>
           </div>
         </div>
@@ -252,7 +252,7 @@ const MatriculeSearch = ({ onPrescriptionFound, loading = false }) => {
         <ul className="text-sm text-blue-700 space-y-1">
           <li>• Le patient reçoit le matricule du médecin</li>
           <li>• Le matricule est affiché sur l'ordonnance</li>
-          <li>• Format: PRX-AAAAMMJJ-XXXX (année-mois-jour + code)</li>
+          <li>• Format: PRX-AAAAMMJJ-XXXXXXXX (année-mois-jour + code)</li>
           <li>• <strong>Toutes les prescriptions en attente du patient seront ajoutées au panier</strong></li>
         </ul>
       </div>

@@ -1,9 +1,9 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const { sequelize } = require('../config/database');
 
 /**
- * Modèle pour historiser toutes les transactions Hedera
- * Permet un audit complet et la récupération des preuves Merkle
+ * Module pour historiser toutes les transactions Hedera
+ * Permet un audit complet et la rÃ©cupÃ©ration des preuves Merkle
  */
 const HederaTransaction = sequelize.define('HederaTransaction', {
   id: {
@@ -22,27 +22,27 @@ const HederaTransaction = sequelize.define('HederaTransaction', {
       'BATCH'
     ),
     allowNull: false,
-    comment: 'Type de données ancrées'
+    comment: 'Type de donnï¿½es ancrï¿½es'
   },
 
-  // Identifiant de l'entité ancrée
+  // Identifiant de l'entitï¿½ ancrï¿½e
   entityType: {
     type: DataTypes.STRING,
     allowNull: false,
-    comment: 'Type d\'entité (Prescription, MedicalRecord, etc.)'
+    comment: 'Type d\'entitï¿½ (Prescription, MedicalRecord, etc.)'
   },
 
   entityId: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    comment: 'ID de l\'entité dans sa table respective'
+    comment: 'ID de l\'entitï¿½ dans sa table respective'
   },
 
-  // Hash ancré
+  // Hash ancrï¿½
   hash: {
     type: DataTypes.STRING(64),
     allowNull: false,
-    comment: 'Hash SHA-256 des données'
+    comment: 'Hash SHA-256 des donnï¿½es'
   },
 
   // Informations Hedera
@@ -56,12 +56,12 @@ const HederaTransaction = sequelize.define('HederaTransaction', {
   hederaTopicId: {
     type: DataTypes.STRING,
     allowNull: false,
-    comment: 'Topic ID utilisé (0.0.xxx)'
+    comment: 'Topic ID utilisï¿½ (0.0.xxx)'
   },
 
   hederaSequenceNumber: {
     type: DataTypes.STRING,
-    comment: 'Numéro de séquence dans le topic'
+    comment: 'Numï¿½ro de sï¿½quence dans le topic'
   },
 
   hederaConsensusTimestamp: {
@@ -91,7 +91,7 @@ const HederaTransaction = sequelize.define('HederaTransaction', {
   merkleProof: {
     type: DataTypes.JSON,
     allowNull: true,
-    comment: 'Preuve Merkle pour cet item (si batché)'
+    comment: 'Preuve Merkle pour cet item (si batchï¿½)'
   },
 
   merkleIndex: {
@@ -100,11 +100,11 @@ const HederaTransaction = sequelize.define('HederaTransaction', {
     comment: 'Index de l\'item dans le batch Merkle'
   },
 
-  // Métadonnées de la transaction
+  // Mï¿½tadonnï¿½es de la transaction
   compressed: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
-    comment: 'Indique si le message a été compressé'
+    comment: 'Indique si le message a ï¿½tï¿½ compressï¿½'
   },
 
   messageSize: {
@@ -121,13 +121,13 @@ const HederaTransaction = sequelize.define('HederaTransaction', {
   // Performance
   responseTime: {
     type: DataTypes.INTEGER,
-    comment: 'Temps de réponse en ms'
+    comment: 'Temps de rï¿½ponse en ms'
   },
 
   attempts: {
     type: DataTypes.INTEGER,
     defaultValue: 1,
-    comment: 'Nombre de tentatives avant succès'
+    comment: 'Nombre de tentatives avant succï¿½s'
   },
 
   rateLimitWaitTime: {
@@ -146,34 +146,34 @@ const HederaTransaction = sequelize.define('HederaTransaction', {
   error: {
     type: DataTypes.TEXT,
     allowNull: true,
-    comment: 'Message d\'erreur si échec'
+    comment: 'Message d\'erreur si ï¿½chec'
   },
 
-  // Coût estimé
+  // Coï¿½t estimï¿½
   estimatedCost: {
     type: DataTypes.DECIMAL(10, 6),
     allowNull: true,
-    comment: 'Coût estimé en HBAR'
+    comment: 'Coï¿½t estimï¿½ en HBAR'
   },
 
-  // Métadonnées additionnelles
+  // Mï¿½tadonnï¿½es additionnelles
   metadata: {
     type: DataTypes.JSON,
     allowNull: true,
-    comment: 'Métadonnées supplémentaires'
+    comment: 'Mï¿½tadonnï¿½es supplï¿½mentaires'
   },
 
   // Verification
   verified: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
-    comment: 'Indique si la transaction a été vérifiée via Mirror Node'
+    comment: 'Indique si la transaction a ï¿½tï¿½ vï¿½rifiï¿½e via Mirror Node'
   },
 
   verifiedAt: {
     type: DataTypes.DATE,
     allowNull: true,
-    comment: 'Date de vérification'
+    comment: 'Date de vï¿½rification'
   },
 
   // Timestamps
@@ -217,10 +217,10 @@ const HederaTransaction = sequelize.define('HederaTransaction', {
 });
 
 /**
- * Méthodes statiques
+ * Mï¿½thodes statiques
  */
 
-// Créer une transaction pour un anchoring direct
+// Crï¿½er une transaction pour un anchoring direct
 HederaTransaction.createForAnchor = async function(data) {
   return await this.create({
     type: data.type,
@@ -243,11 +243,11 @@ HederaTransaction.createForAnchor = async function(data) {
   });
 };
 
-// Créer une transaction pour un batch
+// Crï¿½er une transaction pour un batch
 HederaTransaction.createForBatch = async function(batchData, items) {
   const transactions = [];
 
-  // Créer la transaction du batch principal
+  // Crï¿½er la transaction du batch principal
   const batchTx = await this.create({
     type: 'BATCH',
     entityType: 'Batch',
@@ -273,14 +273,14 @@ HederaTransaction.createForBatch = async function(batchData, items) {
 
   transactions.push(batchTx);
 
-  // Créer une entrée pour chaque item du batch
+  // Crï¿½er une entrï¿½e pour chaque item du batch
   for (const item of items) {
     const itemTx = await this.create({
       type: item.type,
       entityType: item.entityType,
       entityId: item.entityId,
       hash: item.hash,
-      hederaTransactionId: batchData.transactionId, // Même transaction
+      hederaTransactionId: batchData.transactionId, // Mï¿½me transaction
       hederaTopicId: batchData.topicId,
       hederaSequenceNumber: batchData.sequenceNumber,
       hederaConsensusTimestamp: batchData.consensusTimestamp,
@@ -290,7 +290,7 @@ HederaTransaction.createForBatch = async function(batchData, items) {
       merkleProof: item.proof,
       merkleIndex: item.index,
       status: 'SUCCESS',
-      estimatedCost: 0.0001 / items.length, // Coût divisé
+      estimatedCost: 0.0001 / items.length, // Coï¿½t divisï¿½
       metadata: item.metadata || {}
     });
 
@@ -308,7 +308,7 @@ HederaTransaction.findByHash = async function(hash) {
   });
 };
 
-// Rechercher les transactions d'une entité
+// Rechercher les transactions d'une entitï¿½
 HederaTransaction.findByEntity = async function(entityType, entityId) {
   return await this.findAll({
     where: {

@@ -100,9 +100,9 @@ MedicalRecord.beforeCreate(async (record) => {
     let exists = true;
 
     while (exists) {
-      // Format: ORD-YYYYMMDD-XXXX (ORD = ordonnance)
+      // Format: ORD-YYYYMMDD-XXXXXXXX (ORD = ordonnance, 8 caractères hexadécimaux)
       const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const random = crypto.randomBytes(2).toString('hex').toUpperCase();
+      const random = crypto.randomBytes(4).toString('hex').toUpperCase(); // 4 bytes = 8 hex chars
       matricule = `ORD-${date}-${random}`;
 
       // Vérifier l'unicité

@@ -1,4 +1,5 @@
 const axios = require("axios");
+const logger = require("../utils/logger");
 
 class MirrorNodeService {
   constructor() {
@@ -40,23 +41,9 @@ class MirrorNodeService {
       // From: 0.0.6089195@1758958633.731955949
       // To:   0.0.6089195-1758958633-731955949
       const formattedTxId = this.formatTransactionId(transactionId);
-      console.log(
-        "<===================Formatage post verification transaction===================>"
-      );
-      console.log("Formatted Transaction ID:", formattedTxId);
-      console.log(
-        "<===========================================================>"
-      );
       const response = await axios.get(
         `${this.baseUrl}/transactions/${formattedTxId}`,
         { proxy: false }
-      );
-      console.log(
-        "<===================Transaction verification response===================>\n",
-        response.data
-      );
-      console.log(
-        "<=======================================================================>"
       );
       if (response.data && response.data.transactions.length > 0) {
         const tx = response.data.transactions[0];
@@ -70,13 +57,11 @@ class MirrorNodeService {
 
       return { isVerified: false, error: "Transaction non trouvée" };
     } catch (error) {
-      console.error("Mirror Node error:", error);
-      console.error("Error code:", error.code);
-      console.error("Error config:", error.config);
-      if (error.response) {
-        console.error("Response status:", error.response.status);
-        console.error("Response data:", error.response.data);
-      }
+      logger.error("Mirror Node transaction verification error", {
+        transactionId,
+        error: error.message,
+        status: error.response?.status
+      });
 
       return { isVerified: false, error: error.message };
     }
@@ -89,13 +74,6 @@ class MirrorNodeService {
         `${this.baseUrl}/topics/${topicId}/messages/${sequenceNumber}`,
         { proxy: false }
       );
-      console.log(
-        "<===================Topic message verification response===================>\n",
-        response.data
-      );
-      console.log(
-        "<=======================================================================>"
-      );
       if (response.data) {
         return {
           isVerified: true,
@@ -107,7 +85,7 @@ class MirrorNodeService {
 
       return { isVerified: false, error: "Message non trouvé" };
     } catch (error) {
-      console.error("Mirror Node error:", error.message);
+      logger.error("Mirror Node topic message verification error", { topicId, sequenceNumber, error: error.message });
       return { isVerified: false, error: error.message };
     }
   }
@@ -138,7 +116,7 @@ class MirrorNodeService {
 
       return { isVerified: false, error: "Hash non trouvé dans le topic" };
     } catch (error) {
-      console.error("Mirror Node error:", error.message);
+      logger.error("Mirror Node error", { error: error.message });
       return { isVerified: false, error: error.message };
     }
   }
@@ -146,25 +124,11 @@ class MirrorNodeService {
   // Vérifier le statut complet d'une transaction HCS
   async verifyHCSTransactionStatus(transactionId, topicId, sequenceNumber) {
     try {
-      console.log(
-        "<===================Starting HCS verification===================>"
-      );
-      console.log("variables:", { transactionId, topicId, sequenceNumber });
-      console.log(
-        "<=============================================================>"
-      );
       const results = await Promise.allSettled([
         this.verifyTransaction(transactionId),
         this.verifyTopicMessage(topicId, sequenceNumber),
       ]);
-      // Vérification globale - Si le message est vérifié, c'est suffisant
-      console.log(
-        "<===================Hcs verification result===================>\n",
-        results
-      );
-      console.log(
-        "<=============================================================>"
-      );
+
       const [transactionResult, messageResult] = results;
 
       const verification = {
@@ -222,7 +186,7 @@ class MirrorNodeService {
 
       return verification;
     } catch (error) {
-      console.error("HCS verification error:", error.message);
+      logger.error("HCS verification error", { error: error.message });
       return {
         transactionVerified: false,
         messageVerified: false,
@@ -254,7 +218,7 @@ class MirrorNodeService {
 
       return { success: false, error: "Topic non trouvé" };
     } catch (error) {
-      console.error("Topic details error:", error.message);
+      logger.error("Topic details error", { error: error.message });
       return { success: false, error: error.message };
     }
   }
@@ -286,7 +250,7 @@ class MirrorNodeService {
 
       return { success: false, error: "Pas de messages trouvés" };
     } catch (error) {
-      console.error("Topic stats error:", error.message);
+      logger.error("Topic stats error", { error: error.message });
       return { success: false, error: error.message };
     }
   }

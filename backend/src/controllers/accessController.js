@@ -4,6 +4,7 @@ const { BaseUser } = require('../models');
 const { Op } = require('sequelize');
 const hederaService = require('../services/hederaService');
 const monitoringService = require('../services/monitoringService');
+const logger = require('../utils/logger');
 
 class AccessController {
 
@@ -21,18 +22,9 @@ class AccessController {
       }
 
       const { patientId, reason, accessLevel = 'read', expiresAt } = req.body;
-      // Log the incoming request details
-      console.log("<=============================================>")
-      console.log("<=============================================>")
-      console.log("New access request received:");
-      console.log("Patient ID:", patientId);
-      console.log("Reason:", reason);
-      console.log("Access Level:", accessLevel);
-      console.log("Expires At:", expiresAt);
-      console.log("<=============================================>")
-      console.log("<=============================================>")
-
       const requesterId = req.user.id;
+
+      logger.info('New access request', { requesterId, patientId, reason, accessLevel });
 
       // Prevent self-requests (unless admin)
       if (patientId === requesterId && req.user.role !== 'admin') {
@@ -148,7 +140,7 @@ class AccessController {
       });
 
     } catch (error) {
-      console.error('Create access request error:', error);
+      logger.error('Error creating access request', { error: error.message });
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -189,9 +181,6 @@ class AccessController {
 
       const offset = (parseInt(page) - 1) * parseInt(limit);
 
-      console.log('getAccessRequests: where clause:', where);
-      console.log('getAccessRequests: include models:', ['requester', 'patient', 'reviewer']);
-
       let requests, total;
       try {
         const result = await MedicalRecordAccessRequest.findAndCountAll({
@@ -220,9 +209,8 @@ class AccessController {
           });
           requests = result.rows;
           total = result.count;
-          console.log('getAccessRequests: query successful. Total requests:', total);
         } catch (dbError) {
-          console.error('getAccessRequests: Database query error:', dbError);
+          logger.error('Database query error in getAccessRequests', { error: dbError.message });
           return res.status(500).json({
             success: false,
             message: 'Database query failed',
@@ -244,7 +232,7 @@ class AccessController {
       });
 
     } catch (error) {
-      console.error('Get access requests error (outer catch):', error);
+      logger.error('Error in getAccessRequests', { error: error.message });
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -313,7 +301,7 @@ class AccessController {
       });
 
     } catch (error) {
-      console.error('Get access request by ID error:', error);
+      logger.error('Error getting access request by ID', { error: error.message });
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -435,7 +423,7 @@ class AccessController {
       });
 
     } catch (error) {
-      console.error('Update access request error:', error);
+      logger.error('Error updating access request', { error: error.message });
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -491,7 +479,7 @@ class AccessController {
       });
 
     } catch (error) {
-      console.error('Cancel access request error:', error);
+      logger.error('Error cancelling access request', { error: error.message });
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -529,9 +517,6 @@ class AccessController {
 
       const offset = (parseInt(page) - 1) * parseInt(limit);
 
-      console.log('getRequestsForPatient: where clause:', where);
-      console.log('getRequestsForPatient: include models:', ['requester']);
-
       let requests, total;
       try {
         const result = await MedicalRecordAccessRequest.findAndCountAll({
@@ -549,9 +534,8 @@ class AccessController {
         });
         requests = result.rows;
         total = result.count;
-        console.log('getRequestsForPatient: query successful. Total requests:', total);
       } catch (dbError) {
-        console.error('getRequestsForPatient: Database query error:', dbError);
+        logger.error('Database query error in getRequestsForPatient', { error: dbError.message });
         return res.status(500).json({
           success: false,
           message: 'Database query failed',
@@ -573,7 +557,7 @@ class AccessController {
       });
 
     } catch (error) {
-      console.error('Get requests for patient error (outer catch):', error);
+      logger.error('Error in getRequestsForPatient', { error: error.message });
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -611,9 +595,6 @@ class AccessController {
 
       const offset = (parseInt(page) - 1) * parseInt(limit);
 
-      console.log('getRequestsByRequester: where clause:', where);
-      console.log('getRequestsByRequester: include models:', ['patient']);
-
       let requests, total;
       try {
         const result = await MedicalRecordAccessRequest.findAndCountAll({
@@ -631,9 +612,8 @@ class AccessController {
         });
         requests = result.rows;
         total = result.count;
-        console.log('getRequestsByRequester: query successful. Total requests:', total);
       } catch (dbError) {
-        console.error('getRequestsByRequester: Database query error:', dbError);
+        logger.error('Database query error in getRequestsByRequester', { error: dbError.message });
         return res.status(500).json({
           success: false,
           message: 'Database query failed',
@@ -655,7 +635,7 @@ class AccessController {
       });
 
     } catch (error) {
-      console.error('Get requests by requester error (outer catch):', error);
+      logger.error('Error in getRequestsByRequester', { error: error.message });
       res.status(500).json({
         success: false,
         message: 'Internal server error',
@@ -709,7 +689,7 @@ class AccessController {
       });
 
     } catch (error) {
-      console.error('Check medical record access error:', error);
+      logger.error('Error checking medical record access', { error: error.message });
       res.status(500).json({
         success: false,
         message: 'Internal server error',

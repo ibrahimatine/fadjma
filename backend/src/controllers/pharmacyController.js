@@ -29,9 +29,9 @@ exports.getPrescriptionByMatricule = async (req, res) => {
     const { id: pharmacyId } = req.user;
 
     // Validation du format du matricule
-    if (!matricule || !/^PRX-\d{8}-[A-F0-9]{4}$/.test(matricule)) {
+    if (!matricule || !/^PRX-\d{8}-[A-F0-9]{8}$/.test(matricule)) {
       return res.status(400).json({
-        message: 'Format de matricule invalide. Format attendu: PRX-YYYYMMDD-XXXX'
+        message: 'Format de matricule invalide. Format attendu: PRX-YYYYMMDD-XXXXXXXX'
       });
     }
 
@@ -263,10 +263,10 @@ exports.confirmDeliveryByMatricule = async (req, res) => {
     console.log(`🏪 Tentative de délivrance par matricule: ${matricule} - Pharmacie: ${pharmacyId}`);
 
     // Validation du format du matricule
-    if (!matricule || !/^PRX-\d{8}-[A-F0-9]{4}$/.test(matricule)) {
+    if (!matricule || !/^PRX-\d{8}-[A-F0-9]{8}$/.test(matricule)) {
       return res.status(400).json({
         success: false,
-        message: 'Format de matricule invalide. Format attendu: PRX-YYYYMMDD-XXXX'
+        message: 'Format de matricule invalide. Format attendu: PRX-YYYYMMDD-XXXXXXXX'
       });
     }
 
@@ -398,10 +398,10 @@ exports.getMedicationsByOrdonnanceMatricule = async (req, res) => {
     const { matricule } = req.params;
     const { id: pharmacyId } = req.user;
 
-    // Validation du format du matricule d'ordonnance
-    if (!matricule || !/^ORD-\d{8}-[A-F0-9]{4}$/.test(matricule)) {
+    // Validation du format du matricule d'ordonnance (4-8 caractères pour compatibilité)
+    if (!matricule || !/^ORD-\d{8}-[A-F0-9]{4,8}$/.test(matricule)) {
       return res.status(400).json({
-        message: 'Format de matricule invalide. Format attendu: ORD-YYYYMMDD-XXXX'
+        message: 'Format de matricule invalide. Format attendu: ORD-YYYYMMDD-XXXX ou ORD-YYYYMMDD-XXXXXXXX'
       });
     }
 

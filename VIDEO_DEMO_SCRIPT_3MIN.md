@@ -19,9 +19,9 @@
 
 **TEXTE À DIRE:**
 
-> "Bonjour! Je suis Ibrahima Tine, et voici Cheikh Mounirou Diouf. Nous sommes développeurs full-stack certifiés Hedera chez Zone01 Dakar, au Sénégal."
+> "Bonjour! Je suis Ibrahima Tine. Mon co-equipe et moi  sommes développeurs full-stack certifiés chez Zone01 Dakar, au Sénégal."
 
-> "Aujourd'hui, nous vous présentons **FADJMA** - notre solution pour sécuriser les prescriptions médicales en Afrique avec Hedera Consensus Service."
+> "Aujourd'hui, nous vous présentons **FADJMA** - notre solution pour sécuriser les donnees médicales en Afrique avec Hedera Consensus Service."
 
 **ACTIONS ÉCRAN:**
 - 0:00-0:05: Afficher logo FADJMA + noms de l'équipe

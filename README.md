@@ -310,6 +310,12 @@ if (message.consensus_timestamp && message.message) {
 
 ## 🏗️ Architecture Système
 
+### 📐 Architecture Diagram (Mandatory Hackathon Requirement)
+
+**This diagram shows the complete data flow between:**
+- Frontend (React UI) → Backend (Node.js API) → Hedera Network (HCS + Mirror Nodes)
+- All Hedera integration points are explicitly labeled
+
 ### Diagramme de Flux de Données
 
 ```
@@ -413,79 +419,230 @@ Médecin                Backend              Hedera Network          Pharmacie
 
 ## 🚀 Installation & Tests
 
-### Option 1: Docker (Recommended - 5 minutes) 🐳
+---
 
-The menu script can automatically create and open the `.env` file for you!
+## 🎯 **FOR HACKATHON JUDGES: 3-Minute Quick Start** ⚡
 
-#### 1. Launch the Menu or Quick Start For Judge 
+**This section is specifically designed for Hedera Africa Hackathon 2025 judges to deploy and test FADJMA with minimal effort.**
 
-### Option 1: Docker (Recommandé - 5 Minutes) 🐳
+### Prerequisites Check (30 seconds)
+```bash
+# Verify Docker is installed and running
+docker --version          # Should show 20.10+
+docker-compose --version  # Should show 1.29+
+sudo docker info          # Should show running daemon
+```
 
-**Avantages:** Configuration automatique, SQLite inclus, zéro configuration manuelle.
-## 🅱️ Option A: Automatic Configuration without Hedera credential(Guided by menu)
+### Quick Deployment - Choose Your Path
 
-The menu script can automatically create and open the `.env` file for you!
+---
 
-#### 1. Launch the Menu
+#### 🅰️ **Option A: Manual Configuration** (Recommended for clarity)
+
+**Step 1: Configure Hedera Credentials FIRST**
+
+```bash
+# Clone repository
+git clone https://github.com/votre-org/fadjma.git
+cd fadjma
+
+# Copy environment template
+cp .env.example .env
+
+# Edit with your Hedera credentials
+nano .env  # or vim, code, etc.
+```
+
+**Required credentials in `.env`:**
+```env
+HEDERA_ECDSA_ACCOUNT_ID=0.0.xxxxxx          # Your account ID
+HEDERA_ECDSA_PRIVATE_KEY=3030020100...      # Your ECDSA private key
+HEDERA_ECDSA_TOPIC_ID=0.0.xxxxxx            # Your topic ID
+```
+
+**Step 2: Launch with Docker**
+
+```bash
+# Start services
+./dev-menu.sh
+# Choose: 1 (Start frontend and backend)
+# Choose: 4 (Initialize database + Seed)
+# Select: 1 (Seed complet)
+
+# Access application
+open http://localhost:3000
+```
+
+---
+
+#### 🅱️ **Option B: Automatic Configuration** (Guided by menu)
+
+```bash
+# Clone and launch
+git clone https://github.com/votre-org/fadjma.git
+cd fadjma
+./dev-menu.sh
+
+# The menu will:
+# 1. Detect missing .env and offer to create it
+# 2. Automatically open nano for you to edit credentials
+# 3. Start Docker services after configuration
+# 4. Initialize database with test data
+```
+
+**Follow prompts:**
+1. Press Enter when asked to copy `.env.example` → `.env`
+2. Press Enter to edit `.env` in nano
+3. Add your Hedera credentials (Account ID, Private Key, Topic ID)
+4. Save (Ctrl+O, Enter) and Exit (Ctrl+X)
+5. Services start automatically!
+
+---
+
+### Test Accounts (Pre-configured)
+
+| Role | Email | Password |
+|------|-------|----------|
+| **Doctor** | `dr.martin@fadjma.com` | `Demo2024!` |
+| **Patient** | `jean.dupont@demo.com` | `Demo2024!` |
+| **Pharmacist** | `pharmacie.centrale@fadjma.com` | `Demo2024!` |
+| **Admin** | `admin@fadjma.com` | `Admin2024!` |
+
+---
+
+### 🎬 5-Minute Demo Path for Judges
+
+**1. Login as Doctor** (http://localhost:3000)
+```
+Email: dr.martin@fadjma.com
+Password: Demo2024!
+```
+
+**2. Create Medical Record**
+- Click "Créer un dossier médical"
+- Fill: Patient (Jean Dupont), Type (Cardiology), Diagnosis, Prescription
+- Click "Créer et ancrer sur Hedera"
+- **Result:** Transaction ID displayed + Anchored on Hedera
+
+**3. Verify on Hedera Blockchain**
+- Click "Verify Integrity" button in the created record
+- **See:** Transaction ID, Sequence Number, HashScan link
+- Click HashScan link → Opens https://hashscan.io/testnet/topic/0.0.6854064
+- **Verify:** Complete medical data visible (not just hash!)
+
+**4. Test Prescription Workflow**
+- Create prescription in the medical record
+- Logout → Login as Pharmacist (`pharmacie.centrale@fadjma.com` / `Demo2024!`)
+- Search prescription by matricule
+- **Result:** Verified on Hedera, complete traceability
+
+---
+
+### ⛓️ Live Hedera Verification
+
+**Your transactions will appear here:**
+- **HashScan:** https://hashscan.io/testnet/topic/YOUR_TOPIC_ID
+- **Mirror Node API:** https://testnet.mirrornode.hedera.com/api/v1/topics/YOUR_TOPIC_ID/messages
+
+**What's anchored:**
+- ✅ Complete medical data (NOT just hashes)
+- ✅ Prescription details with medications
+- ✅ Vital signs and symptoms
+- ✅ Doctor, patient, diagnosis information
+- ✅ 400% more data than traditional anchoring
+
+---
+
+### 🧹 Cleanup After Testing
+
+```bash
+# Stop services (keep data)
+sudo docker-compose down
+
+# Remove everything (including database)
+sudo docker-compose down -v
+```
+
+---
+
+### 📚 Full Documentation
+
+For detailed setup, troubleshooting, and architecture:
+- 📖 **Complete Quick Start:** [QUICK_START_FOR_JUDGES.md](QUICK_START_FOR_JUDGES.md)
+- 🐳 **Docker Setup:** [docs/DOCKER_SETUP.md](docs/DOCKER_SETUP.md)
+- 🏗️ **Architecture:** [ARCHITECTURE.md](ARCHITECTURE.md)
+
+---
+
+## 🚀 Installation for Developers
+
+### Option 1: Docker Deployment (Recommended - 5 minutes) 🐳
+
+**Advantages:** Automatic configuration, SQLite included, zero manual setup, production-ready.
 
 ```bash
 ./dev-menu.sh
 ```
 
-📖 **For judge , Quick start Documentation:** [docs/QUICK_START_FOR_JUDGES.md](docs/QUICK_START_FOR_JUDGES.md)
-
-**Documentation Complète:** [docs/DOCKER_SETUP.md](docs/DOCKER_SETUP.md)
+📖 **Documentation Complète:** [docs/DOCKER_SETUP.md](docs/DOCKER_SETUP.md)
 
 ---
 
-### Option 2: Installation Manuelle (Développement - 15 Minutes)
+### Option 2: Manual Installation (Development - 15 Minutes)
 
-#### Prérequis
+#### Prerequisites
 ```bash
-node --version  # 18+ requis
-npm --version   # 8+ requis
+node --version  # 18+ required
+npm --version   # 8+ required
 ```
 
-#### Installation Backend
+#### Backend Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/fadjma.git
-# Backend setup
-cd backend
-# 1. Cloner le repository
+# 1. Clone repository
 git clone https://github.com/votre-org/fadjma.git
 cd fadjma/backend
 
-# 2. Installer les dépendances
+# 2. Install dependencies
 npm install
 
-# 3. Configurer l'environnement
+# 3. Configure environment
 cp .env.example .env
-nano .env  # Éditer avec vos credentials Hedera
+nano .env  # Edit with your Hedera credentials
 
-# 4. Initialiser SQLite et charger les données de test
+# 4. Initialize SQLite and load test data
 npm run init:sqlite
 npm run seed:clean
 
-# 5. Démarrer le backend
+# 5. Start backend
 npm run dev
-# Serveur lancé sur http://localhost:5000
 ```
 
-#### Installation Frontend
+**Running Environment (Backend):**
+- ✅ **Server URL:** http://localhost:5000
+- ✅ **Health Check:** http://localhost:5000/api/health
+  - Expected response: `{"status":"ok","hedera":"connected"}`
+- ✅ **Database:** SQLite file created at `backend/data/database.sqlite`
+- ✅ **Hedera Connection:** Logs should show "✅ Hedera client initialized"
+
+#### Frontend Installation
 
 ```bash
-# Dans un nouveau terminal
+# In a new terminal
 cd fadjma/frontend
 
-# 1. Installer les dépendances
+# 1. Install dependencies
 npm install
 
-# 2. Démarrer le frontend
+# 2. Start frontend
 npm start
-# Application lancée sur http://localhost:3000
 ```
+
+**Running Environment (Frontend):**
+- ✅ **Application URL:** http://localhost:3000
+- ✅ **Login Page:** Should load immediately
+- ✅ **API Connection:** Frontend connects to http://localhost:5000
+- ✅ **Hot Reload:** Enabled for development
 
 ---
 
@@ -527,10 +684,50 @@ HEDERA_RATE_LIMITER_ENABLED=true
 FRONTEND_URL=http://localhost:3000
 ```
 
-**⚠️ SÉCURITÉ:**
-- **NE JAMAIS** commit les clés privées dans Git
-- Utiliser `.env.example` pour la structure
-- Les juges: Credentials de test fournis séparément sur DoraHacks
+---
+
+### 🔐 Security & Judge Access Credentials (Mandatory Hackathon Requirement)
+
+**IMPORTANT FOR HACKATHON JUDGES:**
+
+**How to access test credentials:**
+
+1. **Test Hedera Account provided in DoraHacks submission notes:**
+   - Account ID with small amount of tℏ for testing
+   - Private key shared securely (NOT in this repository)
+   - Topic ID for message verification
+
+2. **`.env.example` structure:**
+   - Shows the required variable names and format
+   - NO actual secrets committed to Git
+   - Judges: Copy `.env.example` to `.env` and use credentials from DoraHacks
+
+**Security Practices:**
+- ❌ **NO private keys committed** to this public repository
+- ✅ All secrets managed via `.env` file (gitignored)
+- ✅ `.env.example` shows structure only
+- ✅ Test credentials shared securely via DoraHacks platform
+- ✅ Production keys stored in secure environment variables
+
+**Hedera Developer Certification (Mandatory):**
+- ✅ **Team Member Certified:** Cheikh Mounirou Diouf
+- 📜 **Certificate:** [View Official Certificate](https://certs.hashgraphdev.com/7136d939-5f09-483f-a93f-19e7d504f314.pdf)
+- 🎓 **Completion Date:** 2025
+- ✅ Meets hackathon requirement: At least one certified team member
+
+**For Judges - Quick Setup:**
+```bash
+# 1. Copy template
+cp .env.example .env
+
+# 2. Edit with credentials from DoraHacks submission
+nano .env
+
+# 3. Required values (provided in DoraHacks):
+#    HEDERA_ECDSA_ACCOUNT_ID=0.0.xxxxxx
+#    HEDERA_ECDSA_PRIVATE_KEY=3030020100...
+#    HEDERA_ECDSA_TOPIC_ID=0.0.xxxxxx
+```
 
 ---
 
@@ -788,10 +985,10 @@ Email: radio@fadjma.com         | Mot de passe: Demo2024!
 
 **Cheikh Mounirou Diouf** - Développeur Full-Stack
 - 🎓 Zone01 Dakar (École 01)
-- 🏅 **Hedera Developer Certified**
+- 🏅 **Hedera Developer Certified** - [View Certificate](https://certs.hashgraphdev.com/7136d939-5f09-483f-a93f-19e7d504f314.pdf)
 - 💻 Expertise: Frontend React, UI/UX, Intégration Hedera
-- 📧 Email: [email protected]
-- 🔗 GitHub: [@username]
+- 📧 Email: dioufmounirou76@gmail.com
+- 🔗 GitHub: [@cheikh-nakamoto](https://github.com/cheikh-nakamoto)
 
 **Contribution:**
 - Ibrahima: 50% (Backend, Hedera Integration, Architecture, Tests)

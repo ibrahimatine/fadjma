@@ -211,6 +211,66 @@ export const PharmaceuticalCounseling = ({ prescription, onNext, onDataChange })
           )}
         </div>
       )}
+
+      {/* Bouton pour passer l'étape si nécessaire */}
+      {!allPointsCovered && (
+        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <p className="text-sm text-yellow-800 mb-3">
+            ⚠️ Certains points obligatoires n'ont pas encore été abordés.
+            Assurez-vous de les cocher tous avant de continuer.
+          </p>
+          <button
+            onClick={() => {
+              // Marquer tous les points comme complétés
+              const allComplete = {
+                posology: true,
+                sideEffects: true,
+                interactions: true,
+                storage: true,
+                missedDose: true
+              };
+              setCounselingPoints(allComplete);
+              setLeafletGiven(true);
+              setUnderstandingConfirmed(true);
+              onDataChange({
+                counselingPoints: allComplete,
+                patientQuestions,
+                leafletGiven: true,
+                understandingConfirmed: true,
+                skipped: true
+              });
+              toast('Étape complétée automatiquement', { icon: '⚡' });
+            }}
+            className="w-full bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition-colors font-medium"
+          >
+            ⚡ Compléter automatiquement et continuer
+          </button>
+        </div>
+      )}
+
+      {allPointsCovered && !(leafletGiven && understandingConfirmed) && (
+        <div className="mt-6 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+          <p className="text-sm text-orange-800 mb-3">
+            ⚠️ Veuillez confirmer la remise de la notice et la compréhension du patient.
+          </p>
+          <button
+            onClick={() => {
+              setLeafletGiven(true);
+              setUnderstandingConfirmed(true);
+              onDataChange({
+                counselingPoints,
+                patientQuestions,
+                leafletGiven: true,
+                understandingConfirmed: true
+              });
+              toast.success('Confirmations enregistrées');
+            }}
+            className="w-full bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors font-medium"
+          >
+            ✓ Confirmer et continuer
+          </button>
+        </div>
+      )}
     </div>
   );
 };

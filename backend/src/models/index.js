@@ -11,6 +11,7 @@ const Appointment = require('./Appointment');
 const Specialty = require('./Specialty');
 const DoctorSpecialty = require('./DoctorSpecialty');
 const DoctorAvailability = require('./DoctorAvailability');
+const HederaTransaction = require('./HederaTransaction');
 
 // Définir les associations avec BaseUser
 BaseUser.hasMany(MedicalRecord, {
@@ -81,5 +82,6 @@ module.exports = {
   Appointment,
   Specialty,
   DoctorSpecialty,
-  DoctorAvailability
+  DoctorAvailability,
+  HederaTransaction
 };

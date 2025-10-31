@@ -9,9 +9,9 @@ const OrdonnanceSearch = ({ onOrdonnanceFound }) => {
   const [error, setError] = useState("");
   const [result, setResult] = useState(null);
 
-  // Validation du format matricule en temps réel
+  // Validation du format matricule en temps réel (4-8 caractères pour compatibilité)
   const isValidFormat = (value) => {
-    return /^ORD-\d{8}-[A-F0-9]{4}$/.test(value);
+    return /^ORD-\d{8}-[A-F0-9]{4,8}$/.test(value);
   };
 
   const formatMatricule = (value) => {
@@ -21,10 +21,11 @@ const OrdonnanceSearch = ({ onOrdonnanceFound }) => {
     // Ajouter ORD- au début si pas présent
     let formatted = clean.startsWith('ORD') ? clean : 'ORD' + clean;
 
-    // Formater selon le pattern ORD-YYYYMMDD-XXXX
+    // Formater selon le pattern ORD-YYYYMMDD-XXXX ou ORD-YYYYMMDD-XXXXXXXX
     if (formatted.length <= 3) return formatted;
     if (formatted.length <= 11) return formatted.slice(0, 3) + '-' + formatted.slice(3);
-    return formatted.slice(0, 3) + '-' + formatted.slice(3, 11) + '-' + formatted.slice(11, 15);
+    // Accepte de 4 à 8 caractères hexadécimaux
+    return formatted.slice(0, 3) + '-' + formatted.slice(3, 11) + '-' + formatted.slice(11, Math.min(19, formatted.length));
   };
 
   const handleInputChange = (e) => {
@@ -42,7 +43,7 @@ const OrdonnanceSearch = ({ onOrdonnanceFound }) => {
     }
 
     if (!isValidFormat(matricule)) {
-      setError("Format invalide. Exemple: ORD-20240125-A1B2");
+      setError("Format invalide. Exemple: ORD-20240125-A1B2 ou ORD-20240125-A1B2C3D4");
       return;
     }
 
@@ -137,7 +138,7 @@ const OrdonnanceSearch = ({ onOrdonnanceFound }) => {
               value={matricule}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder="ORD-20240125-A1B2"
+              placeholder="ORD-20240125-A1B2 ou ORD-20240125-A1B2C3D4"
               className={`w-full pl-12 pr-12 py-3 text-lg font-mono rounded-lg border-2 transition-colors ${
                 error
                   ? "border-red-300 bg-red-50 focus:border-red-500 focus:ring-red-200"
@@ -145,7 +146,7 @@ const OrdonnanceSearch = ({ onOrdonnanceFound }) => {
                   ? "border-blue-300 bg-blue-50 focus:border-blue-500 focus:ring-blue-200"
                   : "border-gray-200 bg-white focus:border-blue-500 focus:ring-blue-200"
               } focus:outline-none focus:ring-2`}
-              maxLength={17}
+              maxLength={21} // Max 21 pour 8 caractères hex
               disabled={searching}
             />
 
@@ -173,7 +174,7 @@ const OrdonnanceSearch = ({ onOrdonnanceFound }) => {
                   ) : (
                     <>
                       <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                      <span className="text-yellow-600">Format: ORD-YYYYMMDD-XXXX</span>
+                      <span className="text-yellow-600">Format: ORD-YYYYMMDD-XXXX ou ORD-YYYYMMDD-XXXXXXXX</span>
                     </>
                   )}
                 </>
@@ -181,7 +182,7 @@ const OrdonnanceSearch = ({ onOrdonnanceFound }) => {
             </div>
 
             <div className="text-sm text-gray-500">
-              {matricule.length}/17
+              {matricule.length}/21
             </div>
           </div>
         </div>
@@ -283,7 +284,7 @@ const OrdonnanceSearch = ({ onOrdonnanceFound }) => {
         <ul className="text-sm text-blue-700 space-y-1">
           <li>• Le matricule d'ordonnance (ORD-...) regroupe tous les médicaments</li>
           <li>• Chaque médicament a son propre matricule (PRX-...)</li>
-          <li>• Format: ORD-AAAAMMJJ-XXXX (année-mois-jour + code)</li>
+          <li>• Format: ORD-AAAAMMJJ-XXXX (ancien) ou ORD-AAAAMMJJ-XXXXXXXX (nouveau)</li>
         </ul>
       </div>
     </div>

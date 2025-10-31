@@ -19,7 +19,7 @@ router.use(auth);
 // Get doctor dashboard statistics
 router.get(
   '/stats',
-  authorize(['doctor']), // Only doctors can access these stats
+  authorize(['doctor', 'admin']), // Only doctors and admins can access these stats
   recordController.getDoctorStats
 );
 

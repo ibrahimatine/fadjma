@@ -4,6 +4,7 @@ const medicalRecordService = require('../services/medicalRecordService'); // Add
 const monitoringService = require('../services/monitoringService');
 const { validationResult } = require('express-validator');
 const { Op } = require('sequelize');
+const logger = require('../utils/logger');
 
 exports.getAll = async (req, res) => {
   try {
@@ -115,7 +116,7 @@ exports.getAll = async (req, res) => {
       totalPages: Math.ceil(records.count / limit)
     });
   } catch (error) {
-    console.error('Get records error:', error);
+    logger.error('Error getting records', { error: error.message });
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -228,7 +229,7 @@ exports.getGroupedByPatient = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get grouped records error:', error);
+    logger.error('Error getting grouped records', { error: error.message });
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -272,7 +273,7 @@ exports.getById = async (req, res) => {
     
     res.json(record);
   } catch (error) {
-    console.error('Get record error:', error);
+    logger.error('Error getting record', { error: error.message });
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
@@ -333,6 +334,7 @@ exports.create = async (req, res) => {
         success: false
       });
     }
+
     
     // Create record
     const startTime = Date.now();
@@ -346,6 +348,9 @@ exports.create = async (req, res) => {
       prescription,
       metadata: metadata || {}
     });
+
+    console.log("<==================log 4 =======================>")
+
 
     // Record database operation metrics
     const queryTime = Date.now() - startTime;
@@ -398,16 +403,8 @@ exports.create = async (req, res) => {
         const anchorPromises = createdPrescriptions.map(async (prescriptionRecord) => {
           try {
             console.log(`🔗 Ancrage prescription ${prescriptionRecord.matricule} sur Hedera...`);
-            const prescriptionHederaResult = await hederaService.anchorRecord({
-              id: prescriptionRecord.id,
-              patientId: prescriptionRecord.patientId,
-              doctorId: prescriptionRecord.doctorId,
-              type: 'prescription',
-              medication: prescriptionRecord.medication,
-              dosage: prescriptionRecord.dosage,
-              matricule: prescriptionRecord.matricule,
-              issueDate: prescriptionRecord.issueDate
-            });
+           const prescriptionHederaResult = await hederaService.anchorRecord(prescriptionRecord);
+            console.log("<===================Blocker==============================>")
 
             // Mettre à jour avec les infos Hedera
             await prescriptionRecord.update({
@@ -579,6 +576,12 @@ exports.update = async (req, res) => {
     }
     
     // Update record
+    console.log("<================================================>")
+    console.log("<================================================>")
+
+    console.log('Updating record with data:', req.body);
+    console.log("<================================================>")
+    console.log("<================================================>")
     await record.update(req.body);
     
     // Re-anchor to Hedera

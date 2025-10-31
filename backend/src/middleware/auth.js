@@ -34,6 +34,10 @@ module.exports = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const baseUser = await BaseUser.findByPk(decoded.id);
+    console.log("<+=================log 1 =======================>");
+    console.log("Decoded JWT:", decoded);
+    console.log("BaseUser fetched:", baseUser);
+    console.log("<+=================log 2 =======================>");
 
     if (!baseUser || !baseUser.isActive) {
       return res.status(401).json({ message: 'User not found or inactive' });

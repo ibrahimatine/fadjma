@@ -56,15 +56,15 @@ const validateMatriculeAccess = (req, res, next) => {
   }
 
   // Validation du format du matricule (PRX pour médicaments, ORD pour ordonnances)
-  const isPrescriptionMatricule = /^PRX-\d{8}-[A-F0-9]{4}$/.test(matricule);
-  const isOrdonnanceMatricule = /^ORD-\d{8}-[A-F0-9]{4}$/.test(matricule);
+  const isPrescriptionMatricule = /^PRX-\d{8}-[A-F0-9]{8}$/.test(matricule);
+  const isOrdonnanceMatricule = /^ORD-\d{8}-[A-F0-9]{4,8}$/.test(matricule); // 4-8 chars pour compatibilité
 
   if (!matricule || (!isPrescriptionMatricule && !isOrdonnanceMatricule)) {
     logger.warn(`Format de matricule invalide: ${matricule} par pharmacie ${pharmacyId}`);
     return res.status(400).json({
       message: 'Format de matricule invalide',
       code: 'INVALID_MATRICULE_FORMAT',
-      expected: 'PRX-YYYYMMDD-XXXX (médicament) ou ORD-YYYYMMDD-XXXX (ordonnance)'
+      expected: 'PRX-YYYYMMDD-XXXXXXXX (médicament) ou ORD-YYYYMMDD-XXXX/XXXXXXXX (ordonnance)'
     });
   }
 

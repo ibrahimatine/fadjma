@@ -1,18 +1,18 @@
-const hederaClient = require('../config/hedera');
-const hashService = require('./hashService');
-const monitoringService = require('./monitoringService');
-const hashscanService = require('./hashscanService');
-const compressionService = require('./compressionService');
-const rateLimiterService = require('./rateLimiterService');
-const batchAggregatorService = require('./batchAggregatorService');
-const logger = require('../utils/logger');
+const hederaClient = require("../config/hedera");
+const hashService = require("./hashService");
+const monitoringService = require("./monitoringService");
+const hashscanService = require("./hashscanService");
+const compressionService = require("./compressionService");
+const rateLimiterService = require("./rateLimiterService");
+const batchAggregatorService = require("./batchAggregatorService");
+const logger = require("../utils/logger");
 
 class HederaService {
   constructor() {
     this.retryAttempts = 3;
     this.retryDelay = 2000; // 2 secondes
-    this.useBatching = process.env.HEDERA_USE_BATCHING !== 'false'; // Activé par défaut
-    this.useCompression = process.env.HEDERA_USE_COMPRESSION !== 'false'; // Activé par défaut
+    this.useBatching = process.env.HEDERA_USE_BATCHING !== "false"; // Activé par défaut
+    this.useCompression = process.env.HEDERA_USE_COMPRESSION !== "false"; // Activé par défaut
 
     // Écouter les événements de batch
     this.setupBatchListener();
@@ -22,11 +22,11 @@ class HederaService {
    * Configure l'écoute des batches prêts à être ancrés
    */
   setupBatchListener() {
-    batchAggregatorService.on('batch-ready', async (batchData) => {
+    batchAggregatorService.on("batch-ready", async (batchData) => {
       try {
         await this.anchorBatch(batchData.batch, batchData.type);
       } catch (error) {
-        logger.error('Error anchoring batch:', error);
+        logger.error("Error anchoring batch:", error);
       }
     });
   }
@@ -35,15 +35,15 @@ class HederaService {
    * Ancre une prescription sur Hedera (OPTIMISÉ - hash only)
    * Les données complètes restent en DB, seul le hash est ancré
    */
-  async anchorPrescription(prescription, actionType = 'CREATED') {
+  async anchorPrescription(prescription, actionType = "CREATED") {
     const startTime = Date.now();
 
-    logger.logServerAction('HEDERA', 'PRESCRIPTION_ANCHOR_START', {
+    logger.logServerAction("HEDERA", "PRESCRIPTION_ANCHOR_START", {
       prescriptionId: prescription.id,
       matricule: prescription.matricule,
       actionType: actionType,
       useBatching: this.useBatching,
-      success: true
+      success: true,
     });
 
     try {
@@ -59,7 +59,7 @@ class HederaService {
         deliveryStatus: prescription.deliveryStatus,
         pharmacyId: prescription.pharmacyId,
         issueDate: prescription.issueDate,
-        actionType: actionType
+        actionType: actionType,
       };
 
       const hash = hashService.generateDataHash(prescriptionData);
@@ -67,23 +67,26 @@ class HederaService {
       // Update prescription avec le hash (avant anchoring)
       await prescription.update({
         hash: hash,
-        lastVerifiedAt: new Date()
+        lastVerifiedAt: new Date(),
       });
 
       // Si batching activé, ajouter au batch
       if (this.useBatching) {
-        const batchResult = await batchAggregatorService.addToBatch('PRESCRIPTION', {
-          id: prescription.id,
-          matricule: prescription.matricule,
-          actionType: actionType,
-          ...prescriptionData
-        });
+        const batchResult = await batchAggregatorService.addToBatch(
+          "PRESCRIPTION",
+          {
+            id: prescription.id,
+            matricule: prescription.matricule,
+            actionType: actionType,
+            ...prescriptionData,
+          }
+        );
 
-        logger.logServerAction('HEDERA', 'PRESCRIPTION_BATCHED', {
+        logger.logServerAction("HEDERA", "PRESCRIPTION_BATCHED", {
           prescriptionId: prescription.id,
-          hash: hash.substring(0, 16) + '...',
+          hash: hash.substring(0, 16) + "...",
           batchSize: batchResult.currentBatchSize,
-          success: true
+          success: true,
         });
 
         return {
@@ -91,16 +94,16 @@ class HederaService {
           batched: true,
           hash: hash,
           batchSize: batchResult.currentBatchSize,
-          responseTime: Date.now() - startTime
+          responseTime: Date.now() - startTime,
         };
       }
 
       // Sinon, ancrer directement (hash only avec compression)
-      const result = await this.anchorHashDirect(hash, 'PRESCRIPTION', {
+      const result = await this.anchorHashDirect(hash, "PRESCRIPTION", {
         prescriptionId: prescription.id,
         matricule: prescription.matricule,
         actionType: actionType,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Update prescription avec les infos Hedera
@@ -108,18 +111,18 @@ class HederaService {
         hederaTransactionId: result.transactionId,
         hederaSequenceNumber: result.sequenceNumber,
         hederaTopicId: result.topicId,
-        hederaTimestamp: result.consensusTimestamp
+        hederaTimestamp: result.consensusTimestamp,
       });
 
       const responseTime = Date.now() - startTime;
 
-      logger.logServerAction('HEDERA', 'PRESCRIPTION_ANCHOR_SUCCESS', {
+      logger.logServerAction("HEDERA", "PRESCRIPTION_ANCHOR_SUCCESS", {
         prescriptionId: prescription.id,
         transactionId: result.transactionId,
         sequenceNumber: result.sequenceNumber,
         responseTime: responseTime,
         compressed: result.compressed,
-        success: true
+        success: true,
       });
 
       return {
@@ -130,14 +133,13 @@ class HederaService {
         topicId: result.topicId,
         hash: hash,
         responseTime: responseTime,
-        compressed: result.compressed
+        compressed: result.compressed,
       };
-
     } catch (error) {
-      logger.logServerAction('HEDERA', 'PRESCRIPTION_ANCHOR_FAILED', {
+      logger.logServerAction("HEDERA", "PRESCRIPTION_ANCHOR_FAILED", {
         prescriptionId: prescription.id,
         error: error.message,
-        success: false
+        success: false,
       });
 
       throw new Error(`Échec ancrage prescription: ${error.message}`);
@@ -160,7 +162,7 @@ class HederaService {
           hash: hash,
           type: messageType,
           ...metadata,
-          version: '3.0' // Version 3.0 = hash only
+          version: "3.0", // Version 3.0 = hash only
         };
 
         // Compresser si activé
@@ -168,7 +170,8 @@ class HederaService {
         let compressed = false;
 
         if (this.useCompression) {
-          const compressionResult = await compressionService.compressHederaMessage(messageData);
+          const compressionResult =
+            await compressionService.compressHederaMessage(messageData);
           message = JSON.stringify(compressionResult);
           compressed = compressionResult.c;
         } else {
@@ -180,32 +183,33 @@ class HederaService {
           return await Promise.race([
             hederaClient.submitMessage(message, messageType),
             new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Timeout Hedera')), 15000)
-            )
+              setTimeout(() => reject(new Error("Timeout Hedera")), 15000)
+            ),
           ]);
         });
 
         return {
           ...result,
           compressed: compressed,
-          attempt: attempt
+          attempt: attempt,
         };
-
       } catch (error) {
         lastError = error;
 
         if (attempt < this.retryAttempts) {
-          logger.logServerAction('HEDERA', 'ANCHOR_RETRY', {
+          logger.logServerAction("HEDERA", "ANCHOR_RETRY", {
             attempt: attempt,
             error: error.message,
-            success: false
+            success: false,
           });
-          await new Promise(resolve => setTimeout(resolve, this.retryDelay));
+          await new Promise((resolve) => setTimeout(resolve, this.retryDelay));
         }
       }
     }
 
-    throw new Error(`Échec après ${this.retryAttempts} tentatives: ${lastError.message}`);
+    throw new Error(
+      `Échec après ${this.retryAttempts} tentatives: ${lastError.message}`
+    );
   }
 
   /**
@@ -213,39 +217,42 @@ class HederaService {
    */
   async anchorBatch(batch, batchType) {
     try {
-      logger.info('Anchoring batch to Hedera', {
+      logger.info("Anchoring batch to Hedera", {
         batchId: batch.metadata.batchId,
         type: batchType,
         itemCount: batch.metadata.itemCount,
-        merkleRoot: batch.merkleRoot.substring(0, 16) + '...'
+        merkleRoot: batch.merkleRoot.substring(0, 16) + "...",
       });
 
       const batchMessage = {
         batchId: batch.metadata.batchId,
         merkleRoot: batch.merkleRoot,
         itemCount: batch.metadata.itemCount,
-        type: 'BATCH',
+        type: "BATCH",
         batchType: batchType,
         timestamp: batch.metadata.timestamp,
-        version: '3.0'
+        version: "3.0",
       };
 
       // Ancrer le batch
-      const result = await this.anchorHashDirect(batch.merkleRoot, 'BATCH', batchMessage);
+      const result = await this.anchorHashDirect(
+        batch.merkleRoot,
+        "BATCH",
+        batchMessage
+      );
 
-      logger.info('Batch anchored successfully', {
+      logger.info("Batch anchored successfully", {
         batchId: batch.metadata.batchId,
         transactionId: result.transactionId,
-        topicId: result.topicId
+        topicId: result.topicId,
       });
 
       // TODO: Sauvegarder les preuves Merkle en DB pour chaque item
       // Pour permettre la vérification individuelle plus tard
 
       return result;
-
     } catch (error) {
-      logger.error('Error anchoring batch:', error);
+      logger.error("Error anchoring batch:", error);
       throw error;
     }
   }
@@ -255,21 +262,21 @@ class HederaService {
     const type = record.type?.toLowerCase();
 
     const consultationTypes = {
-      'consultation': 'GENERAL_CONSULTATION',
-      'urgence': 'EMERGENCY',
-      'controle': 'FOLLOW_UP',
-      'specialiste': 'SPECIALIST',
-      'chirurgie': 'SURGERY',
-      'radiologie': 'RADIOLOGY',
-      'laboratoire': 'LABORATORY',
-      'vaccination': 'VACCINATION',
-      'dentaire': 'DENTAL',
-      'psychiatrie': 'PSYCHIATRY',
-      'cardiologie': 'CARDIOLOGY',
-      'dermatologie': 'DERMATOLOGY'
+      consultation: "GENERAL_CONSULTATION",
+      urgence: "EMERGENCY",
+      controle: "FOLLOW_UP",
+      specialiste: "SPECIALIST",
+      chirurgie: "SURGERY",
+      radiologie: "RADIOLOGY",
+      laboratoire: "LABORATORY",
+      vaccination: "VACCINATION",
+      dentaire: "DENTAL",
+      psychiatrie: "PSYCHIATRY",
+      cardiologie: "CARDIOLOGY",
+      dermatologie: "DERMATOLOGY",
     };
 
-    return consultationTypes[type] || 'GENERAL_CONSULTATION';
+    return consultationTypes[type] || "GENERAL_CONSULTATION";
   }
 
   // Extraire les données médicales enrichies selon le type
@@ -280,43 +287,43 @@ class HederaService {
       recommendations: this.extractRecommendations(record.description),
       vitalSigns: this.extractVitalSigns(record.metadata),
       allergies: this.extractAllergies(record.metadata),
-      medications: this.extractMedications(record.prescription)
+      medications: this.extractMedications(record.prescription),
     };
 
     // Données spécifiques selon le type de consultation
     switch (record.type?.toLowerCase()) {
-      case 'urgence':
+      case "urgence":
         return {
           ...baseData,
           emergencyLevel: this.extractEmergencyLevel(record),
           triageCategory: this.extractTriageCategory(record),
-          admissionRequired: this.extractAdmissionStatus(record)
+          admissionRequired: this.extractAdmissionStatus(record),
         };
 
-      case 'controle':
+      case "controle":
         return {
           ...baseData,
           followUpReason: this.extractFollowUpReason(record),
           previousVisitRef: this.extractPreviousVisitRef(record),
-          improvementStatus: this.extractImprovementStatus(record)
+          improvementStatus: this.extractImprovementStatus(record),
         };
 
-      case 'vaccination':
+      case "vaccination":
         return {
           ...baseData,
           vaccineType: this.extractVaccineType(record),
           batchNumber: this.extractBatchNumber(record),
           administrationSite: this.extractAdministrationSite(record),
-          nextDoseDate: this.extractNextDoseDate(record)
+          nextDoseDate: this.extractNextDoseDate(record),
         };
 
-      case 'laboratoire':
+      case "laboratoire":
         return {
           ...baseData,
           testType: this.extractTestType(record),
           results: this.extractLabResults(record),
           referenceValues: this.extractReferenceValues(record),
-          interpretation: this.extractResultInterpretation(record)
+          interpretation: this.extractResultInterpretation(record),
         };
 
       default:
@@ -327,8 +334,15 @@ class HederaService {
   // Méthodes d'extraction de données spécifiques
   extractSymptoms(description) {
     if (!description) return [];
-    const symptomsKeywords = ['douleur', 'fièvre', 'toux', 'fatigue', 'nausée', 'maux de tête'];
-    return symptomsKeywords.filter(keyword =>
+    const symptomsKeywords = [
+      "douleur",
+      "fièvre",
+      "toux",
+      "fatigue",
+      "nausée",
+      "maux de tête",
+    ];
+    return symptomsKeywords.filter((keyword) =>
       description.toLowerCase().includes(keyword)
     );
   }
@@ -338,23 +352,28 @@ class HederaService {
 
     // Si c'est un array, extraire les noms des médicaments
     if (Array.isArray(prescription)) {
-      return prescription.map(p => {
-        if (typeof p === 'object' && p.medication) {
-          return p.medication;
-        } else if (typeof p === 'string') {
-          return p;
-        }
-        return null;
-      }).filter(t => t && t.length > 0);
+      return prescription
+        .map((p) => {
+          if (typeof p === "object" && p.medication) {
+            return p.medication;
+          } else if (typeof p === "string") {
+            return p;
+          }
+          return null;
+        })
+        .filter((t) => t && t.length > 0);
     }
 
     // Si c'est une chaîne, diviser par virgules
-    if (typeof prescription === 'string') {
-      return prescription.split(',').map(t => t.trim()).filter(t => t.length > 0);
+    if (typeof prescription === "string") {
+      return prescription
+        .split(",")
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0);
     }
 
     // Si c'est un objet unique avec medication
-    if (typeof prescription === 'object' && prescription.medication) {
+    if (typeof prescription === "object" && prescription.medication) {
       return [prescription.medication];
     }
 
@@ -364,20 +383,20 @@ class HederaService {
   extractRecommendations(description) {
     if (!description) return [];
     const recommendations = [];
-    if (description.includes('repos')) recommendations.push('rest');
-    if (description.includes('hydratation')) recommendations.push('hydration');
-    if (description.includes('suivi')) recommendations.push('follow_up');
+    if (description.includes("repos")) recommendations.push("rest");
+    if (description.includes("hydratation")) recommendations.push("hydration");
+    if (description.includes("suivi")) recommendations.push("follow_up");
     return recommendations;
   }
 
   extractVitalSigns(metadata) {
-    if (!metadata || typeof metadata !== 'object') return {};
+    if (!metadata || typeof metadata !== "object") return {};
     return {
       temperature: metadata.temperature || null,
       bloodPressure: metadata.bloodPressure || null,
       heartRate: metadata.heartRate || null,
       weight: metadata.weight || null,
-      height: metadata.height || null
+      height: metadata.height || null,
     };
   }
 
@@ -391,41 +410,45 @@ class HederaService {
 
     // Si c'est un array d'objets medication
     if (Array.isArray(prescription)) {
-      return prescription.map(p => {
-        if (typeof p === 'object' && p.medication) {
-          return {
-            name: p.medication,
-            dosage: p.dosage || 'non spécifié'
-          };
-        } else if (typeof p === 'string') {
-          const parts = p.trim().split(' ');
-          return {
-            name: parts[0],
-            dosage: parts.slice(1).join(' ') || 'non spécifié'
-          };
-        }
-        return null;
-      }).filter(m => m !== null);
+      return prescription
+        .map((p) => {
+          if (typeof p === "object" && p.medication) {
+            return {
+              name: p.medication,
+              dosage: p.dosage || "non spécifié",
+            };
+          } else if (typeof p === "string") {
+            const parts = p.trim().split(" ");
+            return {
+              name: parts[0],
+              dosage: parts.slice(1).join(" ") || "non spécifié",
+            };
+          }
+          return null;
+        })
+        .filter((m) => m !== null);
     }
 
     // Si c'est une chaîne, parser les médicaments
-    if (typeof prescription === 'string') {
-      const medications = prescription.split(',').map(med => {
-        const parts = med.trim().split(' ');
+    if (typeof prescription === "string") {
+      const medications = prescription.split(",").map((med) => {
+        const parts = med.trim().split(" ");
         return {
           name: parts[0],
-          dosage: parts.slice(1).join(' ') || 'non spécifié'
+          dosage: parts.slice(1).join(" ") || "non spécifié",
         };
       });
       return medications;
     }
 
     // Si c'est un objet unique
-    if (typeof prescription === 'object' && prescription.medication) {
-      return [{
-        name: prescription.medication,
-        dosage: prescription.dosage || 'non spécifié'
-      }];
+    if (typeof prescription === "object" && prescription.medication) {
+      return [
+        {
+          name: prescription.medication,
+          dosage: prescription.dosage || "non spécifié",
+        },
+      ];
     }
 
     return [];
@@ -433,28 +456,34 @@ class HederaService {
 
   // Méthodes pour types spécifiques
   extractEmergencyLevel(record) {
-    const description = record.description?.toLowerCase() || '';
-    if (description.includes('critique') || description.includes('urgent')) return 'HIGH';
-    if (description.includes('modéré')) return 'MEDIUM';
-    return 'LOW';
+    const description = record.description?.toLowerCase() || "";
+    if (description.includes("critique") || description.includes("urgent"))
+      return "HIGH";
+    if (description.includes("modéré")) return "MEDIUM";
+    return "LOW";
   }
 
   extractTriageCategory(record) {
-    const title = record.title?.toLowerCase() || '';
-    if (title.includes('rouge')) return 'RED';
-    if (title.includes('orange')) return 'ORANGE';
-    if (title.includes('jaune')) return 'YELLOW';
-    if (title.includes('vert')) return 'GREEN';
-    return 'UNASSIGNED';
+    const title = record.title?.toLowerCase() || "";
+    if (title.includes("rouge")) return "RED";
+    if (title.includes("orange")) return "ORANGE";
+    if (title.includes("jaune")) return "YELLOW";
+    if (title.includes("vert")) return "GREEN";
+    return "UNASSIGNED";
   }
 
   extractAdmissionStatus(record) {
-    const description = record.description?.toLowerCase() || '';
-    return description.includes('hospitalisation') || description.includes('admission');
+    const description = record.description?.toLowerCase() || "";
+    return (
+      description.includes("hospitalisation") ||
+      description.includes("admission")
+    );
   }
 
   extractFollowUpReason(record) {
-    return record.title?.includes('contrôle') ? 'ROUTINE_CHECKUP' : 'TREATMENT_MONITORING';
+    return record.title?.includes("contrôle")
+      ? "ROUTINE_CHECKUP"
+      : "TREATMENT_MONITORING";
   }
 
   extractPreviousVisitRef(record) {
@@ -463,19 +492,19 @@ class HederaService {
   }
 
   extractImprovementStatus(record) {
-    const description = record.description?.toLowerCase() || '';
-    if (description.includes('amélioration')) return 'IMPROVED';
-    if (description.includes('stable')) return 'STABLE';
-    if (description.includes('détérioration')) return 'WORSENED';
-    return 'UNKNOWN';
+    const description = record.description?.toLowerCase() || "";
+    if (description.includes("amélioration")) return "IMPROVED";
+    if (description.includes("stable")) return "STABLE";
+    if (description.includes("détérioration")) return "WORSENED";
+    return "UNKNOWN";
   }
 
   extractVaccineType(record) {
-    const prescription = record.prescription?.toLowerCase() || '';
-    if (prescription.includes('covid')) return 'COVID-19';
-    if (prescription.includes('grippe')) return 'INFLUENZA';
-    if (prescription.includes('hepatite')) return 'HEPATITIS';
-    return 'OTHER';
+    const prescription = record.prescription?.toLowerCase() || "";
+    if (prescription.includes("covid")) return "COVID-19";
+    if (prescription.includes("grippe")) return "INFLUENZA";
+    if (prescription.includes("hepatite")) return "HEPATITIS";
+    return "OTHER";
   }
 
   extractBatchNumber(record) {
@@ -483,7 +512,7 @@ class HederaService {
   }
 
   extractAdministrationSite(record) {
-    return record.metadata?.administrationSite || 'bras gauche';
+    return record.metadata?.administrationSite || "bras gauche";
   }
 
   extractNextDoseDate(record) {
@@ -491,11 +520,11 @@ class HederaService {
   }
 
   extractTestType(record) {
-    const title = record.title?.toLowerCase() || '';
-    if (title.includes('sang')) return 'BLOOD_TEST';
-    if (title.includes('urine')) return 'URINE_TEST';
-    if (title.includes('biopsie')) return 'BIOPSY';
-    return 'OTHER';
+    const title = record.title?.toLowerCase() || "";
+    if (title.includes("sang")) return "BLOOD_TEST";
+    if (title.includes("urine")) return "URINE_TEST";
+    if (title.includes("biopsie")) return "BIOPSY";
+    return "OTHER";
   }
 
   extractLabResults(record) {
@@ -507,11 +536,12 @@ class HederaService {
   }
 
   extractResultInterpretation(record) {
-    const diagnosis = record.diagnosis?.toLowerCase() || '';
-    if (diagnosis.includes('normal')) return 'NORMAL';
-    if (diagnosis.includes('élevé') || diagnosis.includes('haut')) return 'HIGH';
-    if (diagnosis.includes('bas') || diagnosis.includes('faible')) return 'LOW';
-    return 'REQUIRES_REVIEW';
+    const diagnosis = record.diagnosis?.toLowerCase() || "";
+    if (diagnosis.includes("normal")) return "NORMAL";
+    if (diagnosis.includes("élevé") || diagnosis.includes("haut"))
+      return "HIGH";
+    if (diagnosis.includes("bas") || diagnosis.includes("faible")) return "LOW";
+    return "REQUIRES_REVIEW";
   }
 
   /**
@@ -520,28 +550,30 @@ class HederaService {
   async anchorRecord(record) {
     const startTime = Date.now();
 
-    logger.logServerAction('HEDERA', 'RECORD_ANCHOR_START', {
+    logger.logServerAction("HEDERA", "RECORD_ANCHOR_START", {
       recordId: record.id,
       recordType: record.type,
       patientId: record.patientId,
       doctorId: record.doctorId,
       useBatching: this.useBatching,
-      success: true
+      success: true,
     });
 
     try {
       // Generate hash (les données complètes restent en DB)
       const hash = hashService.generateRecordHash(record);
-
       // Si batching activé, ajouter au batch
       if (this.useBatching) {
-        const batchResult = await batchAggregatorService.addToBatch('MEDICAL_RECORD', record);
+        const batchResult = await batchAggregatorService.addToBatch(
+          "MEDICAL_RECORD",
+          record
+        );
 
-        logger.logServerAction('HEDERA', 'RECORD_BATCHED', {
+        logger.logServerAction("HEDERA", "RECORD_BATCHED", {
           recordId: record.id,
-          hash: hash.substring(0, 16) + '...',
+          hash: hash.substring(0, 16) + "...",
           batchSize: batchResult.currentBatchSize,
-          success: true
+          success: true,
         });
 
         return {
@@ -549,20 +581,20 @@ class HederaService {
           batched: true,
           hash: hash,
           batchSize: batchResult.currentBatchSize,
-          responseTime: Date.now() - startTime
+          responseTime: Date.now() - startTime,
         };
       }
 
       // Sinon, ancrer directement (hash only)
-      const result = await this.anchorHashDirect(hash, 'MEDICAL_RECORD', {
+      const result = await this.anchorHashDirect(hash, "MEDICAL_RECORD", {
         recordId: record.id,
         recordType: record.type,
         patientId: record.patientId,
         doctorId: record.doctorId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
-      const responseTime = Date.now() - startTime;
+          const responseTime = Date.now() - startTime;
 
       // Mettre à jour le record avec les informations Hedera
       await record.update({
@@ -570,35 +602,38 @@ class HederaService {
         hederaTransactionId: result.transactionId,
         hederaSequenceNumber: result.sequenceNumber,
         hederaTopicId: result.topicId,
-        hederaTimestamp: result.consensusTimestamp,
+        hederaTimestamp: result.consensusTimestamp ?? new Date(),
         isVerified: true,
-        lastVerifiedAt: new Date()
+        lastVerifiedAt: new Date(),
       });
 
-      logger.logServerAction('HEDERA', 'RECORD_ANCHOR_SUCCESS', {
+      logger.logServerAction("HEDERA", "RECORD_ANCHOR_SUCCESS", {
         recordId: record.id,
         transactionId: result.transactionId,
         sequenceNumber: result.sequenceNumber,
         responseTime: responseTime,
         compressed: result.compressed,
-        success: true
+        success: true,
       });
 
       // Monitoring
-      monitoringService.recordHederaTransaction('SUCCESS', responseTime, {
+      monitoringService.recordHederaTransaction("SUCCESS", responseTime, {
         recordId: record.id,
         recordType: record.type,
-        sequenceNumber: result.sequenceNumber
+        sequenceNumber: result.sequenceNumber,
       });
 
       // Générer les liens de vérification
-      const verificationLinks = hashscanService.generateVerificationLink(record, {
-        hash: hash,
-        transactionId: result.transactionId,
-        topicId: result.topicId,
-        sequenceNumber: result.sequenceNumber,
-        timestamp: result.timestamp
-      });
+      const verificationLinks = hashscanService.generateVerificationLink(
+        record,
+        {
+          hash: hash,
+          transactionId: result.transactionId,
+          topicId: result.topicId,
+          sequenceNumber: result.sequenceNumber,
+          timestamp: result.timestamp,
+        }
+      );
 
       return {
         success: true,
@@ -606,23 +641,22 @@ class HederaService {
         hash,
         ...result,
         responseTime,
-        verification: verificationLinks.verification
+        verification: verificationLinks.verification,
       };
-
     } catch (error) {
       const responseTime = Date.now() - startTime;
 
-      logger.logServerAction('HEDERA', 'RECORD_ANCHOR_FAILED', {
+      logger.logServerAction("HEDERA", "RECORD_ANCHOR_FAILED", {
         recordId: record.id,
         error: error.message,
         duration: responseTime,
-        success: false
+        success: false,
       });
 
-      monitoringService.recordHederaTransaction('FAILED', responseTime, {
+      monitoringService.recordHederaTransaction("FAILED", responseTime, {
         recordId: record.id,
         recordType: record.type,
-        error: error.message
+        error: error.message,
       });
 
       throw new Error(`Échec ancrage record: ${error.message}`);
@@ -634,7 +668,7 @@ class HederaService {
       // Utiliser la nouvelle méthode de vérification avec HCS
       return await hashService.verifyHashWithHCS(record);
     } catch (error) {
-      console.error('Error verifying record:', error);
+      logger.error("Error verifying record", { error: error.message });
       throw error;
     }
   }
