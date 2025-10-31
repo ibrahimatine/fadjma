@@ -13,6 +13,15 @@
 
 **Hedera Africa Hackathon 2025** | **Track: Healthcare Operations** | **Team: Zone01 Dakar**
 
+---
+
+## 📜 Hackathon Submission Links
+
+**🎥 Demo Video:** [Watch on YouTube](https://www.youtube.com/watch?v=WHbqioyzXzI)
+**📊 Pitch Deck:** [View Presentation](https://docs.google.com/presentation/d/1f1D95wds0PJ3yEUJTAvfxVg8R6lDtf4ZCXBZ2XXGKhU/edit?usp=sharing)
+**🏅 Hedera Certification:** [View Certificate](https://certs.hashgraphdev.com/7136d939-5f09-483f-a93f-19e7d504f314.pdf)
+**🔗 Live Deployment:** Local setup only
+
 </div>
 
 ---
